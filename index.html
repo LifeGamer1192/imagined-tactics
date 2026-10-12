@@ -163,8 +163,13 @@
       .help-body th, .help-body td { padding: 2px 5px; }
     }
     .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 30; max-width: 90vw; background: var(--card); color: var(--ink); border: 1px solid var(--gold); border-radius: 4px; padding: 8px 14px; font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+    /* 時間のかかる処理のあいだの表示（src/ui/busy.ts）。下の画面は押せない */
+    .busy { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(20,18,15,0.35); cursor: progress; }
+    .busy > div { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--gold); border-radius: 4px; padding: 12px 20px; font: 600 16px var(--mincho); box-shadow: 0 8px 30px rgba(0,0,0,0.6); }
+    .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
+    @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-BJV76fFJ.js"></script>
+  <script type="module" crossorigin src="./assets/index-D7eHIxWN.js"></script>
 </head>
 <body>
   <div id="app"></div>
