@@ -62,7 +62,18 @@
     .actions { display: flex; flex-direction: column; gap: 4px; }
     .actions button { text-align: left; }
     #forecast { min-height: 2.5em; font-size: 13px; color: #e9c98a; }
+    .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; margin: 10px 0; }
+    .sides .side { border-left: 4px solid; background: var(--card); border-radius: 3px; padding: 8px 10px; min-width: 200px; font-size: 13px; }
+    .sides h3 { margin: 0 0 4px; font-size: 15px; font-family: var(--mincho); }
+    .sides p { margin: 4px 0; }
+    @media (max-width: 760px) { .sides { grid-template-columns: 1fr; } }
     .chip { font-size: 12.5px; padding: 1px 6px; margin: 1px 2px 1px 0; border-radius: 3px; }
+    .chip[draggable] { cursor: grab; display: inline-flex; align-items: center; gap: 3px; }
+    .chip.dragging { opacity: 0.4; }
+    .uicon { width: 18px; height: 18px; border-radius: 50%; background: #f4efe2; object-fit: cover; vertical-align: -4px; pointer-events: none; }
+    .tname { white-space: nowrap; }
+    .gen.drop { outline: 2px solid var(--gold); background: #332d22; }
+    .gen.nodrop { outline: 2px solid var(--accent); }
     .tmenu { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; padding: 4px 6px; background: var(--card); border-left: 3px solid var(--gold); }
     .tmenu button { font-size: 12px; padding: 3px 8px; }
     .sel { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
@@ -174,7 +185,7 @@
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-CLQQyI_E.js"></script>
+  <script type="module" crossorigin src="./assets/index-CdjgZxjg.js"></script>
 </head>
 <body>
   <div id="app"></div>
