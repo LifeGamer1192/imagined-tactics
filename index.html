@@ -2,7 +2,9 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <title>hex-sim</title>
   <meta name="description" content="hist-sim のセーブから始める、ヘックスのターン制戦術ゲーム。日本の戦国と中国の春秋戦国。">
   <meta name="theme-color" content="#1c1a17">
@@ -11,9 +13,22 @@
     :root { color-scheme: dark; --bg: #1c1a17; --panel: #26221d; --line: #4a4136; --ink: #ece4d2; --dim: #a39a88; --accent: #c8553a; --gold: #c9a45a; --card: #1f1c18; --mincho: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", "MS PMincho", serif; }
     * { box-sizing: border-box; }
     html, body, #app { height: 100%; margin: 0; }
+    /* スマホ・タブレット：アドレス欄の出入りで高さが変わっても画面に収める。引っぱって更新・2度押しの拡大・長押しの選択を止める */
+    @supports (height: 100dvh) { html, body, #app { height: 100dvh; } }
+    html, body { overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+    #app { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+    button, .btn, .chip, .turn, canvas { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    #panel, #log, .gens, .help-body, .result { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; overflow-wrap: anywhere; }
+    /* 長い名前：札やボタンの中では途中で切り、見出しでは折り返す */
+    .nm { display: inline-block; max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+    .wrap { overflow-wrap: anywhere; }
+    input.name { font: inherit; font-size: 16px; padding: 6px 8px; width: min(28em, 78vw); color: var(--ink); background: #14120f; border: 1px solid var(--line); border-radius: 4px; }
+    .gen.reserve { border-top: 2px solid var(--gold); background: var(--card); cursor: default; font-size: 13px; }
     body { background: var(--bg); color: var(--ink); font: 14px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
     button, select, .btn { font: inherit; color: var(--ink); background: #3a332b; border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
-    button:hover:not(:disabled), .btn:hover { background: #4d4438; border-color: var(--gold); }
+    @media (hover: hover) { button:hover:not(:disabled), .btn:hover { background: #4d4438; border-color: var(--gold); } }
+    button:active:not(:disabled), .btn:active { background: #4d4438; border-color: var(--gold); }
     button:disabled { opacity: 0.4; cursor: default; }
     button.primary { background: var(--accent); color: #fff6e8; border-color: #e07a5c; font-weight: bold; }
     button.on { outline: 2px solid var(--gold); }
@@ -36,7 +51,7 @@
     .setup section p { margin: 6px 0; }
     .gens { overflow: auto; flex: 1; }
     .gen { display: flex; gap: 8px; align-items: flex-start; padding: 6px 4px; border-top: 1px solid var(--line); cursor: pointer; }
-    .gen:hover { background: #2f2a23; }
+    @media (hover: hover) { .gen:hover { background: #2f2a23; } }
     .troops { font-size: 13px; }
     details { max-height: 20vh; overflow: auto; }
 
@@ -74,6 +89,8 @@
     .chip.dragging { opacity: 0.4; }
     .uicon { width: 18px; height: 18px; border-radius: 50%; background: #f4efe2; object-fit: cover; vertical-align: -4px; pointer-events: none; }
     .tname { white-space: nowrap; }
+    .drop { outline: 2px solid var(--gold); background: #332d22; }
+    .nodrop { outline: 2px solid var(--accent); }
     .gen.drop { outline: 2px solid var(--gold); background: #332d22; }
     .gen.nodrop { outline: 2px solid var(--accent); }
     .tmenu { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; padding: 4px 6px; background: var(--card); border-left: 3px solid var(--gold); }
@@ -180,6 +197,42 @@
       .help-body dd { margin: 0 0 6px 0.8em; }
       .help-body th, .help-body td { padding: 2px 5px; }
     }
+    /* 指で触る画面（スマホ・タブレット）：押す所を大きくする。入力欄は16px以上（iPhone が勝手に拡大しないように） */
+    @media (pointer: coarse) {
+      button, select, .btn { min-height: 38px; padding: 7px 12px; }
+      .chip { min-height: 34px; padding: 4px 9px; margin: 2px 3px 2px 0; font-size: 13.5px; }
+      .tmenu button, .sel button, .ups button, .dip button, .rec select, .rec button { min-height: 36px; padding: 5px 10px; font-size: 13px; }
+      .speed [data-speed], .speed [data-vol] { min-width: 38px; }
+      .pen { min-width: 36px; font-size: 15px; }
+      input[type="checkbox"] { width: 22px; height: 22px; }
+      select, input[type="text"] { font-size: 16px; }
+      .help-btn { width: 40px; height: 40px; right: calc(8px + env(safe-area-inset-right)); bottom: calc(8px + env(safe-area-inset-bottom)); }
+      .uicon { width: 22px; height: 22px; }
+    }
+    /* タブレットの縦持ち・小さめの横持ち：情報欄を少し狭くして地図を広く */
+    @media (min-width: 761px) and (max-width: 900px) { .battle { grid-template-columns: 1fr 300px; } .result { left: calc((100% - 300px) / 2); max-width: calc(100% - 320px); } }
+    /* スマホの横持ち（高さが低い）：左右に分け、記録の欄は小さく */
+    @media (max-height: 520px) and (min-width: 600px) {
+      .battle { grid-template-columns: 1fr 46%; grid-template-rows: 1fr; }
+      .battle aside { border-top: 0; border-left: 1px solid var(--line); }
+      #panel { max-height: none; flex: 1 1 auto; min-height: 0; padding: 6px; }
+      #log { flex: 0 0 18%; }
+      .result { left: 50%; max-height: 92vh; padding: 10px 14px; }
+      .center { padding: 3vh 14px; }
+    }
+    /* 狭い画面・低い画面：速さ・音・記録のボタンは1行にまとめ、横になぞって送る（情報欄を広く残すため） */
+    @media (max-width: 760px), (max-height: 520px) {
+      .battle aside { min-width: 0; overflow: hidden; }
+      /* 「ターン終了」などの並びは、情報欄を送っても下に残す */
+      #panel .foot { position: sticky; bottom: -8px; background: var(--panel); padding: 6px 0; z-index: 1; }
+      .speed { min-width: 0; max-width: 100%; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior: contain; padding: 4px 8px; flex: 0 0 auto; scrollbar-width: none; }
+      .speed > *, .speed .vol > *, .speed .lvl > * { flex: 0 0 auto; }
+      .speed #watch { margin-right: 6px; }
+      .speed .lvl { flex-basis: auto; margin-left: 6px; }
+      #log { flex: 0 0 16%; }
+      .battle aside[data-lv="1"] #log { flex-basis: 24%; }
+      .battle aside[data-lv="2"] #log { flex-basis: 32%; }
+    }
     .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%); z-index: 30; max-width: 90vw; background: var(--card); color: var(--ink); border: 1px solid var(--gold); border-radius: 4px; padding: 8px 14px; font-size: 13px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
     /* 時間のかかる処理のあいだの表示（src/ui/busy.ts）。下の画面は押せない */
     .busy { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: rgba(20,18,15,0.35); cursor: progress; }
@@ -187,7 +240,7 @@
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-CZSeLJ1l.js"></script>
+  <script type="module" crossorigin src="./assets/index-CSjRQRCq.js"></script>
 </head>
 <body>
   <div id="app"></div>
