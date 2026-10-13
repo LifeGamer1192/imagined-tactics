@@ -68,7 +68,9 @@
     .sides p { margin: 4px 0; }
     @media (max-width: 760px) { .sides { grid-template-columns: 1fr; } }
     .chip { font-size: 12.5px; padding: 1px 6px; margin: 1px 2px 1px 0; border-radius: 3px; }
-    .chip[draggable] { cursor: grab; display: inline-flex; align-items: center; gap: 3px; }
+    .chip[data-troop] { cursor: grab; display: inline-flex; align-items: center; gap: 3px; touch-action: none; user-select: none; -webkit-user-select: none; }
+    .chip.ghost { position: fixed; z-index: 70; pointer-events: none; display: inline-flex; align-items: center; gap: 3px; background: var(--card); border: 1px solid var(--gold); box-shadow: 0 6px 18px rgba(0,0,0,0.6); }
+    .pen { font-size: 12px; padding: 0 5px; margin-left: 4px; background: none; border-color: transparent; color: var(--dim); }
     .chip.dragging { opacity: 0.4; }
     .uicon { width: 18px; height: 18px; border-radius: 50%; background: #f4efe2; object-fit: cover; vertical-align: -4px; pointer-events: none; }
     .tname { white-space: nowrap; }
@@ -185,7 +187,7 @@
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-CdjgZxjg.js"></script>
+  <script type="module" crossorigin src="./assets/index-CZSeLJ1l.js"></script>
 </head>
 <body>
   <div id="app"></div>
