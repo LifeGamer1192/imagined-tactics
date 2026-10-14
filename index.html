@@ -24,6 +24,24 @@
     .nm { display: inline-block; max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
     .wrap { overflow-wrap: anywhere; }
     input.name { font: inherit; font-size: 16px; padding: 6px 8px; width: min(28em, 78vw); color: var(--ink); background: #14120f; border: 1px solid var(--line); border-radius: 4px; }
+    /* 絵を敷いた画面（src/ui/scene.ts）：編成の画面は陣営の絵を暗く敷き、情報欄・窓は和紙の質感 */
+    body.scene { background: linear-gradient(rgba(20,18,15,0.38), rgba(20,18,15,0.72)), var(--scene-bg, none) center / cover no-repeat fixed, var(--bg); }
+    body.scene .setup section { background-color: rgba(31,28,24,0.74); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); box-shadow: 0 6px 24px rgba(0,0,0,0.45); }
+    body.scene .setup header { text-shadow: 0 1px 4px rgba(0,0,0,0.9); }
+    /* 地図の横の情報欄：和紙の質感の上に、下のほうへ陣営の絵を薄く敷く */
+    body .battle aside { background-color: var(--panel); background-image: linear-gradient(rgba(38,34,29,0.93) 0%, rgba(38,34,29,0.9) 45%, rgba(38,34,29,0.58) 100%), var(--aside-scene, none), var(--panel-bg, none); background-size: 100% 100%, auto 48%, cover; background-position: center, bottom center, center; background-repeat: no-repeat; }
+    body .result, body .help { background-color: var(--panel); background-image: linear-gradient(rgba(38,34,29,0.45), rgba(38,34,29,0.62)), var(--panel-bg, none); background-size: cover; background-position: center; }
+    body .card { background: rgba(24,21,18,0.78); }
+    .gens2 .gen, .gen.reserve { background: rgba(24,21,18,0.35); }
+    .result { border-color: #6b5a3e; box-shadow: 0 0 0 1px rgba(201,164,90,0.25) inset, 0 14px 50px rgba(0,0,0,0.6); }
+    .result h2 { letter-spacing: 0.08em; }
+    .result h2::after { content: ""; display: block; width: 120px; height: 2px; margin: 6px auto 0; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
+    .banner { height: clamp(90px, 18vh, 170px); margin: 0 0 12px; border-radius: 6px; background: center / cover no-repeat; box-shadow: 0 0 0 1px rgba(201,164,90,0.35); -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
+    .over { text-align: center; font: 700 18px var(--mincho); }
+    .over .banner { margin-bottom: 6px; }
+    .turn { box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 8px rgba(0,0,0,0.35); padding-top: 8px; padding-bottom: 8px; }
+    button { background-image: linear-gradient(rgba(255,255,255,0.06), rgba(0,0,0,0.12)); }
+    button.primary { background-image: linear-gradient(#d4673f, #a9442b); box-shadow: 0 0 0 1px rgba(255,220,180,0.15) inset; }
     .gen.reserve { border-top: 2px solid var(--gold); background: var(--card); cursor: default; font-size: 13px; }
     body { background: var(--bg); color: var(--ink); font: 14px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
     button, select, .btn { font: inherit; color: var(--ink); background: #3a332b; border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
@@ -240,7 +258,7 @@
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-BUSSGv4g.js"></script>
+  <script type="module" crossorigin src="./assets/index-NBqfJqU1.js"></script>
 </head>
 <body>
   <div id="app"></div>
