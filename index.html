@@ -8,6 +8,8 @@
   <title>hex-sim</title>
   <meta name="description" content="hist-sim のセーブから始める、ヘックスのターン制戦術ゲーム。日本の戦国と中国の春秋戦国。">
   <meta name="theme-color" content="#1c1a17">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 4 56 18v28L32 60 8 46V18z' fill='%23c8553a' stroke='%231c1a17' stroke-width='4'/%3E%3Ccircle cx='32' cy='32' r='10' fill='%23ece4d2'/%3E%3C/svg%3E">
   <style>
     :root { color-scheme: dark; --bg: #1c1a17; --panel: #26221d; --line: #4a4136; --ink: #ece4d2; --dim: #a39a88; --accent: #c8553a; --gold: #c9a45a; --card: #1f1c18; --mincho: "Yu Mincho", "Hiragino Mincho ProN", "Noto Serif JP", "MS PMincho", serif; }
@@ -37,11 +39,66 @@
     .result h2 { letter-spacing: 0.08em; }
     .result h2::after { content: ""; display: block; width: 120px; height: 2px; margin: 6px auto 0; background: linear-gradient(90deg, transparent, var(--gold), transparent); }
     .banner { height: clamp(90px, 18vh, 170px); margin: 0 0 12px; border-radius: 6px; background: center / cover no-repeat; box-shadow: 0 0 0 1px rgba(201,164,90,0.35); -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
+    .where .from { color: #ff9c80; font-weight: bold; } .where .to { color: #f0cf7a; font-weight: bold; }
+    /* 地図を見せたい窓（攻め込む・攻められる）は、下のほうに出す */
+    body .result.low { top: auto; bottom: 12px; transform: translateX(-50%); max-height: 56vh; }
+    body .result.low .banner { height: clamp(60px, 10vh, 110px); }
+    /* 天気の欄：天気の帯の絵を敷く。開戦のときと天気が変わったときは、しばらく金の縁で光らせる */
+    body .sky { position: relative; background: linear-gradient(90deg, rgba(24,21,18,0.92) 0%, rgba(24,21,18,0.72) 55%, rgba(24,21,18,0.35) 100%), var(--sky-bg, none) center / cover, var(--card); min-height: 44px; transition: box-shadow 0.4s, border-color 0.4s; }
+    body .sky.night { background: linear-gradient(90deg, rgba(14,16,30,0.94) 0%, rgba(14,16,30,0.78) 55%, rgba(14,16,30,0.5) 100%), var(--sky-bg, none) center / cover, var(--card); }
+    body .sky.flash { border-left-color: #ffd36b; box-shadow: 0 0 0 2px rgba(255,211,107,0.85), 0 0 18px rgba(255,200,90,0.55); animation: sky-in 0.5s ease-out; }
+    body .sky.flash b { color: #ffe39a; font-size: 15px; }
+    @keyframes sky-in { from { transform: scale(1.04); filter: brightness(1.5); } to { transform: none; filter: none; } }
+    /* 開戦：地図の真ん中に、墨の筆の帯と大きな文字を一瞬だけ */
+    .splash { position: absolute; z-index: 20; left: calc((100% - 340px) / 2); top: 42%; transform: translate(-50%, -50%); width: min(560px, 80vw); height: 150px; display: flex; align-items: center; justify-content: center; pointer-events: none; background: var(--brush-ink) center / 100% 100% no-repeat; animation: splash 1.6s ease-out forwards; }
+    .splash span { font: 800 64px var(--mincho); color: #fff6e8; letter-spacing: 0.3em; text-shadow: 0 2px 10px rgba(0,0,0,0.8); padding-left: 0.3em; }
+    @keyframes splash { 0% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.3); } 18% { opacity: 1; transform: translate(-50%, -50%) scaleX(1.04); } 30% { transform: translate(-50%, -50%) scaleX(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -52%); } }
+    @media (max-width: 760px) { .splash { left: 50%; top: 23%; height: 100px; } .splash span { font-size: 42px; } }
+    /* 決着の見出し：朱の筆の帯の上に白い文字（負けたときは、墨を薄くした帯） */
+    body .result h2.brushed { position: relative; display: inline-block; padding: 10px 46px 12px; color: #fff6e8; text-shadow: 0 2px 6px rgba(0,0,0,0.7); isolation: isolate; }
+    body .result h2.brushed::before { content: ""; position: absolute; inset: -6px -10px; z-index: -1; background: var(--brush-red) center / 100% 100% no-repeat; }
+    body .result h2.brushed.lost::before { background-image: var(--brush-ink); filter: invert(0.55) sepia(0.3); }
+    body .result h2.brushed::after { display: none; }
+    /* 窓の四隅の飾り（金の雲形） */
+    body .result, body .help { --cs: 46px; }
+    body .result::before, body .result::after { content: ""; position: absolute; width: var(--cs); height: var(--cs); pointer-events: none; opacity: 0.9; }
+    body .result::before { left: 4px; top: 4px; background: var(--corner-tl) left top / contain no-repeat; }
+    body .result::after { right: 4px; bottom: 4px; background: var(--corner-br) right bottom / contain no-repeat; }
+    body .result > .banner:first-child { margin-top: 4px; }
+    /* 場面の挿絵（知らせ・窓の上）。小さめ */
+    .vignette { height: clamp(80px, 14vh, 130px); margin: 0 0 8px; border-radius: 5px; background: center / cover no-repeat; box-shadow: 0 0 0 1px rgba(201,164,90,0.35); -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+    /* 武将の後ろ姿（顔は描かない）と、領の町の絵 */
+    .fig { width: 34px; height: 46px; flex: 0 0 34px; object-fit: contain; object-position: bottom; margin: -2px 0 0 -2px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.6)); }
+    .town { position: absolute; right: 8px; top: 6px; width: 64px; height: 44px; object-fit: contain; filter: sepia(0.2) brightness(1.05) drop-shadow(0 1px 2px rgba(0,0,0,0.5)); background: rgba(236,228,210,0.85); border-radius: 4px; padding: 2px; }
+    /* 説明の小窓（src/ui/tip.ts） */
+    .tip { position: fixed; z-index: 80; padding: 8px 11px; background: rgba(18,16,13,0.97); color: var(--ink); border: 1px solid #8a7347; border-radius: 6px; font-size: 12.5px; line-height: 1.6; white-space: pre-line; box-shadow: 0 8px 26px rgba(0,0,0,0.6); pointer-events: none; }
+    .trait { border-bottom: 1px dotted rgba(201,164,90,0.7); cursor: help; }
+    .udesc { flex-basis: 100%; white-space: pre-line; color: #cfc6b3; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+    .minfo { white-space: pre-line; font-size: 12.5px; color: #d9cfbb; background: rgba(12,10,8,0.6); border-left: 3px solid var(--gold); border-radius: 3px; padding: 6px 8px; margin: 4px 0; }
+    table.expect { border-collapse: collapse; font-size: 12.5px; width: 100%; margin: 2px 0 6px; }
+    table.expect th, table.expect td { border-bottom: 1px solid var(--line); padding: 2px 4px; text-align: right; }
+    table.expect th:first-child, table.expect td:first-child { text-align: left; }
+    table.expect th { color: var(--dim); font-weight: normal; }
+    /* 確かめる窓：画面の真ん中に、後ろを暗くして出す */
+    body .result.confirm { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 45; width: min(520px, 92vw); text-align: left; box-shadow: 0 0 0 100vmax rgba(0,0,0,0.45), 0 14px 50px rgba(0,0,0,0.6); }
+    body .result.confirm h2 { text-align: center; }
+    .cbody { font-size: 13.5px; line-height: 1.7; } .cbody ul { margin: 4px 0; padding-left: 1.4em; }
+    .cbtns { text-align: center; margin-top: 12px; }
+    ul.news { margin: 4px 0; padding-left: 1.3em; line-height: 1.8; }
+    #autoMonth.autoing { background-image: linear-gradient(#c9a45a, #8f7236); color: #1c1a17; font-weight: bold; animation: autoing 1.2s ease-in-out infinite; }
+    @keyframes autoing { 50% { filter: brightness(1.25); } }
+    body .card:has(> .town) { position: relative; padding-right: 82px; min-height: 58px; }
+    body .card > .vignette { height: 60px; margin-bottom: 4px; }
     .over { text-align: center; font: 700 18px var(--mincho); }
     .over .banner { margin-bottom: 6px; }
     .turn { box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 8px rgba(0,0,0,0.35); padding-top: 8px; padding-bottom: 8px; }
     button { background-image: linear-gradient(rgba(255,255,255,0.06), rgba(0,0,0,0.12)); }
     button.primary { background-image: linear-gradient(#d4673f, #a9442b); box-shadow: 0 0 0 1px rgba(255,220,180,0.15) inset; }
+    /* 記録（メッセージ）の欄：枠で囲み、上に「記録」の見出しを付けて、地の絵と見分けられるようにする */
+    body #log { margin: 6px 8px 8px; padding: 0 10px 8px; border: 1px solid #6b5a3e; border-radius: 6px; background: rgba(12,10,8,0.88); box-shadow: inset 0 0 0 1px rgba(201,164,90,0.14), 0 4px 14px rgba(0,0,0,0.45); color: #ddd3bf; line-height: 1.55; }
+    body #log::before { content: "記録"; position: sticky; top: 0; z-index: 1; display: block; margin: 0 -10px 4px; padding: 4px 10px 3px; font: 700 12px var(--mincho); letter-spacing: 0.3em; color: var(--gold); background: linear-gradient(rgba(36,30,22,0.98), rgba(28,24,18,0.98)); border-bottom: 1px solid #6b5a3e; border-radius: 6px 6px 0 0; }
+    body #log:empty::after { content: "まだ記録はありません"; color: var(--dim); font-size: 12px; }
+    body #log > div:last-child { color: #f2e8d2; }
     .gen.reserve { border-top: 2px solid var(--gold); background: var(--card); cursor: default; font-size: 13px; }
     body { background: var(--bg); color: var(--ink); font: 14px/1.5 "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif; }
     button, select, .btn { font: inherit; color: var(--ink); background: #3a332b; border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
@@ -258,7 +315,7 @@
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-NBqfJqU1.js"></script>
+  <script type="module" crossorigin src="./assets/index-CX7YDqE3.js"></script>
 </head>
 <body>
   <div id="app"></div>
