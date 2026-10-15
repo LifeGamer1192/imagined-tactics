@@ -1,0 +1,83 @@
+{
+ "weaken": {
+  "atk": -49,
+  "def": -31,
+  "turns": 3
+ },
+ "atkNext": {
+  "atk": 49
+ },
+ "moveUp": {
+  "move": 2,
+  "turns": 3
+ },
+ "resistUp": {
+  "pct": 34,
+  "turns": 3
+ },
+ "defUp": {
+  "def": 31,
+  "turns": 3
+ },
+ "atkUp": {
+  "atk": 31,
+  "turns": 2
+ },
+ "agiUp": {
+  "agi": 21,
+  "turns": 3
+ },
+ "atkDown": {
+  "atk": -49,
+  "turns": 3
+ },
+ "intDown": {
+  "int": -49,
+  "turns": 3
+ },
+ "grounded": {
+  "agi": -21,
+  "turns": 3
+ },
+ "regen": {
+  "pct": 10,
+  "turns": 4
+ },
+ "poison": {
+  "pct": 10
+ },
+ "daze": {
+  "turns": [
+   1,
+   3
+  ]
+ },
+ "silence": {
+  "turns": [
+   1,
+   3
+  ]
+ },
+ "defect": {
+  "turns": [
+   1,
+   3
+  ]
+ },
+ "stun": {
+  "turns": [
+   1,
+   3
+  ]
+ },
+ "confuse": {
+  "def": 147
+ },
+ "outOfCommand": {
+  "atkDefPct": -31,
+  "tacticDamagePct": 31
+ },
+ "noSupply": {
+  "hpMpPct": -31
+ }
+}

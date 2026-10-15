@@ -1,0 +1,14 @@
+{
+  "_comment": "武将のレベルアップ時の上昇量（元資料に武将の成長幅が無いため、兵種の成長幅を参考に決めた値）。兵種の成長幅は units.json にある。",
+  "general": {
+    "hp": [4, 10],
+    "mp": [1, 3],
+    "mpTactical": [3, 6],
+    "str": [0, 2],
+    "int": [0, 2],
+    "agi": [0, 2]
+  },
+  "tacticalLines": ["gunbaisha", "so", "onna_gunbaisha", "ama", "shirabyoshi"],
+  
+  "maxMastery": 5
+}
