@@ -26,15 +26,19 @@
   "tower",
   "desert",
   "snowfield",
+  "palisade",
+  "lookout",
+  "fortgate",
   "void"
  ],
  "regen": {
   "camp": 5
  },
  "ranged": {
-  "tower": { "hit": 10, "range": 1 }
+  "tower": { "hit": 10, "range": 1 },
+  "lookout": { "hit": 15, "range": 1 }
  },
- "snowFree": ["road", "bridge", "castle", "town", "camp", "fort", "gate", "tower"],
+ "snowFree": ["road", "bridge", "castle", "town", "camp", "fort", "gate", "tower", "lookout", "fortgate"],
  "moveCost": {
   "plain": {
    "plain": 1.0,
@@ -124,6 +128,9 @@
   "tower": { "plain": 1.5, "forest": 1.5, "mountain": 1.5, "swamp": 1.5, "water": 1.5, "rider": null },
   "desert": { "plain": 1.25, "forest": 1.5, "mountain": 1.5, "swamp": 1.5, "water": 2.0, "rider": 1.0 },
   "snowfield": { "plain": 1.75, "forest": 1.75, "mountain": 1.5, "swamp": 1.75, "water": 2.5, "rider": 2.5 },
+  "palisade": { "plain": 2.5, "forest": 2.5, "mountain": 2.5, "swamp": 2.5, "water": 2.5, "rider": null },
+  "lookout": { "plain": 1.5, "forest": 1.5, "mountain": 1.5, "swamp": 1.5, "water": 1.5, "rider": null },
+  "fortgate": { "plain": 1.0, "forest": 1.0, "mountain": 1.0, "swamp": 1.0, "water": 1.0, "rider": 1.0 },
   "void": { "plain": null, "forest": null, "mountain": null, "swamp": null, "water": null, "rider": null }
  },
  "hitMod": {
@@ -215,6 +222,9 @@
   "tower": { "plain": 15, "forest": 15, "mountain": 15, "swamp": 15, "water": 15, "rider": 0 },
   "desert": { "plain": 0, "forest": -5, "mountain": -5, "swamp": -5, "water": -10, "rider": 5 },
   "snowfield": { "plain": -5, "forest": -5, "mountain": 0, "swamp": -5, "water": -10, "rider": -10 },
+  "palisade": { "plain": 10, "forest": 10, "mountain": 10, "swamp": 10, "water": 10, "rider": 0 },
+  "lookout": { "plain": 15, "forest": 15, "mountain": 15, "swamp": 15, "water": 15, "rider": 0 },
+  "fortgate": { "plain": 10, "forest": 10, "mountain": 10, "swamp": 10, "water": 10, "rider": 5 },
   "void": { "plain": 0, "forest": 0, "mountain": 0, "swamp": 0, "water": 0, "rider": 0 }
  }
 }
