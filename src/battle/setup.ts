@@ -58,6 +58,8 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
     map, units: [], turn: 0, round: 1, maxRounds: maxRounds + (weather === 'snow' ? D.combat.weather.snowExtraRounds : 0), winner: null,
     rng: new RNG(codeToSeed(code)), log: [], sideNames,
     weather, night: sky?.night ?? auto.night,
+    // 城の戦場：攻め手は天守を押さえ続ければ勝ち
+    ...(map.seat !== undefined && map.holdTurns ? { hold: { cell: map.seat, need: map.holdTurns, count: 0 } } : {}),
   };
   const g = map.grid;
   const taken = new Set<number>();

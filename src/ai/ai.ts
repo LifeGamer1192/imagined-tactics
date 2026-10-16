@@ -265,6 +265,8 @@ interface PosCtx {
   leader: BUnit | null; foes: BUnit[]; threats: Threat[]; origin: number; urgent: number; joins: boolean;
   /** 城壁のある戦場だけ：各マスから一番近い敵までの道のり（歩数） */
   travel: Float64Array | null;
+  /** 城の戦場の攻め手だけ：各マスから天守までの道のり（歩数） */
+  seatPath: Float64Array | null;
 }
 
 /**
@@ -362,6 +364,15 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
         break;
     }
   }
+  // 天守の取り合い：攻め手は天守に居座れば勝ちに近づくので、天守を目指して居続ける。守り手は、攻め手が近いときは天守を空けない
+  const h = st.hold;
+  if (h) {
+    const W = AI.castle;
+    if (u.side === 0) {
+      if (u.pos === h.cell) s += W.hold * (1 + c.urgent);
+      else if (c.seatPath && c.seatPath[u.pos] < Infinity) s -= W.approach * (1 + 2 * c.urgent) * Math.min(c.seatPath[u.pos], 30);
+    } else if (u.pos === h.cell && c.foes.some((f) => g.distance(f.pos, h.cell) <= W.guardRange)) s += W.guard;
+  }
   parts.stance = s;
   parts.noise = jitter(u.id, u.pos, st.round) * w.noise;
 }
@@ -390,6 +401,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   const ctx: PosCtx = {
     stance, role, w, persona, leader, urgent, origin: u.pos, foes,
     travel: st.map.siege && foes.length ? travelField(st, u, foes) : null,
+    seatPath: st.hold && u.side === 0 ? travelField(st, u, [{ pos: st.hold.cell } as BUnit]) : null,
     threats: threatsTo(st, u),
     // 武将が自ら前に出るか：猛攻・武勇の武将、前衛の役割で時間が押しているとき
     joins: u.kind !== 'general' || persona.aggression + persona.honor * 0.5 > 0.3 || urgent >= (AI.stance.generalJoinFrom - AI.stance.urgentFrom) / (1 - AI.stance.urgentFrom),

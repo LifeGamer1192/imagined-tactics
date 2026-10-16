@@ -149,6 +149,11 @@ export interface BattleState {
    * 寝返った兵も、もとの陣営（home）の掛け目のまま
    */
   supplyMult?: [number, number];
+  /**
+   * 天守（城のマス）の占拠。攻め手の番の始めに攻め手の駒が天守にいれば count が1増え、いなければ0に戻る。
+   * count が need に届くか、時間切れのとき天守に攻め手がいれば、攻め手の勝ち。城のある戦場だけ
+   */
+  hold?: { cell: number; need: number; count: number };
 }
 
 export type Action =

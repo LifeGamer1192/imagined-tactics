@@ -1,5 +1,5 @@
 {
-  "fort": { "fort": 0.35, "castle": 0.6, "siege": 0.8, "outworks": 0.5 },
+  "fort": { "fort": 0.35, "castle": 0.6, "siege": 0.8, "outworks": 0.5, "keep": 0.9 },
   "town": { "village": 3000, "town": 8000, "city": 30000, "villageTiles": 1, "townTiles": 3, "cityTiles": 6 },
   "paddy": { "byIncome": [2, 8, 20], "aqueduct": 2, "unrest": 0.3 },
   "road": { "secondIncome": 15 },

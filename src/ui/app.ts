@@ -2,7 +2,7 @@
 
 import { autoBattle, nextAiActions, stanceOf } from '../ai/ai';
 import { personalityLabel, personalityOf } from '../ai/personality';
-import { apply, canAct, canMove, moveCells } from '../battle/engine';
+import { apply, canAct, canMove, holder, moveCells } from '../battle/engine';
 import { mapFromProvince } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
 import { newCampaign, S, traitsOf, type Difficulty } from '../strategy/campaign';
@@ -814,7 +814,10 @@ export class App {
     // 飛び地で戦う陣営（兵糧や援軍が届きにくく、攻撃・防御が下がる）
     const cut = ([0, 1] as Side[]).filter((s) => (st.supplyMult?.[s] ?? 1) !== 1)
       .map((s) => `${esc(st.sideNames[s])}は飛び地で戦う（攻撃・防御${Math.round(((st.supplyMult![s]) - 1) * 100)}%）`);
-    const lines = [...fx, ...cut];
+    // 天守の取り合い
+    const hd = st.hold;
+    const keep = hd ? [`天守：攻め手が${hd.need}巡押さえ続けるか、時間切れのとき押さえていれば攻め手の勝ち（いま${hd.count}／${hd.need}${holder(st) ? `・${esc(holder(st)!.name)}が押さえている` : ''}）`] : [];
+    const lines = [...fx, ...cut, ...keep];
     return `<div class="sky ${lit ? 'flash' : ''} ${sky.night ? 'night' : ''}" id="sky" style="${url ? `--sky-bg:url('${url}')` : ''}">${when}天気：<b>${label}</b>${lines.length ? `<small>${lines.join('<br>')}</small>` : ''}</div>`;
   }
 

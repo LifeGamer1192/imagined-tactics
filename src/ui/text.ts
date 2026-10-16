@@ -30,6 +30,10 @@ const TEXT: Record<string, string> = {
   'status.end': '{unit}：{status}が解けた',
   'win': '{side}の勝ち',
   'timeup': '時間切れ。{side}の勝ち',
+  'timeupHeld': '時間切れ。天守を押さえた{side}の勝ち',
+  'hold': '{unit}が天守を押さえている（{count}／{need}）',
+  'holdLost': '{side}は天守から追い出された',
+  'castleTaken': '{unit}が天守を落とした。{side}の勝ち',
   'turn': '── {side}の番（{round}巡目）──',
 };
 

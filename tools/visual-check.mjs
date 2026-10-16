@@ -130,6 +130,15 @@ async function run(tag, ctxOpts) {
     await press('.confirm [data-a="no"]');
     // 方位の印と、番の交代の帯（「開戦」は始めの1回だけ）
     ok(`[${tag}] 戦場に方位の印`, !!(await page.$('.compass .needle')));
+    // 城の戦場：天守の取り合いの説明（攻め手を天守に置くと「押さえている」と出る）
+    const hasKeep = await page.evaluate(() => !!window.__app.st.hold);
+    if (hasKeep) {
+      ok(`[${tag}] 城の戦場は天気の欄に天守の勝ち方`, /天守：/.test(await page.textContent('#sky')));
+      await page.evaluate(() => { const a = window.__app, st = a.st, cell = st.hold.cell; for (const u of st.units) if (u.pos === cell) u.pos = st.map.spawn[1].find((i) => !st.units.some((x) => x.pos === i)); st.units.find((u) => u.side === 0 && u.alive).pos = cell; st.hold.count = 1; a.refresh(); });
+      await page.waitForTimeout(200);
+      ok(`[${tag}] 天守を押さえると、押さえている駒と巡の数が出る`, /が押さえている/.test(await page.textContent('#sky')));
+      await shot('battle_keep');
+    }
     // 飛び地の戦い：天気の欄と駒の欄に出て、攻撃・防御が下がる
     const cutInfo = await page.evaluate(async () => {
       const { attackPower } = await import('/src/rules/stats.ts');

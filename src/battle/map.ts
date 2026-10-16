@@ -21,6 +21,8 @@ export interface BattleMap {
   north?: [number, number];
   /** 以下は領から作った戦場だけ：守り手の拠点（城・砦・陣）のマス */
   seat?: number;
+  /** 城の戦場だけ：攻め手が天守（seat）を何巡押さえれば勝ちか（2〜4） */
+  holdTurns?: number;
   /** 攻め手が入ってきた辺（EDGES の番号）と、その方角の名前（東・南東…） */
   edge?: number;
   edgeName?: string;
@@ -84,7 +86,7 @@ const PER_POP = (convertJson as unknown as { supply: { perPop: number } }).suppl
 
 /** 戦場の作り方と普請の調整値（data/system/battlemap.json） */
 export const BM = battlemapJson as unknown as {
-  fort: { fort: number; castle: number; siege: number; outworks: number };
+  fort: { fort: number; castle: number; siege: number; outworks: number; keep: number };
   town: { village: number; town: number; city: number; villageTiles: number; townTiles: number; cityTiles: number };
   paddy: { byIncome: number[]; aqueduct: number; unrest: number };
   road: { secondIncome: number };
@@ -435,6 +437,8 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
     siege: terrain.includes('wall'),
     features: [...new Set(features)],
     seat, edge, edgeName: E.name, depth, lateral, north: [0, -1],
+    // 天守を落とすのに要る巡：2。城壁があれば +1、城がとても強ければ +1（4まで）
+    holdTurns: terrain[seat] === 'castle' ? Math.min(4, 2 + (siege ? 1 : 0) + (fort >= BM.fort.keep ? 1 : 0)) : undefined,
   };
 }
 

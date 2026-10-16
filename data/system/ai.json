@@ -76,6 +76,7 @@
     "guardLeader": { "discipline": 0.5, "care": 0.4 },
     "noise": { "cunning": -1.5, "discipline": -1.0 }
   },
+  "castle": { "hold": 90, "approach": 1.0, "guard": 30, "guardRange": 4 },
   "stance": {
     "retreatHp": 0.3,
     "retreatHpCaution": 0.25,

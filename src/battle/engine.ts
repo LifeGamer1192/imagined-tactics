@@ -339,13 +339,44 @@ export function startTurn(st: BattleState, side: Side): void {
     if (regen > 0) heal(u, Math.round(u.maxHp * regen / 100));
   }
   checkWinner(st);
+  if (side === 0) checkHold(st);
+}
+
+/** 天守に今いる攻め手の駒（いなければ undefined） */
+export function holder(st: BattleState): BUnit | undefined {
+  const h = st.hold;
+  return h ? st.units.find((u) => u.alive && u.side === 0 && u.pos === h.cell) : undefined;
+}
+
+/** 攻め手の番の始め：天守を押さえていれば数を進め、届けば攻め手の勝ち。いなければ数を戻す */
+function checkHold(st: BattleState): void {
+  const h = st.hold;
+  if (!h || st.winner !== null) return;
+  const u = holder(st);
+  if (!u) {
+    if (h.count > 0) log(st, 'holdLost', { side: st.sideNames[0] });
+    h.count = 0;
+    return;
+  }
+  h.count++;
+  if (h.count >= h.need) {
+    st.winner = 0;
+    log(st, 'castleTaken', { side: st.sideNames[0], unit: u.name, uid: u.id });
+    return;
+  }
+  log(st, 'hold', { unit: u.name, uid: u.id, count: h.count, need: h.need });
 }
 
 export function endTurn(st: BattleState): void {
   if (st.winner !== null) return;
   if (st.turn === 1) {
     st.round++;
-    if (st.round > st.maxRounds) { st.winner = 1; log(st, 'timeup', { side: st.sideNames[1] }); return; }
+    if (st.round > st.maxRounds) {
+      // 時間切れ：天守を攻め手が押さえていれば攻め手の勝ち、そうでなければ守り手の勝ち
+      const u = holder(st);
+      if (u) { st.winner = 0; log(st, 'timeupHeld', { side: st.sideNames[0], unit: u.name }); return; }
+      st.winner = 1; log(st, 'timeup', { side: st.sideNames[1] }); return;
+    }
   }
   startTurn(st, other(st.turn));
 }

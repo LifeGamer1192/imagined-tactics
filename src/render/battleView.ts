@@ -420,6 +420,21 @@ export class BattleView {
     shade(this.hl.move, css(INDIGO, 0.22), css(INDIGO, 0.7));
     shade(this.hl.target, css(VERMILION, 0.26), css(VERMILION, 0.85));
     shade(this.hl.area, css(OCHRE, 0.4), css([150, 105, 30], 0.9));
+    // 天守：金の点線の輪と、押さえた巡の数（攻め手が押さえているときは朱）
+    if (st.hold) {
+      const [x, y] = g.center(st.hold.cell, HEX);
+      const held = st.hold.count > 0;
+      ctx.save();
+      ctx.setLineDash([5, 4]); ctx.lineWidth = 3;
+      ctx.strokeStyle = held ? css(VERMILION, 0.95) : 'rgba(201,164,90,0.95)';
+      this.hexPath(ctx, x, y, HEX - 1); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = `700 ${HEX * 0.34}px ${MINCHO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const label = `天守 ${st.hold.count}/${st.hold.need}`;
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(244,239,226,0.95)'; ctx.strokeText(label, x, y + HEX * 0.98);
+      ctx.fillStyle = held ? css(VERMILION) : 'rgba(90,62,20,1)'; ctx.fillText(label, x, y + HEX * 0.98);
+      ctx.restore();
+    }
 
     // 演出：終わったものを捨て、いまの時刻での位置・揺れ・体力を求める
     const now = performance.now();
