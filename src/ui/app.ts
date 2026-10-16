@@ -492,12 +492,14 @@ export class App {
     this.maybeAi();
   }
 
-  /** 方位の印：戦場は攻めてくる向きに合わせて回してあるので、北がどちらかを示す */
+  /** 方位の印：戦場は北が上。攻め手は攻めてきた方角の辺から入る */
   private compassHtml(st: BattleState): string {
     const [nx, ny] = st.map.north ?? [0, -1];
     const deg = Math.round(Math.atan2(nx, -ny) * 180 / Math.PI);
-    const side = (s: Side) => (st.map.flip ? (s === 0 ? '右' : '左') : (s === 0 ? '左' : '右'));
-    return `<div class="compass" data-tip="戦場は、攻め手が攻めてきた向きに合わせてあります。矢印の先が北です。攻め手（${esc(st.sideNames[0])}）は${side(0)}、守り手（${esc(st.sideNames[1])}）は${side(1)}から始まります。">
+    const tip = st.map.edgeName
+      ? `戦場は北が上で、本当の地形のままです。攻め手（${esc(st.sideNames[0])}）は攻めてきた${st.map.edgeName}の端から、守り手（${esc(st.sideNames[1])}）はその反対の端から始まります。どの方角から攻めるかで、地形の有利・不利が変わります。`
+      : '矢印の先が北です。';
+    return `<div class="compass" data-tip="${tip}">
       <span class="needle" style="transform:rotate(${deg}deg)"><i></i><b>北</b></span></div>`;
   }
 

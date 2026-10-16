@@ -77,9 +77,20 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
     ids.forEach((gid, k) => {
       const gen = gs.generals[gid];
       const leader = generalUnit(gen, st.units.length, side);
-      // 配置場所の側（攻め手は左とは限らない：東から攻めるときは右）の、内から2列目を目安にする
-      const zone = map.spawn[side], zc = zone.length ? zone.reduce((s, i) => s + g.col(i), 0) / zone.length : (side === 0 ? 1 : g.w - 2);
-      const anchor = g.idx(zc < g.w / 2 ? 1 : g.w - 2, Math.min(g.h - 1, Math.round((k + 1) * g.h / (ids.length + 1))));
+      const zone = map.spawn[side];
+      let anchor: number;
+      if (map.depth && map.lateral && zone.length) {
+        // 六角形の盤：配置場所の、辺から1つ内側の深さで、武将どうしを横に散らす
+        const dep = map.depth, lat = map.lateral;
+        const edgeD = side === 0 ? Math.min(...zone.map((i) => dep[i])) : Math.max(...zone.map((i) => dep[i]));
+        const row = zone.filter((i) => dep[i] === edgeD + (side === 0 ? 1 : -1)).sort((a, b) => lat[a] - lat[b]);
+        const pool = row.length ? row : zone.slice().sort((a, b) => lat[a] - lat[b]);
+        anchor = pool[Math.min(pool.length - 1, Math.floor((k + 1) * pool.length / (ids.length + 1)))];
+      } else {
+        // 文字で書いたマップ：配置場所の側の、内から2列目
+        const zc = zone.length ? zone.reduce((s, i) => s + g.col(i), 0) / zone.length : (side === 0 ? 1 : g.w - 2);
+        anchor = g.idx(zc < g.w / 2 ? 1 : g.w - 2, Math.min(g.h - 1, Math.round((k + 1) * g.h / (ids.length + 1))));
+      }
       let pos = nearest(leader, anchor, map.spawn[side]);
       if (pos < 0) pos = nearest(leader, anchor, all);
       leader.pos = pos; taken.add(pos);

@@ -19,7 +19,7 @@ const BAKE = 2;
 
 export const TERRAIN_NAME: Record<TerrainKind, string> = {
   plain: '草原', road: '道', bridge: '橋', forest: '森', mountain: '山', swamp: '湿地', water: '川・湖・海', castle: '城', town: '街', cliff: '段差',
-  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓',
+  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓', void: '盤の外',
 };
 /** 絵が無いときに代わりに書く字 */
 const GLYPH: Partial<Record<TerrainKind, string>> = {
@@ -134,7 +134,8 @@ export class BattleView {
   pick(sx: number, sy: number): number {
     if (!this.st) return -1;
     const [wx, wy] = this.cam.toWorld(sx, sy);
-    return this.st.map.grid.pick(wx, wy, HEX);
+    const i = this.st.map.grid.pick(wx, wy, HEX);
+    return i >= 0 && this.st.map.terrain[i] === 'void' ? -1 : i;
   }
 
   private hexPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
@@ -174,7 +175,10 @@ export class BattleView {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
 
     // 淡彩の塗り。マスごとに少しだけ濃淡を変えて、手で塗った感じにする
+    // 六角形の盤の外（長方形の隅）は描かない
+    const off = (i: number) => st.map.terrain[i] === 'void';
     for (let i = 0; i < g.n; i++) {
+      if (off(i)) continue;
       const [x, y] = g.center(i, HEX);
       const k = st.map.terrain[i];
       const base = TERRAIN_WASH[k];
@@ -186,6 +190,7 @@ export class BattleView {
     // 地形の絵（マスいっぱいに敷く絵）。ある地形は絵を敷き、無い地形は上の塗りのままにする
     const tiled = new Uint8Array(g.n);
     for (let i = 0; i < g.n; i++) {
+      if (off(i)) continue;
       const img = this.tileFor(st.map.terrain[i], i);
       if (!img) continue;
       const [x, y] = g.center(i, HEX);
@@ -202,7 +207,7 @@ export class BattleView {
     }
     // マスの線：薄い墨
     ctx.strokeStyle = 'rgba(40,36,30,0.22)'; ctx.lineWidth = 1;
-    for (let i = 0; i < g.n; i++) { const [x, y] = g.center(i, HEX); this.hexPath(ctx, x, y, HEX); ctx.stroke(); }
+    for (let i = 0; i < g.n; i++) { if (off(i)) continue; const [x, y] = g.center(i, HEX); this.hexPath(ctx, x, y, HEX); ctx.stroke(); }
     // 水：波の筆あと
     ctx.strokeStyle = css(INDIGO, 0.3); ctx.lineWidth = 1.4; ctx.lineCap = 'round';
     for (let i = 0; i < g.n; i++) {

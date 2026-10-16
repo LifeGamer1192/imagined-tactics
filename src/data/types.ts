@@ -6,7 +6,9 @@ export type Variant = 'jp' | 'cn';
 
 export type Affinity = 'plain' | 'forest' | 'mountain' | 'swamp' | 'water' | 'rider';
 export type TerrainKind = 'plain' | 'road' | 'bridge' | 'forest' | 'mountain' | 'swamp' | 'water' | 'castle' | 'town' | 'cliff'
-  | 'camp' | 'fort' | 'paddy' | 'wall' | 'gate' | 'tower';
+  | 'camp' | 'fort' | 'paddy' | 'wall' | 'gate' | 'tower'
+  /** 六角形の盤の外（長方形の隅）。入れず、描かない */
+  | 'void';
 /** 天気。晴れは補正なし */
 export type Weather = 'clear' | 'rain' | 'fog' | 'snow';
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';

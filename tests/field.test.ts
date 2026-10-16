@@ -14,7 +14,7 @@ import { hitChance, skillDamage, skillTargetCells, tacticDamage } from '../src/r
 import { reach, stepCost } from '../src/rules/move';
 import { skillOf, skillRange } from '../src/rules/stats';
 import { before, cues, notePath } from '../src/ui/battleFx';
-import { loadFixture } from './helpers';
+import { attackStart, loadFixture } from './helpers';
 
 function troop(st: BattleState, unitId: string, side: Side, pos: number): BUnit {
   const def = D.byUnit[unitId];
@@ -108,14 +108,13 @@ describe('siege maps', () => {
       const w = (await loadFixture(f)).world;
       for (const p of w.provinces) {
         const m = mapFromProvince(w, p.id, { capital: true, walls: true });
-        const g = m.grid, mid = Math.floor(g.h / 2);
         expect(m.siege, `${f} ${p.id}`).toBe(true);
         expect(m.terrain.filter((k) => k === 'gate').length).toBe(3);
         expect(m.terrain.filter((k) => k === 'tower').length).toBe(2);
         expect(m.spawn[1].length, `${f} ${p.id}`).toBeGreaterThanOrEqual(15);
         const castle = m.terrain.indexOf('castle');
-        expect(castle).toBeGreaterThanOrEqual(0);
-        for (const a of D.terrain.affinities) expect(reachable(m, a, g.idx(1, mid)).has(castle), `${f} ${p.id} ${a}`).toBe(true);
+        expect(castle).toBe(m.seat);
+        for (const a of D.terrain.affinities) expect(reachable(m, a, attackStart(m)).has(castle), `${f} ${p.id} ${a}`).toBe(true);
         // 同じ領からは同じ戦場になる
         if (p.id < 4) expect(mapToText(mapFromProvince(w, p.id, { capital: true, walls: true }))).toBe(mapToText(m));
       }
@@ -126,7 +125,7 @@ describe('siege maps', () => {
     const w = (await loadFixture('sengoku_fid5_1575')).world;
     const seat = (opts: { capital?: boolean; walls?: boolean; fort?: number }) => {
       const m = mapFromProvince(w, 3, opts);
-      return { kind: m.terrain[m.grid.idx(m.grid.w - 2, Math.floor(m.grid.h / 2))], siege: m.siege };
+      return { kind: m.terrain[m.seat!], siege: m.siege };
     };
     expect(seat({ fort: 0 })).toEqual({ kind: 'camp', siege: false });
     expect(seat({ fort: 0.4 })).toEqual({ kind: 'fort', siege: false });
@@ -148,11 +147,11 @@ describe('siege maps', () => {
       const map = mapFromProvince(save.world, def.capital, { capital: true, walls: true });
       const sky = { weather: skies[n % skies.length], night: n % 3 === 0 };
       const st = createBattle(gs, map, [pick(atk.id), pick(def.id)], `siege${n++}`, undefined, undefined, sky);
-      const wallCol = map.grid.col(map.terrain.indexOf('wall'));
+      const wallD = map.depth![map.terrain.indexOf('wall')];
       let entered = false;
       for (let k = 0; k < 200 && st.winner === null; k++) {
         runAiTurn(st);
-        entered ||= st.units.some((u) => u.alive && u.home === 0 && map.grid.col(u.pos) > wallCol);
+        entered ||= st.units.some((u) => u.alive && u.home === 0 && map.depth![u.pos] > wallD);
       }
       expect(st.winner, `${atk.name.ja} → ${def.name.ja}`).not.toBeNull();
       if (st.winner === 0) attackerWins++;

@@ -1,6 +1,6 @@
 // 領ごとの戦場：地形と領のようす（人口・収入・不穏・城・建物）から作り、ようすが変われば戦場も変わる。
 import { describe, expect, it } from 'vitest';
-import { BM, mapFromProvince, mapToText, type BattleMap } from '../src/battle/map';
+import { BM, BOARD_R, edgeFor, mapFromProvince, mapToText, type BattleMap } from '../src/battle/map';
 import { convert } from '../src/convert/convert';
 import type { Affinity } from '../src/data/types';
 import { D } from '../src/data/db';
@@ -10,7 +10,7 @@ import { battleFor, battleSupply, build, buildCost, buildProblem, exclaveLink, e
 import { createBattle } from '../src/battle/setup';
 import { applyBattleResult } from '../src/battle/result';
 import { generalsOf, makeTroop } from '../src/convert/convert';
-import { FIXTURES, loadFixture } from './helpers';
+import { attackStart, FIXTURES, loadFixture } from './helpers';
 
 function reachable(map: BattleMap, aff: Affinity, from: number): Set<number> {
   const seen = new Set([from]), queue = [from];
@@ -37,10 +37,10 @@ describe('battle map of each province', () => {
         // 建物を全部建て、城の強さを変えても、配置場所が足りて、どの兵も拠点まで行ける
         for (const fort of [0, 0.5, 0.7, 0.9]) {
           const m = mapFromProvince(save.world, p.id, { ...provinceLook(c, p.id), buildings: ALL.filter((b) => b !== 'walls' || fort === 0.9), fort });
-          const g = m.grid, seat = g.idx(g.w - 2, Math.floor(g.h / 2));
+          const seat = m.seat!;
           expect(m.spawn[0].length, `${f} ${p.id}`).toBeGreaterThanOrEqual(15);
           expect(m.spawn[1].length, `${f} ${p.id}`).toBeGreaterThanOrEqual(15);
-          for (const a of D.terrain.affinities) expect(reachable(m, a, g.idx(1, Math.floor(g.h / 2))).has(seat), `${f} ${p.id} fort${fort} ${a}`).toBe(true);
+          for (const a of D.terrain.affinities) expect(reachable(m, a, attackStart(m)).has(seat), `${f} ${p.id} fort${fort} ${a}`).toBe(true);
         }
       }
     }
@@ -64,7 +64,7 @@ describe('battle map of each province', () => {
     expect(count(big, 'town')).toBeGreaterThanOrEqual(count(m0, 'town') + BM.town.cityTiles);
     expect(count(big, 'paddy')).toBeGreaterThan(0);
     // 城の強さで拠点が変わる
-    const seatOf = (m: BattleMap) => m.terrain[m.grid.idx(m.grid.w - 2, Math.floor(m.grid.h / 2))];
+    const seatOf = (m: BattleMap) => m.terrain[m.seat!];
     expect(seatOf(mapFromProvince(save.world, p.id, { ...base, fort: 0.1 }))).toBe('camp');
     expect(seatOf(mapFromProvince(save.world, p.id, { ...base, fort: 0.4 }))).toBe('fort');
     expect(seatOf(mapFromProvince(save.world, p.id, { ...base, fort: 0.7 }))).toBe('castle');
@@ -107,50 +107,71 @@ describe('battle map of each province', () => {
   });
 });
 
-describe('the battle map faces the way the attack comes', () => {
-  it('attackers start on the side they came from; the seat is on the other side; everyone can reach it', async () => {
+describe('the battle map faces the way the attack comes (six sides of a hexagonal board)', () => {
+  it('attackers come in on the side they came from; the seat and walls are on the far side; everyone can reach it', async () => {
     for (const f of ['sengoku_fid5_1575', 'invented_archipelago_y30']) {
       const save = await loadFixture(f), gs = convert(save);
       const c = newCampaign(gs, save.world, 0);
-      let flips = 0, n = 0;
+      const edges = new Set<number>();
       for (const p of gs.provinces.filter((x) => !x.out && x.nb.length)) {
         for (const from of p.nb.slice(0, 3)) {
-          const m = provinceMap(c, p.id, from), g = m.grid, mid = Math.floor(g.h / 2);
-          const q = gs.provinces[from];
-          expect(m.flip, `${f} ${p.id}<-${from}`).toBe(p.cx - q.cx < -1e-9);
-          const meanCol = (z: number[]) => z.reduce((s, i) => s + g.col(i), 0) / z.length;
-          // 攻め手の配置場所は、攻めてきた側（flip なら右）
-          expect(meanCol(m.spawn[0]) > g.w / 2, `${f} ${p.id}<-${from}`).toBe(!!m.flip);
-          expect(meanCol(m.spawn[1]) > g.w / 2).toBe(!m.flip);
-          const seat = g.idx(m.flip ? 1 : g.w - 2, mid);
-          expect(['castle', 'fort', 'camp']).toContain(m.terrain[seat]);
-          for (const a of D.terrain.affinities) expect(reachable(m, a, g.idx(m.flip ? g.w - 2 : 1, mid)).has(seat), `${f} ${p.id}<-${from} ${a}`).toBe(true);
-          // 北の向きは単位ベクトル
-          expect(Math.hypot(...m.north!)).toBeCloseTo(1, 5);
-          if (m.flip) flips++;
-          n++;
+          const m = provinceMap(c, p.id, from);
+          const q = gs.provinces[from], label = `${f} ${p.id}<-${from}`;
+          // 攻め手が入る辺は、攻めてきた領の方角（6つに分けたうちの1つ）
+          expect(m.edge, label).toBe(edgeFor(q.cx - p.cx, q.cy - p.cy));
+          edges.add(m.edge!);
+          // 盤は六角形：169マス。外は 'void'
+          expect(m.terrain.filter((k) => k !== 'void').length).toBe(3 * BOARD_R * (BOARD_R + 1) + 1);
+          // 攻め手の配置場所は浅い側、守り手と拠点は深い側
+          const dep = m.depth!;
+          expect(Math.max(...m.spawn[0].map((i) => dep[i]))).toBeLessThan(0);
+          expect(Math.min(...m.spawn[1].map((i) => dep[i]))).toBeGreaterThan(0);
+          expect(dep[m.seat!]).toBe(BOARD_R - 1);
+          expect(['castle', 'fort', 'camp']).toContain(m.terrain[m.seat!]);
+          // 拠点は、攻め手の入った辺の反対の方角にある（画面の上で、攻めてきた向きと逆）
+          const [sx, sy] = m.grid.center(m.seat!, 1), az = m.spawn[0].map((i) => m.grid.center(i, 1));
+          const ax = az.reduce((s, v) => s + v[0], 0) / az.length, ay = az.reduce((s, v) => s + v[1], 0) / az.length;
+          expect((sx - ax) * (p.cx - q.cx) + (sy - ay) * (p.cy - q.cy), label).toBeGreaterThan(0);
+          for (const a of D.terrain.affinities) expect(reachable(m, a, attackStart(m)).has(m.seat!), `${label} ${a}`).toBe(true);
+          // 川・海は上限まで
+          const water = m.terrain.filter((k) => k === 'water').length;
+          expect(water, label).toBeLessThanOrEqual(Math.ceil((BM.water.seaMax + BM.water.riverMax) * 169) + 40);
         }
       }
-      // 東から攻める戦いも、西から攻める戦いもある
-      expect(flips, f).toBeGreaterThan(n * 0.15);
-      expect(flips, f).toBeLessThan(n * 0.85);
+      // 6つの向きがどれも使われる
+      expect(edges.size, f).toBeGreaterThanOrEqual(5);
     }
-  }, 60000);
+  }, 120000);
 
-  it('places each side in its own zone when the map is flipped', async () => {
+  it('the walls cut the board in two, with three gates, whichever side the attack comes from', async () => {
     const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
     const c = newCampaign(gs, save.world, 0);
-    const p = gs.provinces.find((x) => !x.out && x.nb.some((n) => x.cx - gs.provinces[n].cx < -5))!;
-    const from = p.nb.find((n) => p.cx - gs.provinces[n].cx < -5)!;
-    const m = provinceMap(c, p.id, from);
-    expect(m.flip).toBe(true);
+    const p = gs.provinces[Object.values(gs.factions)[0].capital];
+    for (const from of p.nb) {
+      const m = mapFromProvince(save.world, p.id, { ...provinceLook(c, p.id), walls: true, capital: true, from });
+      const wallD = m.depth![m.terrain.indexOf('wall')];
+      // 城壁の深さのマスは、すべて城壁か門
+      expect(m.terrain.filter((k, i) => m.depth![i] === wallD).every((k) => k === 'wall' || k === 'gate')).toBe(true);
+      expect(m.terrain.filter((k) => k === 'gate').length).toBe(3);
+      // 騎馬は門を通らなければ入れない：門をふさぐと、城に届かない
+      const shut = { ...m, terrain: m.terrain.map((k) => (k === 'gate' ? 'wall' : k)) } as BattleMap;
+      expect(reachable(shut, 'rider', attackStart(m)).has(m.seat!)).toBe(false);
+    }
+  });
+
+  it('places each side in its own zone', async () => {
+    const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
+    const c = newCampaign(gs, save.world, 0);
     const [fa, fb] = Object.values(gs.factions).sort((a, b) => generalsOf(gs, b.id).length - generalsOf(gs, a.id).length);
-    const st = createBattle(gs, m, [generalsOf(gs, fa.id).slice(0, 3).map((g) => g.id), generalsOf(gs, fb.id).slice(0, 3).map((g) => g.id)], 'flip');
-    const g = m.grid;
-    for (const u of st.units) expect(u.side === 0 ? g.col(u.pos) >= g.w / 2 : g.col(u.pos) < g.w / 2, `${u.name} side ${u.side} col ${g.col(u.pos)}`).toBe(true);
+    const p = gs.provinces[fb.capital];
+    for (const from of p.nb) {
+      const m = provinceMap(c, p.id, from);
+      const st = createBattle(gs, m, [generalsOf(gs, fa.id).slice(0, 3).map((g) => g.id), generalsOf(gs, fb.id).slice(0, 3).map((g) => g.id)], `edge${from}`);
+      for (const u of st.units.filter((x) => x.kind === 'general')) expect(m.spawn[u.side].includes(u.pos), `${m.edgeName} ${u.name}`).toBe(true);
+      for (const u of st.units) expect(u.side === 0 ? m.depth![u.pos] < 0 : m.depth![u.pos] > 0, `${m.edgeName} ${u.name}`).toBe(true);
+    }
   });
 });
-
 describe('exclaves', () => {
   it('a province cut off from the capital earns less, is held by a weaker garrison and costs more to recruit in', async () => {
     const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);

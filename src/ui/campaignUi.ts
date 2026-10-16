@@ -104,7 +104,9 @@ export class CampaignScreen {
   private alarm: { from: number; to: number } | null = null;
   private tappedAt = -1e9;
   /** 戦場の下見の絵（領のようす → 絵と、目立つもの）と、開いているか */
-  private previews = new Map<string, { url: string; features: string }>();
+  private previews = new Map<string, { url: string; features: string; edge: string }>();
+  /** 下見で選んでいる、攻めてくる領（領の番号 → 隣の領） */
+  private previewFrom: Record<number, number> = {};
   private previewOpen = false;
   /** 普請で選んでいるもの */
   private buildKind = 'fort';
@@ -628,17 +630,24 @@ export class CampaignScreen {
 
   /** 戦場の下見：この領で今戦うとどんな戦場になるか（領のようすが変わるたびに作り直す） */
   private previewHtml(prov: number): string {
-    const key = `${prov}:${JSON.stringify(provinceLook(this.c, prov))}`;
+    const c = this.c, gs = c.gs, p = gs.provinces[prov];
+    // どこから攻めるか：隣の領から選べる。はじめは、自分の領のうち隣にあるもの（無ければ最初の隣）
+    const nbs = neighborsOf(c, prov);
+    if (!nbs.includes(this.previewFrom[prov] ?? -1)) this.previewFrom[prov] = nbs.find((n) => c.player && gs.provinces[n].owner === c.player && p.owner !== c.player) ?? nbs[0] ?? -1;
+    const from = this.previewFrom[prov];
+    const key = `${prov}:${from}:${JSON.stringify(provinceLook(c, prov))}`;
     let pv = this.previews.get(key);
     if (!pv) {
-      const m = provinceMap(this.c, prov);
-      pv = { url: mapPreviewUrl(m), features: (m.features ?? []).join('・') };
+      const m = provinceMap(c, prov, from >= 0 ? from : undefined);
+      pv = { url: mapPreviewUrl(m), features: (m.features ?? []).join('・'), edge: m.edgeName ?? '' };
       if (this.previews.size > 60) this.previews.clear();
       this.previews.set(key, pv);
     }
+    const opts = nbs.map((n) => `<option value="${n}" ${n === from ? 'selected' : ''}>${esc(gs.provinces[n].name.ja)}${gs.provinces[n].owner === c.player && c.player ? '（自領）' : ''}から</option>`).join('');
     return `<details class="bmap" ${this.previewOpen ? 'open' : ''}><summary>戦場：${esc(pv.features || '野戦')}</summary>
+      ${nbs.length ? `<div class="rec"><select id="pvFrom" title="どの領から攻めると、どんな戦場になるか">${opts}</select><span class="dim small">${esc(pv.edge)}の端から攻める</span></div>` : ''}
       <img src="${pv.url}" alt="この領の戦場" draggable="false">
-      <div class="dim small">西から攻めたときの形です（左から攻め、右で守る）。実際の戦いでは、攻めてくる向きに合わせて地形の向きと左右が変わります。領の地形・人口・収入・不穏・城の強さ・建物で形が決まり、普請や本拠の移りで変わります。</div></details>`;
+      <div class="dim small">北が上で、地形は本当の地理のままです。攻め手は攻めてきた方角の端（「攻」）から入り、守り手と城は反対側。どこから攻めるかで、山や川の有利・不利が変わります。領の地形・人口・収入・不穏・城の強さ・建物で形が決まり、普請や本拠の移りでも変わります。</div></details>`;
   }
 
   /** 普請の欄：建物を建てる、城を固める */
@@ -749,6 +758,8 @@ export class CampaignScreen {
       };
     });
     root.querySelector<HTMLDetailsElement>('details.bmap')?.addEventListener('toggle', (e) => { this.previewOpen = (e.target as HTMLDetailsElement).open; });
+    const pvFrom = root.querySelector<HTMLSelectElement>('#pvFrom');
+    if (pvFrom && p) pvFrom.onchange = () => { this.previewFrom[p.id] = Number(pvFrom.value); this.refresh(); };
     const kindSel = root.querySelector<HTMLSelectElement>('#buildKind');
     if (kindSel) kindSel.onchange = () => { this.buildKind = kindSel.value; this.refresh(); };
     const buildGo = root.querySelector<HTMLButtonElement>('#buildGo');

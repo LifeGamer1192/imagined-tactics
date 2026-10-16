@@ -3,6 +3,7 @@
   "town": { "village": 3000, "town": 8000, "city": 30000, "villageTiles": 1, "townTiles": 3, "cityTiles": 6 },
   "paddy": { "byIncome": [2, 8, 20], "aqueduct": 2, "unrest": 0.3 },
   "road": { "secondIncome": 15 },
+  "water": { "seaMax": 0.25, "riverMax": 0.15 },
   "unrest": { "from": 0.2, "swamp": 0.25, "forest": 0.15 },
   "buildings": {
     "temple": { "name": "寺", "text": "戦場のまん中あたりの高い所に砦（寺）が建つ" },

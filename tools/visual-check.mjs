@@ -158,12 +158,14 @@ async function run(tag, ctxOpts) {
       const map = mapFromProvince(a.save.world, def.capital, { capital: true, from });
       const st = createBattle(gs, map, a.setup.picks, 'flip', [atk.name.ja, def.name.ja], undefined, { weather: 'clear', night: false });
       a.openBattle(st, new Set([0]), () => null, { label: '編成に戻る', fn: () => a.setupScreen() }, true);
-      const g = map.grid;
-      return { flip: map.flip, atkRight: st.units.filter((u) => u.side === 0).every((u) => g.col(u.pos) >= g.w / 2) };
+      const g = map.grid, cx = g.center(map.seat, 1)[0], mid = g.pixelSize(1)[0] / 2;
+      // 攻め手は攻めてきた側（東寄りの辺）、城は反対（西寄り）
+      const atkUnits = st.units.filter((u) => u.side === 0);
+      return { edge: map.edgeName, atkEast: atkUnits.reduce((s, u) => s + g.center(u.pos, 1)[0], 0) / atkUnits.length > mid, castleWest: cx < mid };
     });
     if (flipInfo) {
       await page.waitForTimeout(1900);
-      ok(`[${tag}] 東から攻めると攻め手が右・城が左`, flipInfo.flip && flipInfo.atkRight);
+      ok(`[${tag}] 東寄りから攻めると攻め手が東の辺・城が西`, /東/.test(flipInfo.edge) && flipInfo.atkEast && flipInfo.castleWest, flipInfo.edge);
       await shot('battle_flipped');
     }
     // 編成に戻るの窓
