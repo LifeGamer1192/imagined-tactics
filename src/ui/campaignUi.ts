@@ -8,7 +8,7 @@ import { StrategyView } from '../render/strategyView';
 import {
   autoMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
   declareWar, dismissTroop, garrisonOf, recruit, recruitCost, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
-  S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink,
+  S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
@@ -79,6 +79,9 @@ const LOG_TEXT: Record<string, string> = {
   build: '{faction}が{prov}に{what}を建てた',
   buildFort: '{faction}が{prov}の城を固めた（城{fort}%）',
   retreated: '{faction}は{prov}の戦いから退いた（兵{troops}隊と兵糧{supply}を失った）',
+  capitalMoveStart: '{faction}は本拠を{prov}へ移し始めた（{months}か月かかる）',
+  capitalMoved: '{faction}は本拠を{prov}へ移した',
+  capitalMoveFailed: '{faction}は{prov}を失い、本拠を移すのを取りやめた',
 };
 const logLine = (e: CampaignLog): string => (LOG_TEXT[e.key] ?? e.key).replace(/\{(\w+)\}/g, (_m, k) => String(e.vars[k] ?? ''));
 
@@ -622,7 +625,7 @@ export class CampaignScreen {
     const link = exclaveLink(c, prov).map((id) => gs.provinces[id]);
     const names = link.slice(0, 4).map((q) => `<b>${esc(q.name.ja)}</b>${q.owner && gs.factions[q.owner] ? `<span class="dim">（${esc(gs.factions[q.owner].name.ja)}）</span>` : '<span class="dim">（持ち主なし）</span>'}`).join('・');
     const how = link.length
-      ? `${names}${link.length > 4 ? ` ほか、計${link.length}領` : ''}を取ると、本拠（${esc(gs.provinces[f.capital].name.ja)}）とつながって解けます。`
+      ? `${names}${link.length > 4 ? ` ほか、計${link.length}領` : ''}を取ると、本拠（${esc(gs.provinces[f.capital].name.ja)}）とつながって解けます。本拠をこちら側へ移しても（下の「本拠を移す」）、数え直されます。`
       : `本拠（${esc(gs.provinces[f.capital].name.ja)}）とつながる道がありません。まわりの領を取って、本拠からの道をつくってください。`;
     return `<div class="exclave"><b>⚠ 飛び地です</b>　本拠から、自分の領づたい（陸の隣と海路）にたどり着けません。
       <div class="small">罰：収入${Math.round(S.exclave.incomeMult * 100)}%・守備兵が弱い（レベル${Math.abs(S.exclave.garrisonLevel)}減・${Math.abs(S.exclave.garrisonTroops)}隊減）・徴兵の兵糧×${S.exclave.recruitCostMult}・ここを守る戦いと、ここから攻めて出る戦いでは攻撃・防御${S.exclave.battleAtkDefPct}%</div>
@@ -649,6 +652,19 @@ export class CampaignScreen {
       ${nbs.length ? `<div class="rec"><select id="pvFrom" title="どの領から攻めると、どんな戦場になるか">${opts}</select><span class="dim small">${esc(pv.edge)}の端から攻める</span></div>` : ''}
       <img src="${pv.url}" alt="この領の戦場" draggable="false">
       <div class="dim small">北が上で、地形は本当の地理のままです。攻め手は攻めてきた方角の端（「攻」）から入り、守り手と城は反対側。どこから攻めるかで、山や川の有利・不利が変わります。領の地形・人口・収入・不穏・城の強さ・建物で形が決まり、普請や本拠の移りでも変わります。</div></details>`;
+  }
+
+  /** 本拠を移す欄：移している最中なら残りの月、そうでなければ費用と月数とボタン */
+  private capitalHtml(prov: number): string {
+    const c = this.c, gs = c.gs, me = gs.factions[c.player], p = gs.provinces[prov];
+    if (!me) return '';
+    const r = c.relocations[me.id];
+    if (r) return r.to === prov ? `<div class="card status">本拠をここへ移しているところです（あと${Math.max(0, r.until - gs.tick)}か月。${esc(gs.provinces[me.capital].name.ja)}から）。途中でこの領を失うと取りやめになり、兵糧は戻りません。</div>` : '';
+    if (me.capital === prov) return '';
+    const plan = relocationPlan(c, me.id, prov), problem = relocationProblem(c, me.id, prov);
+    return `<div class="card build"><div><b>本拠を移す</b> <span class="dim small">兵糧${plan.cost}・${plan.months}か月かかる</span></div>
+      <div class="dim small">本拠は城になり、守りが固くなります。飛び地は、新しい本拠から数え直します。${problem ? `<br>${esc(problem)}` : ''}</div>
+      <div><button id="moveCapital" ${problem ? 'disabled' : ''}>${esc(p.name.ja)}を本拠にする</button></div></div>`;
   }
 
   /** 普請の欄：建物を建てる、城を固める */
@@ -706,7 +722,7 @@ export class CampaignScreen {
         </div><div class="dim">${this.order === 'move' ? '青い領をクリックで移動（自分の領づたいに行ける所）' : this.order === 'attack' ? '赤い領をクリックで侵攻' : '武将にチェックを入れて、移動か攻めるを選びます'}</div>` : ''}
         ${own && gens.some((g) => !c.moved.has(g.id)) ? `<div class="sel"><span class="dim">まとめて選ぶ</span>
           <button id="selAll">全員</button><button id="selTop">レベルの高い${MAX_GENERALS}人</button><button id="selNone" ${picked ? '' : 'disabled'}>外す</button></div>` : ''}
-        ${own ? this.reserveHtml(p.id) : ''}${own ? this.buildHtml(p.id) : ''}
+        ${own ? this.reserveHtml(p.id) : ''}${own ? this.buildHtml(p.id) : ''}${own ? this.capitalHtml(p.id) : ''}
         <div class="gens2">${gens.map((g) => this.generalHtml(g, own)).join('') || `<div class="dim">武将はいません。守備兵が守ります（Lv${garrisonOf(c, p.id).level}・${garrisonOf(c, p.id).troops}隊）</div>`}</div>
         ${!own && reserveOf(c, p.id).length ? `<div class="card status">予備兵 ${reserveOf(c, p.id).length}隊（${reserveOf(c, p.id).map((t) => `<span class="nm">${esc(t.name ?? L(D.byUnit[t.unitId].name))}</span>Lv${t.level}`).join('、')}）<span class="dim small">この領を奪えば手に入ります</span></div>` : ''}
         ${owner ? woundedAt(c, p.id, owner.id).map((g) => `<div class="dim">${esc(g.name.ja)} Lv${g.level}：深手（あと${c.wounded[g.id] - gs.tick}か月は戦えない）</div>`).join('') : ''}
@@ -759,6 +775,19 @@ export class CampaignScreen {
       };
     });
     root.querySelector<HTMLDetailsElement>('details.bmap')?.addEventListener('toggle', (e) => { this.previewOpen = (e.target as HTMLDetailsElement).open; });
+    const mc = root.querySelector<HTMLButtonElement>('#moveCapital');
+    if (mc && p && me) mc.onclick = async () => {
+      const plan = relocationPlan(c, me.id, p.id);
+      const ok = await confirmBox(this.frame(), {
+        title: `本拠を${esc(p.name.ja)}へ移す`,
+        body: `<p>兵糧を<b>${plan.cost}</b>使い（今${me.supply}）、<b>${plan.months}か月</b>かけて本拠を移します。終わるまでは、今の本拠（${esc(gs.provinces[me.capital].name.ja)}）のままです。</p>
+          <ul class="small"><li>終わると、${esc(p.name.ja)}が本拠になり、この領の戦場は城になります</li><li>飛び地は、新しい本拠から数え直します</li><li>途中で${esc(p.name.ja)}を失うと取りやめになり、兵糧は戻りません</li></ul>`,
+        ok: '本拠を移す',
+      });
+      if (!ok) return;
+      if (startRelocation(c, me.id, p.id)) { toast(`本拠を${p.name.ja}へ移し始めました（${plan.months}か月）`); this.refresh(); }
+      else toast(relocationProblem(c, me.id, p.id) ?? '本拠を移せません');
+    };
     const pvFrom = root.querySelector<HTMLSelectElement>('#pvFrom');
     if (pvFrom && p) pvFrom.onchange = () => { this.previewFrom[p.id] = Number(pvFrom.value); this.refresh(); };
     const kindSel = root.querySelector<HTMLSelectElement>('#buildKind');

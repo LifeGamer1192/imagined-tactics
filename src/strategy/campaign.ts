@@ -61,12 +61,14 @@ export interface Campaign {
   reserve: Record<number, GTroop[]>;
   /** 普請をした月（領の番号 → tick）。1つの領で1か月に1回 */
   built: Record<number, number>;
+  /** 本拠を移している最中の勢力（勢力 → 移す先・終わる月・払った兵糧） */
+  relocations: Record<number, { to: number; until: number; cost: number }>;
 }
 
 export interface Offer { kind: 'alliance' | 'truce' | 'vassal'; from: number; until: number }
 
 export function newCampaign(gs: GameStart, world: HWorld, player: number, difficulty: Difficulty = 'normal'): Campaign {
-  const c: Campaign = { gs, world, player, rng: new RNG(codeToSeed(`${gs.seed}:${gs.tick}:campaign`)), moved: new Set(), log: [], over: null, months: 0, items: {}, sieges: {}, away: {}, wounded: {}, difficulty, offers: [], reserve: {}, built: {} };
+  const c: Campaign = { gs, world, player, rng: new RNG(codeToSeed(`${gs.seed}:${gs.tick}:campaign`)), moved: new Set(), log: [], over: null, months: 0, items: {}, sieges: {}, away: {}, wounded: {}, difficulty, offers: [], reserve: {}, built: {}, relocations: {} };
   // hist-sim では軍が他国の領にいることがある（遠征・包囲）。戦略パートでは、武将は必ず自分の勢力の領にいることにする
   for (const g of Object.values(gs.generals)) if (g.faction && gs.provinces[g.prov]?.owner !== g.faction) g.prov = homeFor(c, g.faction, g.prov);
   // 開始時の兵糧も、蔵に入るぶんまで（hist-sim の国庫が大きい勢力は、上限の何倍にもなるため）
@@ -551,6 +553,55 @@ function retreatPenalty(c: Campaign, pb: PendingBattle, st: BattleState, sum: Ba
   }
 }
 
+// ---- 本拠を移す：兵糧を多く使い、2〜3か月かかる。途中でその領を失うと取りやめ（兵糧は戻らない）
+
+/** 本拠を移すのにかかる兵糧と月数（本拠とつながった領は短く、飛び地は長い） */
+export function relocationPlan(c: Campaign, faction: number, to: number): { cost: number; months: number } {
+  const f = c.gs.factions[faction], R = S.capital;
+  const cost = Math.max(R.costMin, Math.round(f.income * R.costIncomeMonths));
+  const months = exclavesOf(c, faction).has(to) ? R.monthsFar : R.monthsNear;
+  return { cost, months };
+}
+
+/** 本拠を移せるか。移せないときは理由を返す */
+export function relocationProblem(c: Campaign, faction: number, to: number): string | null {
+  const f = c.gs.factions[faction], p = c.gs.provinces[to];
+  if (!f || !p || p.owner !== faction) return '自分の領ではありません';
+  if (f.capital === to) return 'もう本拠です';
+  if (c.relocations[faction]) return 'いま本拠を移しているところです';
+  if (c.sieges[to]) return '包囲されている領には移せません';
+  const { cost } = relocationPlan(c, faction, to);
+  if (f.supply < cost) return `兵糧が足りません（${cost}要ります）`;
+  return null;
+}
+
+/** 本拠を移し始める（兵糧はすぐ払う） */
+export function startRelocation(c: Campaign, faction: number, to: number): boolean {
+  if (relocationProblem(c, faction, to)) return false;
+  const f = c.gs.factions[faction], { cost, months } = relocationPlan(c, faction, to);
+  f.supply -= cost;
+  c.relocations[faction] = { to, until: c.gs.tick + months, cost };
+  note(c, 'capitalMoveStart', { faction: f.name.ja, prov: c.gs.provinces[to].name.ja, months });
+  return true;
+}
+
+/** 月の終わり：期日が来た本拠の移りを終える。途中で領を失っていれば取りやめ */
+function finishRelocations(c: Campaign): void {
+  for (const [k, r] of Object.entries(c.relocations)) {
+    const fid = Number(k), f = c.gs.factions[fid];
+    if (!f) { delete c.relocations[fid]; continue; }
+    if (c.gs.provinces[r.to]?.owner !== fid) {
+      note(c, 'capitalMoveFailed', { faction: f.name.ja, prov: c.gs.provinces[r.to].name.ja });
+      delete c.relocations[fid];
+      continue;
+    }
+    if (c.gs.tick < r.until) continue;
+    f.capital = r.to;
+    note(c, 'capitalMoved', { faction: f.name.ja, prov: c.gs.provinces[r.to].name.ja });
+    delete c.relocations[fid];
+  }
+}
+
 // ---------------------------------------------------------------- 勢力の思考
 
 function aiRecruit(c: Campaign, f: GFaction): void {
@@ -750,6 +801,7 @@ export function finishMonth(c: Campaign): void {
     if (sg.progress < 20 || !gs.factions[sg.by]) delete c.sieges[Number(k)];
   }
   for (const id of Object.keys(c.wounded)) if (c.wounded[id] <= gs.tick || !gs.generals[id]) delete c.wounded[id];
+  finishRelocations(c);
   autoPromote(c);
   monthlyEvents(c);
   checkOver(c);

@@ -7,6 +7,8 @@ import type { GFaction } from '../convert/model';
 export const S = strategyJson as unknown as {
   siege: { base: number; perFort: number; unownedMult: number; idleDecay: number };
   move: { range: number };
+  /** 本拠を移す：兵糧（少なくとも costMin、収入の costIncomeMonths か月ぶん）と、かかる月（本拠とつながった領 monthsNear・飛び地 monthsFar） */
+  capital: { costMin: number; costIncomeMonths: number; monthsNear: number; monthsFar: number };
   /** 戦いから退いたときの罰：体力がこの割合を切った兵は失う・ほかの兵も見込みで失う・兵糧を失う（%）・武将の深手（月） */
   retreat: { troopLossBelowHp: number; troopLossChance: number; supplyLossPct: number; woundMonths: number };
   /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段・戦うときの攻撃と防御（%） */

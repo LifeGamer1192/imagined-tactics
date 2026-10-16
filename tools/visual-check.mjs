@@ -310,6 +310,15 @@ async function run(tag, ctxOpts) {
     ok(`[${tag}] 飛び地の領に警告と直し方`, /飛び地です/.test(await page.textContent('.exclave')) && /直し方：/.test(await page.textContent('.exclave')), exName);
     await shot('exclave_warning');
   }
+  // 本拠を移す：本拠でない自分の領に欄があり、押すと確かめる窓
+  await page.evaluate(() => { const s = window.__campaign, c = s.c, me = c.gs.factions[c.player]; s.c.gs.factions[c.player].supply = 99999; const p = c.gs.provinces.find((x) => x.owner === me.id && x.id !== me.capital); s.selected = p.id; s.refresh(); document.querySelector('#moveCapital')?.scrollIntoView({ block: 'center' }); });
+  await page.waitForTimeout(200);
+  ok(`[${tag}] 本拠でない自分の領に「本拠を移す」`, !!(await page.$('#moveCapital:not([disabled])')));
+  await press('#moveCapital');
+  await page.waitForSelector('.result.ask');
+  ok(`[${tag}] 本拠を移す窓に兵糧と月数`, /兵糧を\d+使い/.test(await page.textContent('.result.ask')) && /か月/.test(await page.textContent('.result.ask')));
+  await shot('capital_confirm');
+  await press('.result.ask [data-a="no"]');
   await page.evaluate(() => { const s = window.__campaign; s.selected = s.c.gs.factions[s.c.player].capital; s.refresh(); });
   // 特性・性格・兵の小窓
   if (touch) { await page.$eval('.trait', (el) => el.scrollIntoView({ block: 'center' })); const r = await page.$eval('.trait', (el) => { const q = el.getClientRects()[0]; return { x: q.x + q.width / 2, y: q.y + q.height / 2 }; }); await page.touchscreen.tap(r.x, r.y); } else { await page.hover('.trait'); }
