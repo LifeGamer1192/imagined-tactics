@@ -1,0 +1,50 @@
+{
+  "_comment": "地形と天気の、攻撃の種類ごとの強まる・弱まる（ダメージの倍率）。target は相手のいる地形、attacker は攻める側のいる地形。攻める側の弱まる値（1未満）は、その地形が得意な兵には掛けない。docs/COMBAT.md の「地形と天気の倍率」",
+  "kinds": {
+    "melee": { "jp": "近接", "cn": "近接" },
+    "bow": { "jp": "弓・投げ物", "cn": "弓・投げ物" },
+    "gun": { "jp": "鉄砲・大筒", "cn": "弩・投石" },
+    "charge": { "jp": "騎馬の突撃", "cn": "騎馬・戦車の突撃" },
+    "fire": { "jp": "火", "cn": "火" },
+    "water": { "jp": "水", "cn": "水" },
+    "tactic": { "jp": "軍略", "cn": "計略" },
+    "ambush": { "jp": "奇襲", "cn": "奇襲" },
+    "night": { "jp": "夜襲", "cn": "夜襲" }
+  },
+  "tags": {
+    "fire": ["k012", "k040", "k070", "k071", "k072", "k073", "k081", "x02", "x08", "x09", "x13"],
+    "water": ["x03", "x10"],
+    "charge": ["k026", "k027", "k028", "k029", "k030", "k031", "k056", "k057", "k058", "k059", "k060", "k061"],
+    "gun": ["k014", "k016", "k042", "k075", "k076", "k078", "k080", "k083", "k084"],
+    "ambush": ["k062", "k064", "x04", "x11"],
+    "night": ["k021", "k067", "x05"]
+  },
+  "native": { "forest": "forest", "mountain": "mountain", "swamp": "swamp", "water": "water", "paddy": "swamp" },
+  "terrain": {
+    "plain": { "target": { "charge": 1.15, "bow": 1.05 } },
+    "road": { "target": { "charge": 1.15 }, "attacker": { "charge": 1.1 } },
+    "bridge": { "target": { "melee": 1.1, "charge": 0.9 } },
+    "forest": { "target": { "bow": 0.8, "gun": 0.8, "fire": 1.3, "charge": 0.75 }, "attacker": { "charge": 0.8, "ambush": 1.15 } },
+    "mountain": { "target": { "melee": 0.85, "charge": 0.7, "bow": 0.9 }, "attacker": { "bow": 1.15, "gun": 1.1, "melee": 1.1 } },
+    "swamp": { "target": { "charge": 0.7, "fire": 0.8 }, "attacker": { "melee": 0.85, "charge": 0.7 } },
+    "water": { "target": { "fire": 0.5, "melee": 1.15, "water": 1.2 }, "attacker": { "melee": 0.85, "charge": 0.7 } },
+    "castle": { "target": { "bow": 0.75, "gun": 0.8, "melee": 0.85, "charge": 0.6, "fire": 1.15 }, "attacker": { "bow": 1.15, "gun": 1.1 } },
+    "town": { "target": { "bow": 0.85, "charge": 0.8, "fire": 1.25 } },
+    "cliff": { "target": { "bow": 0.9, "charge": 0.6 }, "attacker": { "bow": 1.1 } },
+    "camp": { "target": { "bow": 0.9, "fire": 1.15 } },
+    "fort": { "target": { "bow": 0.8, "gun": 0.85, "melee": 0.9, "charge": 0.7, "fire": 1.1 } },
+    "paddy": { "target": { "charge": 0.75 }, "attacker": { "melee": 0.9, "charge": 0.75 } },
+    "wall": { "target": { "bow": 0.8, "melee": 0.9 }, "attacker": { "bow": 1.15 } },
+    "gate": { "target": { "melee": 0.9, "charge": 0.8, "fire": 1.2 } },
+    "tower": { "target": { "bow": 0.8, "gun": 0.85 }, "attacker": { "bow": 1.15, "gun": 1.1 } },
+    "desert": { "target": { "charge": 1.1, "bow": 1.1, "fire": 1.15 }, "attacker": { "melee": 0.95 } },
+    "snowfield": { "target": { "charge": 0.7, "fire": 0.8 }, "attacker": { "melee": 0.9, "charge": 0.7, "bow": 0.95 } }
+  },
+  "weather": {
+    "clear": {},
+    "rain": { "gun": 0.7, "bow": 0.9, "water": 1.25 },
+    "fog": { "bow": 0.9, "gun": 0.9, "melee": 1.05, "ambush": 1.2 },
+    "snow": { "charge": 0.8, "fire": 0.85, "bow": 0.95, "melee": 0.95 },
+    "night": { "bow": 0.9, "gun": 0.85, "melee": 1.05, "night": 1.3, "ambush": 1.1 }
+  }
+}

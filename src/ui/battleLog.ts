@@ -8,7 +8,7 @@ import { D, L, term } from '../data/db';
 import type { StatusId } from '../data/types';
 import { TERRAIN_NAME } from '../render/battleView';
 import type { HitParts, StatParts } from '../rules/combat';
-import { skillOf } from '../rules/stats';
+import { FIELD, skillOf } from '../rules/stats';
 import { logText, STATUS_NAME } from './text';
 
 /** 記録の細かさ：0 簡易、1 通常、2 詳細 */
@@ -83,6 +83,12 @@ function hitFormula(h: HitParts, r: number, landed: boolean): string {
   return `命中率 ${h.pct}% ＝ ${terms.join(' ')}${clamped}／${verdict}`;
 }
 
+/** 地形と天気の倍率（効いたものを並べる）。無ければ '' */
+function fieldText(p: { field?: number; fieldNotes?: [string, string, number][] }): string {
+  if (!p.field || p.field === 1 || !p.fieldNotes?.length) return '';
+  return ` × 地形・天気${num(p.field)}（${p.fieldNotes.map(([w, k, v]) => `${w}で${L(FIELD.kinds[k])}×${v}`).join('・')}）`;
+}
+
 /** 攻撃・防御の値の成り立ち。補正が何も無いときは '' */
 function statFormula(label: string, baseLabel: string, p: StatParts, always: boolean): string {
   if (p.fixed) return `${label}${num(p.value)}（混乱中は決まった値）`;
@@ -118,7 +124,7 @@ function strikeLines(st: BattleState, e: BattleLogEntry, detail: boolean): strin
     const g = d.dmg;
     if (g) {
       const p = g.parts;
-      out.push(fm(`基準 ${p.base} ＝ 威力${num(p.power)} × 攻撃${num(p.atk)} ÷ 防御${num(p.def)}${p.bane !== 1 ? ` × 特効${num(p.bane)}` : ''}${p.counter !== 1 ? ` × 反撃${num(p.counter)}` : ''}${p.fire !== 1 ? ` × 雨の日の火${num(p.fire)}` : ''}（切り捨て）`));
+      out.push(fm(`基準 ${p.base} ＝ 威力${num(p.power)} × 攻撃${num(p.atk)} ÷ 防御${num(p.def)}${p.bane !== 1 ? ` × 特効${num(p.bane)}` : ''}${p.counter !== 1 ? ` × 反撃${num(p.counter)}` : ''}${p.fire !== 1 ? ` × 雨の日の火${num(p.fire)}` : ''}${fieldText(p)}（切り捨て）`));
       out.push(fm(statFormula('攻撃', term('str'), g.atk, true)));
       const def = statFormula('防御', '防御', g.def, false);
       if (def) out.push(fm(def));
@@ -144,7 +150,7 @@ function tacticLines(st: BattleState, e: BattleLogEntry, detail: boolean): strin
     out.push(ln(`→ ${T}に <b class="dmg">${d.dmg.final}</b>（${term('hp')} ${d.hp[0]}→${d.hp[1]}）`));
     if (detail) {
       const p = d.dmg.parts;
-      out.push(fm(`基準 ${p.base} ＝ 威力${num(p.power)} ×（${term('int')}${num(p.intA)} × ${num(p.mult)}）÷（相手の${term('int')}${num(p.intT)} ＋ ${p.defIsDefense ? '防御' : ''}${num(p.def)}）×（1 − 耐性${num(p.resist)}）${p.fire !== 1 ? ` × 雨の日の火${num(p.fire)}` : ''}（切り捨て）`));
+      out.push(fm(`基準 ${p.base} ＝ 威力${num(p.power)} ×（${term('int')}${num(p.intA)} × ${num(p.mult)}）÷（相手の${term('int')}${num(p.intT)} ＋ ${p.defIsDefense ? '防御' : ''}${num(p.def)}）×（1 − 耐性${num(p.resist)}）${p.fire !== 1 ? ` × 雨の日の火${num(p.fire)}` : ''}${fieldText(p)}（切り捨て）`));
       out.push(fm(`ダメージ ${d.dmg.final} ＝ 基準${p.base} × 乱数${d.dmg.rnd.toFixed(3)} ＝ ${d.dmg.raw.toFixed(2)} → ${d.dmg.final}`));
     }
   }

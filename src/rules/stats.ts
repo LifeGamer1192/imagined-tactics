@@ -1,5 +1,6 @@
 // 状態変化を含めた、いまの能力値。期限付きの補正を重ねる考え方は rts-mons/web/src/rules.js の applyEffects にならう。
 
+import fieldJson from '../../data/system/field.json';
 import type { BStatus, BUnit, BattleState } from '../battle/types';
 import { D } from '../data/db';
 import type { Affinity, Passive, SkillDef, StatusId, TerrainKind } from '../data/types';
@@ -118,6 +119,62 @@ export function situationHit(st: BattleState, a: BUnit, skill: SkillDef, t: BUni
   if (st.night) v += W.nightHit;
   return v;
 }
+
+/** 地形と天気の、攻撃の種類ごとの強まる・弱まる（data/system/field.json） */
+export const FIELD = fieldJson as unknown as {
+  kinds: Record<string, { jp: string; cn: string }>;
+  tags: Record<string, string[]>;
+  native: Partial<Record<TerrainKind, Affinity>>;
+  terrain: Partial<Record<TerrainKind, { target?: Record<string, number>; attacker?: Record<string, number> }>>;
+  weather: Record<string, Record<string, number>>;
+};
+const TAGSETS = Object.entries(FIELD.tags).map(([k, ids]) => [k, new Set(ids)] as const);
+
+/**
+ * 攻撃の種類（いくつも当てはまる）。火・水・鉄砲・騎馬の突撃・奇襲・夜襲は技の番号で決まる（field.json の tags）。
+ * ほかは、軍略なら「軍略」、射程2以上なら「弓・投げ物」、射程1なら「近接」（得意地形が騎の兵・武将なら「騎馬の突撃」）
+ */
+export function attackKinds(a: BUnit, id: string, range: [number, number] | null, isTactic: boolean): string[] {
+  const out: string[] = [];
+  for (const [k, set] of TAGSETS) if (set.has(id)) out.push(k);
+  if (isTactic) out.push('tactic');
+  else if (!out.includes('gun') && !out.includes('charge')) {
+    if ((range?.[1] ?? 1) >= 2) out.push('bow');
+    else out.push(affinityOf(a) === 'rider' ? 'charge' : 'melee');
+  }
+  return out;
+}
+
+/** 地形と天気の倍率の内訳：倍率と、何が効いたか（[どこ・何, 種類, 倍率]） */
+export interface FieldParts { mult: number; notes: [string, string, number][] }
+
+/**
+ * 地形と天気の倍率（ダメージに掛ける）。相手のいる地形（target）・攻める側のいる地形（attacker）・天気・夜を、攻撃の種類ごとに掛け合わせる。
+ * 攻める側の弱まる値（1未満）は、その地形が得意な兵（field.json の native）には掛けない
+ */
+export function fieldMult(st: BattleState, a: BUnit, id: string, range: [number, number] | null, isTactic: boolean, t: BUnit): FieldParts {
+  const kinds = attackKinds(a, id, range, isTactic);
+  const p: FieldParts = { mult: 1, notes: [] };
+  const add = (where: string, table: Record<string, number> | undefined, skipPenalty = false) => {
+    if (!table) return;
+    for (const k of kinds) {
+      const v = table[k];
+      if (v === undefined || v === 1 || (skipPenalty && v < 1)) continue;
+      p.mult *= v; p.notes.push([where, k, v]);
+    }
+  };
+  const tt = terrainAt(st, t.pos), at = terrainAt(st, a.pos);
+  add(`相手が${TERRAIN_LABEL[tt] ?? tt}`, FIELD.terrain[tt]?.target);
+  add(`自分が${TERRAIN_LABEL[at] ?? at}`, FIELD.terrain[at]?.attacker, FIELD.native[at] === affinityOf(a));
+  add(WEATHER_LABEL[st.weather ?? 'clear'], FIELD.weather[st.weather ?? 'clear']);
+  if (st.night) add('夜', FIELD.weather.night);
+  return p;
+}
+const TERRAIN_LABEL: Partial<Record<TerrainKind, string>> = {
+  plain: '草原', road: '道', bridge: '橋', forest: '森', mountain: '山', swamp: '湿地', water: '水の上', castle: '城', town: '街', cliff: '段差',
+  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓', desert: '荒れ地', snowfield: '雪原',
+};
+const WEATHER_LABEL: Record<string, string> = { clear: '晴れ', rain: '雨', fog: '霧', snow: '雪' };
 
 /** 雨で弱まる火の技・火の軍略の、威力の倍率 */
 export function fireMult(st: BattleState, id: string): number {

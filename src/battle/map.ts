@@ -34,7 +34,7 @@ export interface BattleMap {
 const LEGEND: Record<string, TerrainKind> = {
   '.': 'plain', '=': 'road', 'B': 'bridge', 'T': 'forest', '^': 'mountain', ',': 'swamp',
   '~': 'water', 'C': 'castle', 'W': 'town', '#': 'cliff',
-  'A': 'camp', 'F': 'fort', 'P': 'paddy', 'H': 'wall', 'G': 'gate', 'Y': 'tower', '_': 'void',
+  'A': 'camp', 'F': 'fort', 'P': 'paddy', 'H': 'wall', 'G': 'gate', 'Y': 'tower', 'D': 'desert', 'S': 'snowfield', '_': 'void',
 };
 export const TERRAIN_CHAR: Record<TerrainKind, string> = Object.fromEntries(Object.entries(LEGEND).map(([k, v]) => [v, k])) as Record<TerrainKind, string>;
 
@@ -81,6 +81,8 @@ export function mapToText(m: BattleMap): string {
 const WATER = new Set([0, 1]);
 const FOREST = new Set([4, 5, 7, 8, 9]);
 const B_WETLAND = 12, B_MOUNTAIN = 14;
+/** 荒れ地になる地形（砂漠・寒冷砂漠・ツンドラ）と、雪原になる地形（氷河） */
+const DESERT = new Set([2, 13, 10]), B_GLACIER = 11;
 const HIGH = 0.62;
 const PER_POP = (convertJson as unknown as { supply: { perPop: number } }).supply.perPop;
 
@@ -214,6 +216,8 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
     if (m.flux[cell] >= riverMin) return { k: 'water', sea: false, flux: m.flux[cell] };
     if (b === B_MOUNTAIN || m.height[cell] > HIGH) return { k: 'mountain', sea: false, flux: 0 };
     if (b === B_WETLAND) return { k: 'swamp', sea: false, flux: 0 };
+    if (b === B_GLACIER) return { k: 'snowfield', sea: false, flux: 0 };
+    if (DESERT.has(b)) return { k: 'desert', sea: false, flux: 0 };
     if (FOREST.has(b)) return { k: 'forest', sea: false, flux: 0 };
     return { k: 'plain', sea: false, flux: 0 };
   };
@@ -263,7 +267,7 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
 
   /** 両軍の配置場所と守り手の拠点のあいだ */
   const inMid = (i: number) => onBoard(i) && D(i) >= -RAD + 3 && D(i) <= RAD - 5;
-  const OPEN = new Set<TerrainKind>(['plain', 'forest', 'paddy', 'swamp']);
+  const OPEN = new Set<TerrainKind>(['plain', 'forest', 'paddy', 'swamp', 'desert', 'snowfield']);
   const maxL = (d: number) => 2 * RAD - Math.abs(d);
   /** 横の端（攻め手・守り手の辺ではない側の辺）に近いマス：side は +1 か −1 */
   const sideEdge = (i: number, side: number, n: number) => side * L(i) >= maxL(D(i)) - 2 * (n - 1);

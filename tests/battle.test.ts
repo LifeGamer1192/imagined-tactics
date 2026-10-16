@@ -7,9 +7,9 @@ import type { BUnit, BattleState, Side } from '../src/battle/types';
 import { convert, generalsOf, makeTroop } from '../src/convert/convert';
 import { RNG } from '../src/core/rng';
 import { D } from '../src/data/db';
-import { hitChance, skillDamage, tacticDamage, tacticSuccess } from '../src/rules/combat';
+import { damageParts, hitChance, skillDamage, tacticDamage, tacticSuccess } from '../src/rules/combat';
 import { reach } from '../src/rules/move';
-import { skillOf } from '../src/rules/stats';
+import { FIELD, skillOf } from '../src/rules/stats';
 import { loadFixture } from './helpers';
 
 /** テスト用：兵種 unitId の兵を1隊、pos に置く（武将なし。率いる武将は自分自身にしておく） */
@@ -59,7 +59,11 @@ describe('combat formulas (docs/12 の計算例)', () => {
     const st = field('. . T C . .\n. . . . . .\n. . . . . .');
     const g = st.map.grid;
     const cav = troop(st, 'u07a', 0, g.idx(1, 0)), nobuse = troop(st, 'u14a', 1, g.idx(2, 0));
-    expect(skillDamage(st, cav, basic(cav), nobuse)).toBe(97);
+    // 計算例の基準 97 は、地形と天気の倍率（0.5.0 で追加）を掛ける前の値。森の相手への騎馬の突撃は、そこに ×0.75
+    const p = damageParts(st, cav, basic(cav), nobuse);
+    expect(Math.floor(p.power * p.atk / p.def * p.bane * p.counter * p.fire)).toBe(97);
+    expect(p.field).toBeCloseTo(FIELD.terrain.forest!.target!.charge, 5);
+    expect(skillDamage(st, cav, basic(cav), nobuse)).toBe(Math.max(1, Math.floor(p.power * p.atk / p.def * p.bane * p.counter * p.fire * p.field)));
     expect(hitChance(st, cav, basic(cav), nobuse)).toBe(93);
     const a = troop(st, 'u01a', 0, g.idx(4, 0)), d = troop(st, 'u01a', 1, g.idx(3, 0));
     expect(hitChance(st, a, basic(a), d)).toBe(60);

@@ -9,6 +9,7 @@ import { D, getVariant, L, term } from '../data/db';
 import type { Affinity, StatusId, TerrainKind } from '../data/types';
 import { SLOTS } from '../persist/save';
 import { TERRAIN_NAME } from '../render/battleView';
+import { FIELD } from '../rules/stats';
 import { S } from '../strategy/config';
 import { AFFINITY_NAME, STATUS_NAME, TRAIT_NAME } from './text';
 
@@ -280,7 +281,22 @@ function terrainTable(cell: (k: TerrainKind, a: Affinity) => string): string {
   const affs = D.terrain.affinities;
   return `<div class="scroll"><table>
     <tr><th>地形＼得意</th>${affs.map((a) => `<th>${AFFINITY_NAME[a]}</th>`).join('')}</tr>
-    ${D.terrain.kinds.filter((k) => TERRAIN_NAME[k]).map((k) => `<tr><th>${TERRAIN_NAME[k]}</th>${affs.map((a) => `<td>${cell(k, a)}</td>`).join('')}</tr>`).join('')}
+    ${D.terrain.kinds.filter((k) => TERRAIN_NAME[k] && k !== 'void').map((k) => `<tr><th>${TERRAIN_NAME[k]}</th>${affs.map((a) => `<td>${cell(k, a)}</td>`).join('')}</tr>`).join('')}
+  </table></div>`;
+}
+
+/** 地形・天気ごとの、攻撃の種類の倍率（field.json から作る） */
+function fieldTable(): string {
+  const kinds = Object.keys(FIELD.kinds);
+  const fmt = (t?: Record<string, number>) => kinds.filter((k) => t?.[k] !== undefined).map((k) => `<span class="${t![k] > 1 ? 'up' : 'down'}">${L(FIELD.kinds[k])}×${t![k]}</span>`).join(' ');
+  const rows = D.terrain.kinds.filter((k) => k !== 'void' && FIELD.terrain[k]).map((k) => {
+    const e = FIELD.terrain[k]!;
+    return `<tr><th>${TERRAIN_NAME[k]}</th><td>${fmt(e.target) || '−'}</td><td>${fmt(e.attacker) || '−'}</td></tr>`;
+  });
+  const sky: [string, string][] = [['clear', '晴れ'], ['rain', '雨'], ['fog', '霧'], ['snow', '雪'], ['night', '夜']];
+  return `<div class="scroll"><table class="field">
+    <tr><th>地形</th><th>相手がいる</th><th>自分がいる</th></tr>${rows.join('')}
+    ${sky.map(([k, n]) => `<tr><th>${n}</th><td colspan="2">${fmt(FIELD.weather[k]) || '−'}</td></tr>`).join('')}
   </table></div>`;
 }
 
@@ -312,6 +328,8 @@ function terms(): string {
     ${terrainTable((k, a) => { const v = D.terrain.moveCost[k][a]; return v === null ? '×' : String(v); })}
     <p><b>命中・回避の補正</b>（そのマスにいるユニットが、当てやすく避けやすくなる分）</p>
     ${terrainTable((k, a) => signed(D.terrain.hitMod[k][a]))}
+    <p><b>地形と天気で強まる・弱まる攻撃</b>（ダメージの倍率。攻撃の種類：${Object.values(FIELD.kinds).map((n) => L(n)).join('・')}）。「相手」は攻撃を受ける側のいる地形、「自分」は攻める側のいる地形。自分の側の弱まりは、その地形が得意な兵には掛からない。技・軍略を選ぶと、見込みの表のダメージにもう入っている。</p>
+    ${fieldTable()}
     <h3>戦略の言葉</h3>
     ${dl([
       ['領', '地図の1区画。持ち主の勢力に収入をもたらす。'],

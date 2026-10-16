@@ -19,12 +19,12 @@ const BAKE = 2;
 
 export const TERRAIN_NAME: Record<TerrainKind, string> = {
   plain: '草原', road: '道', bridge: '橋', forest: '森', mountain: '山', swamp: '湿地', water: '川・湖・海', castle: '城', town: '街', cliff: '段差',
-  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓', void: '盤の外',
+  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓', desert: '荒れ地', snowfield: '雪原', void: '盤の外',
 };
 /** 絵が無いときに代わりに書く字 */
 const GLYPH: Partial<Record<TerrainKind, string>> = {
   forest: '森', mountain: '山', swamp: '沼', castle: '城', town: '街', cliff: '崖', bridge: '橋',
-  camp: '陣', fort: '砦', paddy: '田', wall: '壁', gate: '門', tower: '櫓',
+  camp: '陣', fort: '砦', paddy: '田', wall: '壁', gate: '門', tower: '櫓', desert: '荒', snowfield: '雪',
 };
 /** 地形の記号：絵の組、幅（マスの大きさに対する倍率）、種類を選ぶ候補 */
 const SYMBOL: Partial<Record<TerrainKind, { groups: string[]; w: number }>> = {

@@ -33,7 +33,7 @@ import {
   tacticSuccess, tacticTargetCells, tacticVictims,
 } from '../rules/combat';
 import { unitAt } from '../rules/move';
-import { affinityOf, agility, attackPower, basicSkill, defense, intellect, moveOf, outOfCommand, skillOf, supplyMultOf, terrainMod } from '../rules/stats';
+import { affinityOf, agility, attackPower, basicSkill, defense, FIELD, intellect, moveOf, outOfCommand, skillOf, supplyMultOf, terrainMod } from '../rules/stats';
 import { AFFINITY_NAME, kindName, STATUS_NAME, T, TRAIT_NAME } from './text';
 import { BattleLogView, loadLogLevel, LOG_LEVEL_NAME, saveLogLevel } from './battleLog';
 import { SEASON_NAME, seasonOf, skyEffects, skyLabel } from '../battle/weather';
@@ -828,6 +828,10 @@ export class App {
     const regen = D.terrain.regen[k], perch = D.terrain.ranged[k];
     if (regen) notes.push(`番の始めに体力${regen}%回復`);
     if (perch) notes.push(`射程2以上の技は命中+${perch.hit}・射程+${perch.range}`);
+    // 地形の、攻撃の種類ごとの強まる・弱まる（受けるとき・ここから攻めるとき）
+    const fe = FIELD.terrain[k], fmt = (t?: Record<string, number>) => Object.entries(t ?? {}).map(([kk, v]) => `${L(FIELD.kinds[kk])}×${v}`).join('・');
+    if (fe?.target) notes.push(`受ける${fmt(fe.target)}`);
+    if (fe?.attacker) notes.push(`ここから攻める${fmt(fe.attacker)}${FIELD.native[k] === affinityOf(u) ? '（弱まりは得意地形なので無し）' : ''}`);
     return notes.length ? `、${notes.join('、')}` : '';
   }
 

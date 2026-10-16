@@ -235,7 +235,7 @@ describe('weather', () => {
       return {
         st, g, foot,
         shotFar: hitChance(st, archer, s, far), shotNear: hitChance(st, archer, s, near), melee: hitChance(st, foot, basic(foot), near),
-        fire: tacticDamage(st, archer, D.byTactic[W.fireTactics[0]], far), other: tacticDamage(st, archer, D.byTactic.x03, far),
+        fire: tacticDamage(st, archer, D.byTactic[W.fireTactics[0]], far), other: tacticDamage(st, archer, D.byTactic.x07, far), water: tacticDamage(st, archer, D.byTactic.x03, far),
         fireSkill: skillDamage(st, archer, D.bySkill[W.fireSkills[0]], far),
         plainCost: stepCost(st, foot, g.idx(0, 0)), roadCost: stepCost(st, foot, g.idx(0, 7)), cells: reach(st, foot).cells.length,
       };
@@ -250,6 +250,8 @@ describe('weather', () => {
     expect(rain.fire).toBeGreaterThanOrEqual(Math.floor(none.fire * W.rainFireMult) - 1);
     expect(rain.fireSkill).toBeLessThan(none.fireSkill);
     expect(rain.other).toBe(none.other);
+    // 雨：水の軍略は強まる（地形と天気の倍率）
+    expect(rain.water).toBeGreaterThan(none.water);
     // 霧：離れた相手にだけ当たりにくい
     expect(fog.shotFar).toBe(none.shotFar + W.fogFarHit);
     expect(fog.shotNear).toBe(none.shotNear);

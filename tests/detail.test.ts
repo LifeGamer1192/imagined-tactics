@@ -73,7 +73,7 @@ describe('battle log detail', () => {
             expect(stat(g.def)).toBeCloseTo(p.def, 9);
             expect(g.atk.value).toBe(p.atk);
             expect(g.def.value).toBe(p.def);
-            expect(Math.abs(Math.max(1, Math.floor(p.power * p.atk / p.def * p.bane * p.counter * p.fire)) - p.base)).toBeLessThanOrEqual(p.bane === 1 ? 0 : 1);
+            expect(Math.abs(Math.max(1, Math.floor(p.power * p.atk / p.def * p.bane * p.counter * p.fire * (p.field ?? 1))) - p.base)).toBeLessThanOrEqual(p.bane === 1 ? 0 : 1);
             expect(g.crit).toBe(g.critRoll < g.critPct);
             const raw = p.base * g.rnd * (g.crit ? g.critMult : 1) * g.critBonus * (g.shield?.ok ? 0.5 : 1);
             expect(raw).toBeCloseTo(g.raw, 6);
@@ -87,7 +87,7 @@ describe('battle log detail', () => {
           tactics++;
           if (d.dmg) {
             const p = d.dmg.parts;
-            expect(p.base).toBe(Math.max(1, Math.floor(p.power * (p.intA * p.mult) / (p.intT + p.def) * (1 - p.resist) * p.fire)));
+            expect(p.base).toBe(Math.max(1, Math.floor(p.power * (p.intA * p.mult) / (p.intT + p.def) * (1 - p.resist) * p.fire * (p.field ?? 1))));
             expect(d.dmg.final).toBe(Math.max(1, Math.round(p.base * d.dmg.rnd)));
             expect(d.hp![0] - d.hp![1]).toBe(Math.min(d.dmg.final, d.hp![0]));
           }

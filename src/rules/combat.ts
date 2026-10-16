@@ -5,7 +5,7 @@ import { D } from '../data/db';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import { unitAt } from './move';
 import {
-  affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf,
+  affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf, fieldMult, type FieldParts,
   tacticResist, terrainAt, terrainMod,
 } from './stats';
 
@@ -76,10 +76,12 @@ export interface DamageParts {
   power: number; atk: number; def: number;
   /** 特効（相手の得意地形・いる地形）の倍率、反撃の倍率、雨の日の火の倍率。無ければ 1 */
   bane: number; counter: number; fire: number;
+  /** 地形と天気の倍率と、何が効いたか */
+  field: number; fieldNotes: FieldParts['notes'];
 }
 
 export function damageParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, isCounter = false): DamageParts {
-  const p: DamageParts = { base: 0, power: skill.power, atk: 0, def: 0, bane: 1, counter: 1, fire: 1 };
+  const p: DamageParts = { base: 0, power: skill.power, atk: 0, def: 0, bane: 1, counter: 1, fire: 1, field: 1, fieldNotes: [] };
   if (skill.noDamage) return p;
   p.atk = attackPower(st, a); p.def = defense(st, t);
   let dmg = skill.power * p.atk / p.def;
@@ -88,6 +90,9 @@ export function damageParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit
   if (isCounter) { p.counter = D.combat.counterMult * (1 + passivePct(a, 'counterDamage') / 100); dmg *= p.counter; }
   p.fire = fireMult(st, skill.id);
   dmg *= p.fire;
+  const fm = fieldMult(st, a, skill.id, skill.range, false, t);
+  p.field = fm.mult; p.fieldNotes = fm.notes;
+  dmg *= p.field;
   p.base = Math.max(1, Math.floor(dmg));
   return p;
 }
@@ -139,6 +144,8 @@ export interface TacticParts {
   /** 分母に足す値（相手の防御。防御を使わない設定なら 100） */
   def: number; defIsDefense: boolean;
   resist: number; fire: number;
+  /** 地形と天気の倍率と、何が効いたか */
+  field: number; fieldNotes: FieldParts['notes'];
 }
 
 export function tacticParts(st: BattleState, a: BUnit, tac: TacticDef, t: BUnit): TacticParts {
@@ -146,10 +153,12 @@ export function tacticParts(st: BattleState, a: BUnit, tac: TacticDef, t: BUnit)
   const p: TacticParts = {
     base: 0, power: tac.power, intA: intellect(a), mult: C.tacticIntMult, intT: intellect(t),
     def: C.tacticDefInDenominator ? defense(st, t) : 100, defIsDefense: C.tacticDefInDenominator,
-    resist: tacticResist(st, t), fire: fireMult(st, tac.id),
+    resist: tacticResist(st, t), fire: fireMult(st, tac.id), field: 1, fieldNotes: [],
   };
+  const fm = fieldMult(st, a, tac.id, null, true, t);
+  p.field = fm.mult; p.fieldNotes = fm.notes;
   const denom = p.intT + p.def;
-  p.base = Math.max(1, Math.floor(tac.power * (p.intA * C.tacticIntMult) / denom * (1 - p.resist) * p.fire));
+  p.base = Math.max(1, Math.floor(tac.power * (p.intA * C.tacticIntMult) / denom * (1 - p.resist) * p.fire * p.field));
   return p;
 }
 
