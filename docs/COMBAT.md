@@ -12,15 +12,16 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 
 | 値 | 式 |
 |---|---|
-| 攻撃 | `max(1, (武力 × C.atkPerStr ＋ 状態の足し引き) × 采配外の倍率)`。足し引き：次の攻撃アップ S.atkNext.atk、攻撃アップ S.atkUp.atk、攻防ダウン S.weaken.atk、攻撃ダウン S.atkDown.atk |
-| 防御 | 混乱中は `S.confuse.def` で固定。ほかは `max(1, (防御 ＋ S.defUp.def（防御アップ）＋ S.weaken.def（攻防ダウン）) × 采配外の倍率)` |
+| 攻撃 | `max(1, (武力 × C.atkPerStr ＋ 状態の足し引き) × 采配外の倍率 × 陣営の掛け目)`。足し引き：次の攻撃アップ S.atkNext.atk、攻撃アップ S.atkUp.atk、攻防ダウン S.weaken.atk、攻撃ダウン S.atkDown.atk |
+| 防御 | 混乱中は `S.confuse.def` で固定。ほかは `max(1, (防御 ＋ S.defUp.def（防御アップ）＋ S.weaken.def（攻防ダウン）) × 采配外の倍率 × 陣営の掛け目)` |
 | 機敏 | `機敏 ＋ S.agiUp.agi（命中回避アップ）＋ S.grounded.agi（足止め）` |
 | 知略 | `max(1, 知略 ＋ S.intDown.int（知略ダウン）)` |
 | 軍略への耐性 | `min(0.9, 特技 tacticResist の合計 ÷ 100 ＋ S.resistUp.pct ÷ 100（軍略耐性アップ） − 采配外なら S.outOfCommand.tacticDamagePct ÷ 100)`。負なら受けるダメージが増える |
 
 - 采配外の倍率：兵が、率いる武将の采配範囲（マス）の外にいるか、武将が倒れているとき `1 ＋ S.outOfCommand.atkDefPct ÷ 100`。ほかは 1。
+- 陣営の掛け目（0.3.0 で追加）：戦略で、飛び地を守る側・飛び地から攻めて出た側が `1 ＋ strategy.json の exclave.battleAtkDefPct ÷ 100`（今は 0.9）。ほかは 1。寝返った兵も、もとの陣営の掛け目のまま。戦いの状態の `supplyMult`。
 - 武将の能力は「武将の値 ＋ 役職（classes.json）の mod」。防御・移動・得意地形は役職の値。兵は兵種（units.json）の値に、レベルぶんの成長を足したもの（`基本値 ＋ 成長の中央値 ×（LV−1）`。実際のレベルアップでは成長の幅から乱数）。
-- **1対1では**：采配外の倍率は 1。
+- **1対1では**：采配外の倍率と陣営の掛け目は 1。
 
 ## 2. 命中率（技）
 

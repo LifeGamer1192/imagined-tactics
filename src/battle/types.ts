@@ -144,6 +144,11 @@ export interface BattleState {
   weather?: Weather;
   /** 夜戦か */
   night?: boolean;
+  /**
+   * 陣営ごとの攻撃・防御の掛け目（[攻め手, 守り手]、無ければ 1）。戦略で、飛び地で戦う側（兵糧や援軍が届きにくい）が下がる。
+   * 寝返った兵も、もとの陣営（home）の掛け目のまま
+   */
+  supplyMult?: [number, number];
 }
 
 export type Action =

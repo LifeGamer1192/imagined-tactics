@@ -1,7 +1,7 @@
 {
   "siege": { "base": 0, "perFort": 0, "unownedMult": 0.5, "idleDecay": 0.5 },
   "move": { "range": 3 },
-  "exclave": { "incomeMult": 0.4, "garrisonLevel": -2, "garrisonTroops": -1, "recruitCostMult": 1.5 },
+  "exclave": { "incomeMult": 0.4, "garrisonLevel": -2, "garrisonTroops": -1, "recruitCostMult": 1.5, "battleAtkDefPct": -10 },
   "officer": { "minTroopLevel": 5, "nameMax": 100, "unit": "u01a", "raiseCostBase": 100, "raiseCostPerLevel": 10, "lowerRefund": 0.6667, "leaderTraits": ["brave", "warrior", "charismatic", "wise", "scholar", "pious"] },
   "reserve": { "max": 12 },
   "garrison": {

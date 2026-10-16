@@ -622,7 +622,7 @@ export class CampaignScreen {
       ? `${names}${link.length > 4 ? ` ほか、計${link.length}領` : ''}を取ると、本拠（${esc(gs.provinces[f.capital].name.ja)}）とつながって解けます。`
       : `本拠（${esc(gs.provinces[f.capital].name.ja)}）とつながる道がありません。まわりの領を取って、本拠からの道をつくってください。`;
     return `<div class="exclave"><b>⚠ 飛び地です</b>　本拠から、自分の領づたい（陸の隣と海路）にたどり着けません。
-      <div class="small">罰：収入${Math.round(S.exclave.incomeMult * 100)}%・守備兵が弱い（レベル${Math.abs(S.exclave.garrisonLevel)}減・${Math.abs(S.exclave.garrisonTroops)}隊減）・徴兵の兵糧×${S.exclave.recruitCostMult}</div>
+      <div class="small">罰：収入${Math.round(S.exclave.incomeMult * 100)}%・守備兵が弱い（レベル${Math.abs(S.exclave.garrisonLevel)}減・${Math.abs(S.exclave.garrisonTroops)}隊減）・徴兵の兵糧×${S.exclave.recruitCostMult}・ここを守る戦いと、ここから攻めて出る戦いでは攻撃・防御${S.exclave.battleAtkDefPct}%</div>
       <div class="small">直し方：${how}</div></div>`;
   }
 

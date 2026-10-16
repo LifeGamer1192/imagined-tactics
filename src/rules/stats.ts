@@ -48,8 +48,12 @@ export function attackPower(st: BattleState, u: BUnit): number {
   if (has(u, 'weaken')) v += S.weaken.atk;
   if (has(u, 'atkDown')) v += S.atkDown.atk;
   if (outOfCommand(st, u)) v *= 1 + S.outOfCommand.atkDefPct / 100;
+  v *= supplyMultOf(st, u);
   return Math.max(1, v);
 }
+
+/** 陣営の攻撃・防御の掛け目（飛び地で戦う側は 1 未満）。BattleState.supplyMult */
+export function supplyMultOf(st: BattleState, u: BUnit): number { return st.supplyMult?.[u.home] ?? 1; }
 
 export function defense(st: BattleState, u: BUnit): number {
   const S = D.status;
@@ -58,6 +62,7 @@ export function defense(st: BattleState, u: BUnit): number {
   if (has(u, 'defUp')) v += S.defUp.def;
   if (has(u, 'weaken')) v += S.weaken.def;
   if (outOfCommand(st, u)) v *= 1 + S.outOfCommand.atkDefPct / 100;
+  v *= supplyMultOf(st, u);
   return Math.max(1, v);
 }
 

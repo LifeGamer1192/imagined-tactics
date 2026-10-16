@@ -5,7 +5,7 @@ import { D } from '../data/db';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import { unitAt } from './move';
 import {
-  affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange,
+  affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf,
   tacticResist, terrainAt, terrainMod,
 } from './stats';
 
@@ -106,6 +106,8 @@ export interface StatParts {
   adds: [StatusId, number][];
   /** 采配範囲の外にいるときの倍率（中なら 1） */
   out: number;
+  /** 陣営の掛け目（飛び地で戦う側は 1 未満。無ければ 1） */
+  supply: number;
   /** 混乱中の防御のように、決まった値になっている */
   fixed: boolean;
 }
@@ -114,16 +116,16 @@ export function atkParts(st: BattleState, u: BUnit): StatParts {
   const S = D.status;
   const adds: [StatusId, number][] = [];
   for (const id of ['atkNext', 'atkUp', 'weaken', 'atkDown'] as const) if (has(u, id)) adds.push([id, S[id].atk]);
-  return { value: attackPower(st, u), base: u.str, mult: D.combat.atkPerStr, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, fixed: false };
+  return { value: attackPower(st, u), base: u.str, mult: D.combat.atkPerStr, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, supply: supplyMultOf(st, u), fixed: false };
 }
 
 export function defParts(st: BattleState, u: BUnit): StatParts {
   const S = D.status;
   const value = defense(st, u);
-  if (has(u, 'confuse')) return { value, base: S.confuse.def, mult: 1, adds: [], out: 1, fixed: true };
+  if (has(u, 'confuse')) return { value, base: S.confuse.def, mult: 1, adds: [], out: 1, supply: 1, fixed: true };
   const adds: [StatusId, number][] = [];
   for (const id of ['defUp', 'weaken'] as const) if (has(u, id)) adds.push([id, S[id].def]);
-  return { value, base: u.def, mult: 1, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, fixed: false };
+  return { value, base: u.def, mult: 1, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, supply: supplyMultOf(st, u), fixed: false };
 }
 
 export function critChance(a: BUnit): number {

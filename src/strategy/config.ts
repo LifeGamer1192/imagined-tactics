@@ -7,8 +7,8 @@ import type { GFaction } from '../convert/model';
 export const S = strategyJson as unknown as {
   siege: { base: number; perFort: number; unownedMult: number; idleDecay: number };
   move: { range: number };
-  /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段 */
-  exclave: { incomeMult: number; garrisonLevel: number; garrisonTroops: number; recruitCostMult: number };
+  /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段・戦うときの攻撃と防御（%） */
+  exclave: { incomeMult: number; garrisonLevel: number; garrisonTroops: number; recruitCostMult: number; battleAtkDefPct: number };
   officer: { minTroopLevel: number; nameMax: number; unit: string; raiseCostBase: number; raiseCostPerLevel: number; lowerRefund: number; leaderTraits: string[] };
   reserve: { max: number };
   garrison: {

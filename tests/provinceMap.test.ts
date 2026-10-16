@@ -5,7 +5,8 @@ import { convert } from '../src/convert/convert';
 import type { Affinity } from '../src/data/types';
 import { D } from '../src/data/db';
 import { fromJSON, restore, snapshot, toJSON } from '../src/persist/save';
-import { build, buildCost, buildProblem, exclaveLink, exclavesOf, finishMonth, garrisonOf, newCampaign, provinceLook, provinceMap, provincesOf, recruitCost } from '../src/strategy/campaign';
+import { attackPower, defense } from '../src/rules/stats';
+import { battleFor, battleSupply, build, buildCost, buildProblem, exclaveLink, exclavesOf, finishMonth, garrisonOf, newCampaign, provinceLook, provinceMap, provincesOf, recruitCost } from '../src/strategy/campaign';
 import { createBattle } from '../src/battle/setup';
 import { applyBattleResult } from '../src/battle/result';
 import { generalsOf, makeTroop } from '../src/convert/convert';
@@ -174,6 +175,20 @@ describe('exclaves', () => {
     expect(after.level).toBeLessThan(before.garrison.level);
     expect(after.troops).toBeLessThanOrEqual(before.garrison.troops);
     expect(recruitCost('u01a', f, true)).toBeGreaterThan(recruitCost('u01a', f));
+    // 戦い：飛び地を守る側は攻撃・防御が下がる。攻め手（本拠とつながった領から出る）は下がらない
+    const atkFrom = [...target.nb, ...target.sea].find((n) => gs.provinces[n].owner === other.id)!;
+    const pb = { attacker: other.id, defender: f.id, prov: target.id, from: atkFrom, atk: generalsOf(gs, other.id).slice(0, 1).map((g) => g.id), def: [] as string[] };
+    const sup = battleSupply(c, pb);
+    expect(sup[1]).toBeCloseTo(0.9, 5);
+    expect(sup[0]).toBe(exclavesOf(c, other.id).has(atkFrom) ? sup[1] : 1);
+    if (pb.atk.length) {
+      const st = battleFor(c, pb);
+      expect(st.supplyMult?.[1]).toBeCloseTo(0.9, 5);
+      const u = st.units.find((x) => x.home === 1)!;
+      const plain = attackPower({ ...st, supplyMult: undefined }, u), cut = attackPower(st, u);
+      expect(cut).toBeCloseTo(Math.max(1, plain * 0.9), 5);
+      expect(defense(st, u)).toBeLessThan(defense({ ...st, supplyMult: undefined }, u) + 1e-9);
+    }
     // 収入：飛び地のぶんは ×0.4 で数える
     finishMonth(c);
     const lost = [...target.nb, ...target.sea].reduce((s, n) => s + (gs.provinces[n].owner === other.id ? gs.provinces[n].income : 0), 0);

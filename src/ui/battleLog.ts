@@ -86,11 +86,13 @@ function hitFormula(h: HitParts, r: number, landed: boolean): string {
 /** 攻撃・防御の値の成り立ち。補正が何も無いときは '' */
 function statFormula(label: string, baseLabel: string, p: StatParts, always: boolean): string {
   if (p.fixed) return `${label}${num(p.value)}（混乱中は決まった値）`;
-  if (!always && !p.adds.length && p.out === 1) return '';
+  const supply = p.supply ?? 1;
+  if (!always && !p.adds.length && p.out === 1 && supply === 1) return '';
   let s = `${label}${num(p.value)} ＝ `;
   const inner = `${baseLabel}${num(p.base)}${p.mult !== 1 ? ` × ${num(p.mult)}` : ''}${p.adds.map(([id, v]) => ` ${signed(v)}（${STATUS_NAME[id]}）`).join('')}`;
   const lone = p.mult === 1 && !p.adds.length;
-  s += p.out !== 1 ? `${lone ? inner : `（${inner}）`} × 采配範囲外${num(p.out)}` : inner;
+  const muls = `${p.out !== 1 ? ` × 采配範囲外${num(p.out)}` : ''}${supply !== 1 ? ` × 飛び地${num(supply)}` : ''}`;
+  s += muls ? `${lone ? inner : `（${inner}）`}${muls}` : inner;
   return s;
 }
 

@@ -33,7 +33,7 @@ import {
   tacticSuccess, tacticTargetCells, tacticVictims,
 } from '../rules/combat';
 import { unitAt } from '../rules/move';
-import { affinityOf, agility, attackPower, basicSkill, defense, intellect, moveOf, outOfCommand, skillOf, terrainMod } from '../rules/stats';
+import { affinityOf, agility, attackPower, basicSkill, defense, intellect, moveOf, outOfCommand, skillOf, supplyMultOf, terrainMod } from '../rules/stats';
 import { AFFINITY_NAME, kindName, STATUS_NAME, T, TRAIT_NAME } from './text';
 import { BattleLogView, loadLogLevel, LOG_LEVEL_NAME, saveLogLevel } from './battleLog';
 import { SEASON_NAME, seasonOf, skyEffects, skyLabel } from '../battle/weather';
@@ -767,6 +767,8 @@ export class App {
     const bar = (v: number, max: number, cls: string) => `<div class="bar ${cls}"><i style="width:${max ? Math.round(100 * v / max) : 0}%"></i><span>${v}/${max}</span></div>`;
     const statuses = u.statuses.map((s) => `${STATUS_NAME[s.id]}${s.turns > 0 ? `(${s.turns})` : ''}`);
     if (outOfCommand(st, u)) statuses.push('采配範囲外');
+    const sm = supplyMultOf(st, u);
+    if (sm !== 1) statuses.push(`飛び地（攻撃・防御${Math.round((sm - 1) * 100)}%）`);
     const g = u.kind === 'general' ? this.gs!.generals[u.generalId] : null;
     const leader = u.kind === 'troop' ? st.units[u.leader] : null;
     return `<div class="card" style="border-color:${SIDE_COLOR[u.side]}">
@@ -807,7 +809,11 @@ export class App {
       window.setTimeout(() => { if (this.st === st0) this.refresh(); }, 1650);
     }
     const lit = performance.now() < this.skyFlashUntil;
-    return `<div class="sky ${lit ? 'flash' : ''} ${sky.night ? 'night' : ''}" id="sky" style="${url ? `--sky-bg:url('${url}')` : ''}">${when}天気：<b>${label}</b>${fx.length ? `<small>${fx.join('<br>')}</small>` : ''}</div>`;
+    // 飛び地で戦う陣営（兵糧や援軍が届きにくく、攻撃・防御が下がる）
+    const cut = ([0, 1] as Side[]).filter((s) => (st.supplyMult?.[s] ?? 1) !== 1)
+      .map((s) => `${esc(st.sideNames[s])}は飛び地で戦う（攻撃・防御${Math.round(((st.supplyMult![s]) - 1) * 100)}%）`);
+    const lines = [...fx, ...cut];
+    return `<div class="sky ${lit ? 'flash' : ''} ${sky.night ? 'night' : ''}" id="sky" style="${url ? `--sky-bg:url('${url}')` : ''}">${when}天気：<b>${label}</b>${lines.length ? `<small>${lines.join('<br>')}</small>` : ''}</div>`;
   }
 
   /** いまいる地形の、命中・回避のほかの効果 */

@@ -130,6 +130,18 @@ async function run(tag, ctxOpts) {
     await press('.confirm [data-a="no"]');
     // 方位の印と、番の交代の帯（「開戦」は始めの1回だけ）
     ok(`[${tag}] 戦場に方位の印`, !!(await page.$('.compass .needle')));
+    // 飛び地の戦い：天気の欄と駒の欄に出て、攻撃・防御が下がる
+    const cutInfo = await page.evaluate(async () => {
+      const { attackPower } = await import('/src/rules/stats.ts');
+      const a = window.__app, st = a.st, u = st.units.find((x) => x.alive && x.home === 1);
+      const before = attackPower(st, u);
+      st.supplyMult = [1, 0.9]; a.inspect = u.id; a.refresh();
+      return { before, after: attackPower(st, u) };
+    });
+    await page.waitForTimeout(200);
+    ok(`[${tag}] 飛び地の戦いは天気の欄に出て、攻撃が下がる`, /飛び地で戦う/.test(await page.textContent('#sky')) && cutInfo.after < cutInfo.before, `${Math.round(cutInfo.before)}→${Math.round(cutInfo.after)}`);
+    await shot('battle_exclave');
+    await page.evaluate(() => { const a = window.__app; a.st.supplyMult = undefined; a.inspect = null; a.refresh(); });
     await page.evaluate(() => { const a = window.__app; a.human = new Set([0, 1]); a.endTurn(); });
     await page.waitForTimeout(250);
     const turnText = await page.$eval('.splash', (el) => el.textContent).catch(() => '');

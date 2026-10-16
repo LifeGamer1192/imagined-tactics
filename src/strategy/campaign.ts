@@ -387,7 +387,20 @@ export function battleFor(c: Campaign, pb: PendingBattle): BattleState {
   const gs = c.gs;
   if (!pb.def.length) raiseGarrison(c, pb);
   const names: [string, string] = [gs.factions[pb.attacker].name.ja, gs.factions[pb.defender]?.name.ja ?? '守備兵'];
-  return createBattle(gs, battleMapFor(c, pb), [pb.atk, pb.def], `c:${gs.tick}:${pb.prov}:${pb.attacker}`, names);
+  const st = createBattle(gs, battleMapFor(c, pb), [pb.atk, pb.def], `c:${gs.tick}:${pb.prov}:${pb.attacker}`, names);
+  const cut = battleSupply(c, pb);
+  if (cut[0] !== 1 || cut[1] !== 1) st.supplyMult = cut;
+  return st;
+}
+
+/**
+ * 飛び地の戦いの罰：飛び地から攻めて出た攻め手、飛び地を守る守り手は、攻撃・防御が下がる（strategy.json の exclave.battleAtkDefPct）。
+ * [攻め手, 守り手] の掛け目
+ */
+export function battleSupply(c: Campaign, pb: PendingBattle): [number, number] {
+  const m = 1 + S.exclave.battleAtkDefPct / 100;
+  const atkCut = exclavesOf(c, pb.attacker).has(pb.from), defCut = !!pb.defender && exclavesOf(c, pb.defender).has(pb.prov);
+  return [atkCut ? m : 1, defCut ? m : 1];
 }
 
 function eliminate(c: Campaign, f: GFaction, by: number): void {
