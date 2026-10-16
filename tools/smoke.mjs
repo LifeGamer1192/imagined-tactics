@@ -53,6 +53,9 @@ check('関係ないファイルはエラー表示になる', (await page.textCon
 for (const [id, word] of [['rome_fid3_212bc', 'ローマ'], ['invented_archipelago_y30', '31年'], ['sengoku_fid5_1575', '戦国']]) {
   await page.goto(url);
   await page.click(`[data-sample="${id}"]`);
+  await page.waitForSelector('#modeLocal');
+  check(`読み込むとモードを選ぶ画面が出る：${id}`, await page.isVisible('#modeNation') && await page.isVisible('#modeLocal'));
+  await page.click('#modeLocal');
   await page.waitForSelector('#start');
   const head = await page.textContent('.setup header');
   check(`サンプルを読み込める：${id}`, head.includes(word), head.replace(/\s+/g, ' ').slice(0, 50));
@@ -63,6 +66,8 @@ check('編成画面に性格が出る', (await page.textContent('.gens')).includ
 // 実ファイルとして読み込む（サンプルのボタンではなく、ファイル選択から）
 await page.goto(url);
 await page.setInputFiles('input[type=file]', 'tests/fixtures/sengoku_fid5_1575.histsim');
+await page.waitForSelector('#modeLocal');
+await page.click('#modeLocal');
 await page.waitForSelector('#start');
 check('ファイル選択から .histsim を読み込める', (await page.textContent('.setup header')).includes('1575'));
 
@@ -228,6 +233,12 @@ await page.click('.result button');
 await page.waitForSelector('#start');
 
 // ============================================================ 5. 戦略パート
+// 局地戦の編成 →「モードを選ぶ」→ 国モード → 国を選ぶ画面（初めは一番大きな国が選ばれている）
+await page.click('#toModes');
+await page.waitForSelector('#modeNation');
+await page.click('#modeNation');
+await page.waitForSelector('#campaign');
+check('国を選ぶ画面に国の一覧が出る', await page.locator('input[name="nation"]').count() >= 2 && await page.locator('input[name="nation"]:checked').count() === 1);
 await page.click('#campaign');
 await page.waitForSelector('#next');
 await shot(page, '09_campaign');
@@ -368,6 +379,9 @@ await page.click('#closeMenu');
 
 // ============================================================ 7. 観戦の戦略、狭い画面
 await page.click('#exit'); await page.click('.confirm [data-a="ok"]');
+await page.waitForSelector('#modeNation');
+check('戦略をやめるとモードを選ぶ画面に戻る', await page.isVisible('#modeLocal'));
+await page.click('#modeNation');
 await page.waitForSelector('#campaignWatch');
 await page.click('#campaignWatch');
 await page.waitForSelector('#run');
@@ -378,6 +392,8 @@ const f1 = await page.evaluate(() => Object.keys(window.__campaign.c.gs.factions
 check('観戦で12か月進められる', true, `勢力 ${f0} → ${f1}`);
 await shot(page, '13_campaign_watch_12m');
 await page.click('#exit'); await page.click('.confirm [data-a="ok"]');
+await page.waitForSelector('#modeLocal');
+await page.click('#modeLocal');
 await page.waitForSelector('#start');
 
 await page.setViewportSize({ width: 390, height: 800 });

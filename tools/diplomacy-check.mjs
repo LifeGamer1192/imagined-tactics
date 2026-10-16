@@ -13,6 +13,8 @@ let ng = 0;
 const ok = (name, v, extra = '') => { if (!v) ng++; console.log(v ? 'OK ' : 'NG ', name, extra); };
 await page.goto(process.env.HEX_URL ?? 'http://localhost:5183/');
 await page.click('[data-sample="sengoku_fid5_1575"]');
+await page.waitForSelector('#modeNation');
+await page.click('#modeNation');
 await page.waitForSelector('#campaign');
 await page.click('#campaign');
 await page.waitForSelector('#next');

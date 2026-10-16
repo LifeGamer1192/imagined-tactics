@@ -37,15 +37,29 @@ async function run(tag, ctxOpts) {
   for (const [sample, v] of [['sengoku_fid5_1575', 'jp'], ['shunju_fid5_259bc', 'cn']]) {
     await page.goto(URL);
     await press(`[data-sample="${sample}"]`);
-    await page.waitForSelector('#campaign'); await idle(); await page.waitForTimeout(500);
+    // ---- モードを選ぶ画面
+    await page.waitForSelector('#modeLocal'); await idle(); await page.waitForTimeout(500);
+    ok(`[${tag}] モードを選ぶ画面に国モードと局地戦モードのボタン（${v}）`, (await page.isVisible('#modeNation')) && (await page.isVisible('#modeLocal')));
+    await shot(`modes_${v}`);
+    if (v === 'jp') {
+      // ---- 別のセーブ：確かめる窓
+      await press('#back');
+      await page.waitForSelector('.confirm');
+      await shot('confirm_back');
+      await press('.confirm [data-a="no"]');
+      // ---- 国を選ぶ画面
+      await press('#modeNation');
+      await page.waitForSelector('#campaign'); await idle(); await page.waitForTimeout(300);
+      ok(`[${tag}] 国を選ぶ画面に国の一覧と始めるボタン`, (await page.$$('input[name="nation"]')).length >= 2 && (await page.isVisible('#campaign')) && (await page.isVisible('#campaignWatch')));
+      await shot('nations_jp');
+      await press('#toModes');
+      await page.waitForSelector('#modeLocal'); await idle();
+    }
+    await press('#modeLocal');
+    await page.waitForSelector('#start'); await idle(); await page.waitForTimeout(300);
     ok(`[${tag}] 編成の画面に陣営の絵（${v}）`, await page.evaluate((v) => getComputedStyle(document.body).backgroundImage.includes(`setup_${v}`), v));
     await shot(`setup_${v}`);
     if (v === 'cn') break;
-    // ---- 別のセーブ：確かめる窓
-    await press('#back');
-    await page.waitForSelector('.confirm');
-    await shot('confirm_back');
-    await press('.confirm [data-a="no"]');
 
     // ---- 戦闘
     await press('#start');
@@ -113,7 +127,7 @@ async function run(tag, ctxOpts) {
     ok(`[${tag}] 勝ちの見出しは朱の帯・勝ちの絵`, !(await page.$('.result h2.lost')) && (await page.$eval('.result .banner', (el) => el.style.backgroundImage.includes('victory'))));
     await shot('battle_result_win');
     await press('.result button.primary');
-    await page.waitForSelector('#campaign'); await idle();
+    await page.waitForSelector('#start'); await idle();
     // 負けの結果：手動で守り手が勝つ
     await press('#start');
     await page.waitForSelector('#end'); await idle();
@@ -123,12 +137,14 @@ async function run(tag, ctxOpts) {
     ok(`[${tag}] 負けの見出しは薄墨の帯・負けの絵`, !!(await page.$('.result h2.lost')) && (await page.$eval('.result .banner', (el) => el.style.backgroundImage.includes('defeat'))));
     await shot('battle_result_lose');
     await press('.result button.primary');
-    await page.waitForSelector('#campaign'); await idle();
+    await page.waitForSelector('#start'); await idle();
   }
 
   // ---- 戦略
   await page.goto(URL);
   await press('[data-sample="sengoku_fid5_1575"]');
+  await page.waitForSelector('#modeNation'); await idle();
+  await press('#modeNation');
   await page.waitForSelector('#campaign'); await idle();
   await press('#campaign');
   await page.waitForSelector('#next'); await idle(); await page.waitForTimeout(900);

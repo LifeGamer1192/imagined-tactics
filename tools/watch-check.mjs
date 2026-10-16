@@ -9,6 +9,8 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto(process.env.HEX_URL ?? 'http://localhost:5183/');
 await page.click('[data-sample="sengoku_fid5_1575"]');
+await page.waitForSelector('#modeLocal');
+await page.click('#modeLocal');
 await page.waitForSelector('#start');
 await page.click('#start');
 await page.waitForSelector('#watch');

@@ -48,6 +48,12 @@ const center = async (sel) => { const b = await (await page.$(sel)).boundingBox(
 
 await page.goto(url);
 await act('見本を選ぶ', () => page.click(`[data-sample="${sample}"]`));
+await page.waitForSelector('#modeLocal');
+await act('国モードを選ぶ', () => page.click('#modeNation'));
+await page.waitForSelector('#campaign');
+await act('モードの画面に戻る', () => page.click('#toModes'));
+await page.waitForSelector('#modeLocal');
+await act('局地戦モードを選ぶ', () => page.click('#modeLocal'));
 await page.waitForSelector('#start');
 await act('名前の版を切り替える', async () => { const v = await page.$eval('#variant', (el) => el.value); await page.selectOption('#variant', v === 'jp' ? 'cn' : 'jp'); });
 await page.waitForSelector('#start');
@@ -67,6 +73,10 @@ await act('手動にする', () => page.click('#watch'));
 await act('遊び方を開く', () => page.click('.help-fab, [data-help], #helpBtn').catch(() => {}));
 await page.keyboard.press('Escape');
 await act('編成に戻る', () => page.click('#quit').then(() => page.click('.confirm [data-a="ok"]')));
+await page.waitForSelector('#start');
+await act('編成からモードの画面へ', () => page.click('#toModes'));
+await page.waitForSelector('#modeNation');
+await act('国モードを選ぶ（2回目）', () => page.click('#modeNation'));
 await page.waitForSelector('#campaign');
 await act('戦略を始める', () => page.click('#campaign'));
 await page.waitForSelector('#next');

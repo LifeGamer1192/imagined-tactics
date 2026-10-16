@@ -1,4 +1,4 @@
-// 公開版どうしの受け渡しの確認：hist-sim の「この状態で hex で遊ぶ」を押して、hex-sim が編成画面まで進み、戦闘と戦略を始められるかを見る。
+// 公開版どうしの受け渡しの確認：hist-sim の「この状態で hex で遊ぶ」を押して、hex-sim がモードを選ぶ画面まで進み、戦闘と戦略を始められるかを見る。
 // 使い方：node tools/handoff-check.mjs [画面を撮る先のフォルダ]
 //   HIST_URL（既定：公開版の hist-sim）、シナリオや世界の指定は URL の引数で渡す
 import { createRequire } from 'node:module';
@@ -30,10 +30,12 @@ for (const [label, query] of [['架空の世界', '?seed=DEMO&size=small&templat
   await popup.waitForLoadState('domcontentloaded');
   ok(`${label}：公開版の hex-sim が開く`, popup.url().startsWith(HEX), popup.url());
   let reached = true;
-  try { await popup.waitForSelector('#start', { timeout: 40000 }); } catch { reached = false; }
-  ok(`${label}：セーブが渡り、編成画面まで進む`, reached, reached ? (await popup.textContent('header')).replace(/\s+/g, ' ').slice(0, 60) : (await popup.textContent('body')).replace(/\s+/g, ' ').slice(0, 120));
+  try { await popup.waitForSelector('#modeNation', { timeout: 40000 }); } catch { reached = false; }
+  ok(`${label}：セーブが渡り、モードを選ぶ画面まで進む`, reached, reached ? (await popup.textContent('header')).replace(/\s+/g, ' ').slice(0, 60) : (await popup.textContent('body')).replace(/\s+/g, ' ').slice(0, 120));
   if (reached) {
     if (out) await popup.screenshot({ path: path.join(out, `handoff_hex_${label}.png`) });
+    await popup.click('#modeNation');
+    await popup.waitForSelector('#campaignWatch');
     await popup.click('#campaignWatch');
     let strat = true;
     try { await popup.waitForSelector('#next', { timeout: 30000 }); } catch { strat = false; }

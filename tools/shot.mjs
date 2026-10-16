@@ -21,6 +21,8 @@ for (const sample of ['sengoku_fid5_1575', 'shunju_fid5_259bc']) {
   await page.screenshot({ path: path.join(out, 'title.png') });
   if (!(await page.$(`[data-sample="${sample}"]`))) { console.log('見本なし：', sample); continue; }
   await page.click(`[data-sample="${sample}"]`);
+  await page.waitForSelector('#modeLocal');
+  await page.click('#modeLocal');
   await page.waitForSelector('#start');
   await page.screenshot({ path: path.join(out, `${sample}_setup.png`) });
   await page.click('#start');
@@ -56,6 +58,8 @@ for (const sample of ['sengoku_fid5_1575', 'shunju_fid5_259bc']) {
   }
   await page.goto(url);
   await page.click(`[data-sample="${sample}"]`);
+  await page.waitForSelector('#modeNation');
+  await page.click('#modeNation');
   await page.waitForSelector('#campaign');
   await page.click('#campaign');
   await page.waitForSelector('#next');

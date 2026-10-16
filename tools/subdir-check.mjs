@@ -56,6 +56,8 @@ try {
   check('Esc で案内が閉じる', !(await page.isVisible('.help')));
 
   await page.click('[data-sample="sengoku_fid5_1575"]');
+  await page.waitForSelector('#modeLocal');
+  await page.click('#modeLocal');
   await page.waitForSelector('#start');
   check('サンプルを読み込める', (await page.textContent('.setup header')).includes('戦国'));
 
@@ -67,6 +69,10 @@ try {
   check('戦場の絵を読み込んでいる', images > 0, `${images}枚`);
   await shot('subdir_battle');
   await page.click('#quit'); await page.click('.confirm [data-a="ok"]');
+  await page.waitForSelector('#start');
+  await page.click('#toModes');
+  await page.waitForSelector('#modeNation');
+  await page.click('#modeNation');
   await page.waitForSelector('#campaign');
 
   await page.click('#campaign');
@@ -87,7 +93,7 @@ try {
   // index.html を付けたアドレスでも同じに動く
   await page.goto(`http://127.0.0.1:${PORT}${PREFIX}index.html`);
   await page.click('[data-sample="rome_fid3_212bc"]');
-  await page.waitForSelector('#start');
+  await page.waitForSelector('#modeLocal');
   check('index.html を付けたアドレスでもサンプルを読み込める', (await page.textContent('.setup header')).includes('ローマ'));
 
   check('サブフォルダの外への読み込みが無い', outside.length === 0, outside.slice(0, 3).join(' '));

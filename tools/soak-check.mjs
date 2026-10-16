@@ -22,8 +22,10 @@ for (const sample of SAMPLES) {
   const t0 = Date.now();
   await page.goto(url);
   await page.click(`[data-sample="${sample}"]`);
-  await page.waitForSelector('#start');
+  await page.waitForSelector('#modeLocal');
   const load = Date.now() - t0;
+  await page.click('#modeLocal');
+  await page.waitForSelector('#start');
   // 観戦の1戦：速さ5で決着まで
   await page.selectOption('#control', 'watch');
   await page.click('#start');
@@ -34,7 +36,11 @@ for (const sample of SAMPLES) {
   const battle = Date.now() - b0;
   const result = (await page.textContent('.result h2')).trim();
   await page.click('.result button');
-  // 戦略の観戦：12か月を2回
+  // 戦略の観戦：12か月を2回（編成 →「モードを選ぶ」→ 国モード → 国を選ばず観戦）
+  await page.waitForSelector('#start');
+  await page.click('#toModes');
+  await page.waitForSelector('#modeNation');
+  await page.click('#modeNation');
   await page.waitForSelector('#campaignWatch');
   await page.click('#campaignWatch');
   await page.waitForSelector('#run');

@@ -4,6 +4,8 @@
 
 読んだもの：ima-rpg の `docs/HEX.md`（ブランチ proto-v0.1）と、セーブを書くコード（`src/game/state.ts`・`persist.ts`・`command.ts`・`companions.ts`・`era/era.ts`）。
 
+**2026-10-16 更新**：ima-rpg が HEX.md（proto-v0.1、コミット 1b2d0b8）を、下の「追記案」どおりに書き直した。読み込みを作るときは HEX.md を正とする。この文書と食い違う所は HEX.md に合わせた（兵種の対応・部将の `hexUnit`・戦えない状態）。
+
 ## セーブの形（ima-rpg 側の今のコードから）
 
 - ファイル：gzip した JSON `{ format: "ima-rpg", game, hist }`。
@@ -11,7 +13,8 @@
 - `game`：`GameState`。主なもの：
   - `version`（今は 1）、`eraId`（`sengoku`・`shunju`・`generic`）、`day`、`tick0`（始めたときの hist-sim の月）、`place.prov`（いる領）。
   - `player`：`name`・`sex`・`hp/maxHp`・`fame`・`money`・`patron`（仕える国、0 は無し）・`rank`・`skills`（`{blade, bow, speech, letters, trade, medicine, stealth, theft}` それぞれ `{lv: 0〜100, xp}`）・`arts`（k と x の ID）・`mp`・`troop`・`companions`。
-  - `troop`：`{ men, loyalty, lts: [{id, name, type, xp, lv(1〜9)}], battles, won, cap }`。`type` は時代の兵種（foot・archer・gun・horse・chariot）。
+  - `troop`：`{ men, loyalty, lts: [{id, name, type, xp, lv(1〜9), hexUnit}], battles, won, cap }`。`type` は時代の兵種（foot・archer・gun・horse・chariot）。`hexUnit` は hex-sim の兵種 ID（書き出したセーブにだけ付く。無い古いセーブは下の表で `type` から引く）。
+  - `player.jail`：獄にいるとき `{ until, prov }`。有れば主人公は戦えない（ima-rpg に深手は無い）。
   - `companions[]`：`{ name, sex, age, job, pid?, blade, bow, medicine, speech（0〜100）, hp, maxHp, loyalty, arts? }`。
 
 ## 読み込みの流れ（案）
@@ -21,7 +24,7 @@
 3. 版は `eraId` から：`sengoku` → 日本版（jp）、`shunju` → 中国版（cn）、ほか → hist-sim のセーブの決まりどおり。
 4. 主人公を武将にして、`patron` の勢力（hist-sim の国 ID ＝ hex-sim の勢力 ID）に加える。いる領は `place.prov`（その勢力の領でなければ本拠）。`patron` が 0（浪人）なら、読み込んだあとに仕官先の勢力を選んでもらう（勢力の一覧から選び、その勢力の本拠か、いる領に近い領に加わる）。
 5. 仲間を武将にする。`pid` があり、変換した世界にその人物がいれば、その武将を主人公の勢力に移す（能力は hist-sim の値のまま）。`pid` が無ければ、下の換算で作る。
-6. 部将（`troop.lts`）を兵1隊ずつにして、主人公（入りきらなければ仲間）に付ける。主人公自身の隊も1隊（剣術が弓術より上なら槍、下なら弓）。
+6. 部将（`troop.lts`）を兵1隊ずつにして、主人公（入りきらなければ仲間）に付ける。兵種は `hexUnit`（無ければ下の表）。主人公自身の隊も1隊（剣術が弓術より上なら槍、下なら弓）。`player.jail` があれば、主人公は深手と同じ扱い（その間は戦えない）。
 7. あとは今の戦略・戦闘のまま。戦いの結果（レベル、兵の損害、技の習得）は ima-rpg に書き戻さない（hex-sim の中だけで進む。続きは hex-sim のセーブ .hexsim に残る）。
 
 ## 換算（案。数は data/system に置いて調整できるようにする）
@@ -52,14 +55,14 @@
 | foot | u01b 足軽槍組 | u01b 戈兵 |
 | archer | u06a 弓足軽 | **u04a 弩兵**（u06a は「弓兵」） |
 | gun | u04a 鉄砲足軽 | ―（u04a は中国版では弩兵） |
-| horse | u07b 騎馬隊（「騎馬武者」の名は u13a） | u07b 騎兵 |
+| horse | **u13a 騎馬武者**（HEX.md の決定。ima-rpg の兵の名が騎馬武者のため） | u07b 騎兵 |
 | chariot | ― | u13a 戦車 |
 
 u04a と u13a は、同じ ID で日本版と中国版の兵種が違う（鉄砲足軽／弩兵、騎馬武者／戦車）。対応は版ごとに分けて持つのがよい。
 
-## ima-rpg の docs/HEX.md への追記案
+## ima-rpg の docs/HEX.md への追記案（2026-10-16、すべて反映された）
 
-以下を HEX.md に足してもらえると、hex-sim 側の読み込みが確実になる。
+以下を HEX.md に足してほしいと頼んだ。ima-rpg の proto-v0.1 の HEX.md に、すべて入った（`hist` の形、版ごとの兵種の対応、`skills` は `{lv, xp}`、`place.prov`、部将の `hexUnit`、戦えない状態、版の変更点）。
 
 1. **`hist` の中身をはっきり書く**：`hist` は文字列で、hist-sim の「.json のセーブ」と同じ形（`{format, version, world, …}`、型付き配列は `{__ta, b64}`）であること。hex-sim は今の読み込み（`readSaveFile(…, plain)`）でそのまま読む。形が違う（走っている世界の生の写しなど）なら、その形を書いてほしい。
 2. **兵種の対応を版ごとに**：上の表のとおり、中国版の archer（弩兵）は u04a、日本版の horse を「騎馬武者」とするなら u13a。`eraId` ごとの表にしてほしい。

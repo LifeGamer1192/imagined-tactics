@@ -39,7 +39,12 @@ for (const [tag, name] of LIST) {
   await page.waitForSelector('[data-sample]');
   await fits('題の画面');
   await page.tap('[data-sample="sengoku_fid5_1575"]');
-  await page.waitForSelector('#campaign');
+  await page.waitForSelector('#modeLocal');
+  await idle();
+  await fits('モードを選ぶ画面');
+  await shot('0_modes');
+  await page.tap('#modeLocal');
+  await page.waitForSelector('#start');
   await idle();
   await fits('編成の画面');
   await shot('1_setup');
@@ -130,11 +135,18 @@ for (const [tag, name] of LIST) {
     ok('「ターン終了」で相手が動き、自分の番に戻る', true);
     await shot('3_battle');
     await page.tap('#quit'); await page.tap('.confirm [data-a="ok"]');
-    await page.waitForSelector('#campaign');
+    await page.waitForSelector('#start');
     await idle();
   }
 
-  // ---- 戦略
+  // ---- 戦略（編成 →「モードを選ぶ」→ 国モード → 国を選ぶ画面）
+  await page.tap('#toModes');
+  await page.waitForSelector('#modeNation');
+  await page.tap('#modeNation');
+  await page.waitForSelector('#campaign');
+  await idle();
+  await fits('国を選ぶ画面');
+  await shot('1b_nations');
   await page.tap('#campaign');
   await page.waitForSelector('#next');
   await idle();

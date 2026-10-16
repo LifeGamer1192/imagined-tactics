@@ -19,6 +19,8 @@ page.on('dialog', (d) => d.accept());
 
 await page.goto(url);
 await page.click('[data-sample="sengoku_fid5_1575"]');
+await page.waitForSelector('#modeLocal');
+await page.click('#modeLocal');
 await page.waitForSelector('#start');
 await page.click('#start');
 await page.waitForSelector('#watch');

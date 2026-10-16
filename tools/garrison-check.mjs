@@ -15,6 +15,8 @@ const ok = (name, v, extra = '') => { if (!v) ng++; console.log(v ? 'OK ' : 'NG 
 const idle = () => page.waitForFunction(() => !document.querySelector('.busy'));
 await page.goto(process.env.HEX_URL ?? 'http://localhost:5183/');
 await page.click('[data-sample="sengoku_fid5_1575"]');
+await page.waitForSelector('#modeNation');
+await page.click('#modeNation');
 await page.waitForSelector('#campaign');
 await idle();
 await page.click('#campaign');

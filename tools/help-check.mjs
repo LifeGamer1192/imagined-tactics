@@ -54,17 +54,27 @@ for (const [label, viewport] of [['pc', { width: 1280, height: 800 }], ['sp', { 
   await page.click('.help-close');
   check(`${label} 「閉じる」で閉じる`, !(await open()));
 
-  // 編成：右下のボタンと重ならない
-  await page.click('[data-sample="sengoku_fid5_1575"]');
-  await page.waitForSelector('#start');
-  const clear = await page.evaluate(() => {
+  // モード選び・国選び・編成：右下のボタンと重ならない
+  const clear = () => page.evaluate(() => {
     const h = document.querySelector('.help-btn').getBoundingClientRect();
     return [...document.querySelectorAll('#app button, #app select, #app input')].every((el) => {
       const r = el.getBoundingClientRect();
       return r.width === 0 || r.right <= h.left || r.left >= h.right || r.bottom <= h.top || r.top >= h.bottom;
     });
   });
-  check(`${label} 編成の画面で「？」が操作の上に重ならない`, clear);
+  await page.click('[data-sample="sengoku_fid5_1575"]');
+  await page.waitForSelector('#modeLocal');
+  check(`${label} モードを選ぶ画面で「？」が操作の上に重ならない`, await clear());
+  await shot('modes');
+  await page.click('#modeNation');
+  await page.waitForSelector('#campaign');
+  check(`${label} 国を選ぶ画面で「？」が操作の上に重ならない`, await clear());
+  await shot('nations');
+  await page.click('#toModes');
+  await page.waitForSelector('#modeLocal');
+  await page.click('#modeLocal');
+  await page.waitForSelector('#start');
+  check(`${label} 編成の画面で「？」が操作の上に重ならない`, await clear());
   await shot('setup');
 
   // 戦闘：開くと戦闘のタブ。Esc は案内だけを閉じ、選んだユニットはそのまま
@@ -77,7 +87,7 @@ for (const [label, viewport] of [['pc', { width: 1280, height: 800 }], ['sp', { 
   await page.keyboard.press('Escape');
   check(`${label} 戦闘の画面でも Esc で閉じる`, !(await open()));
   await page.click('#quit'); await page.click('.confirm [data-a="ok"]');
-  await page.waitForSelector('#campaign');
+  await page.waitForSelector('#start');
 
   // 中国版：能力値の名前が今の版になる
   await page.selectOption('#variant', 'cn');
@@ -90,7 +100,11 @@ for (const [label, viewport] of [['pc', { width: 1280, height: 800 }], ['sp', { 
   await page.selectOption('#variant', 'jp');
   await page.waitForSelector('#start');
 
-  // 戦略：開くと戦略のタブ
+  // 戦略：開くと戦略のタブ（編成 →「モードを選ぶ」→ 国モード → 始める）
+  await page.click('#toModes');
+  await page.waitForSelector('#modeNation');
+  await page.click('#modeNation');
+  await page.waitForSelector('#campaign');
   await page.click('#campaign');
   await page.waitForSelector('#next');
   await page.waitForTimeout(800);

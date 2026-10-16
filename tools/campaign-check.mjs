@@ -11,6 +11,8 @@ for (const vp of [{ width: 1280, height: 800 }, { width: 390, height: 780 }]) {
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(process.env.HEX_URL ?? 'http://localhost:5183/');
   await page.click('[data-sample="sengoku_fid5_1575"]');
+  await page.waitForSelector('#modeNation');
+  await page.click('#modeNation');
   await page.waitForSelector('#campaign');
   await page.click('#campaign');
   await page.waitForSelector('#next');

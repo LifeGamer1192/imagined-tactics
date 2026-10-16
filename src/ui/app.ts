@@ -5,7 +5,7 @@ import { personalityLabel, personalityOf } from '../ai/personality';
 import { apply, canAct, canMove, moveCells } from '../battle/engine';
 import { mapFromProvince } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
-import { newCampaign, S, type Difficulty } from '../strategy/campaign';
+import { newCampaign, S, traitsOf, type Difficulty } from '../strategy/campaign';
 import { CampaignScreen } from './campaignUi';
 import { restore, type HexSave } from '../persist/save';
 import { anySlot, openSaveMenu, readHexSaveFile } from './saveMenu';
@@ -95,6 +95,8 @@ export class App {
   /** 戦略の難しさ（編成画面で選ぶ） */
   private difficulty: Difficulty = 'normal';
   private setup = { attacker: 0, defender: 0, picks: [[], []] as [string[], string[]], control: 'attack' as Control };
+  /** 国モードで選んでいる国 */
+  private nation = 0;
   private battleDone: ((st: BattleState) => BattleSummary | null) | null = null;
   private battleBack: { label: string; fn: () => void } = { label: '戻る', fn: () => this.setupScreen() };
   private allowQuit = true;
@@ -182,15 +184,17 @@ export class App {
     }
   }
 
-  private rebuild(): void {
+  /** 読み込んだ世界から作り直して、画面を出す（next：出す画面。名前の版を変えたときは、今の画面のまま） */
+  private rebuild(next: 'mode' | 'nation' | 'local' = 'mode'): void {
     setVariant(this.variant);
     this.gs = convert(this.save!, { variant: this.variant });
     const facs = this.factionsBySize();
     this.setup.attacker = facs[0].id;
     this.setup.defender = (facs[1] ?? facs[0]).id;
     this.autoPick();
-    this.setupScreen();
-    // 編成を選んでいる間に、戦略マップの下ごしらえを進めておく（戦略を始めたときに、すぐ地図が出る）
+    if (!this.gs.factions[this.nation]) this.nation = facs[0].id;
+    if (next === 'nation') this.nationScreen(); else if (next === 'local') this.setupScreen(); else this.modeScreen();
+    // モードや国を選んでいる間に、戦略マップの下ごしらえを進めておく（戦略を始めたときに、すぐ地図が出る）
     prewarm(this.save!.world);
   }
 
@@ -223,27 +227,122 @@ export class App {
       <span class="troops">${troops}</span></span></label>`;
   }
 
-  private setupScreen(): void {
+  /** モード選択・国選び・局地戦の編成に共通の、画面の上の帯 */
+  private headerHtml(back: 'save' | 'modes'): string {
+    const gs = this.gs!, facs = this.factionsBySize();
+    return `<header>
+          <b>${esc(gs.worldName.ja)}</b> ${gs.year < 0 ? `前${-gs.year + 1}` : gs.year}年${gs.month}月
+          <span class="dim">勢力${facs.length}・武将${Object.values(gs.generals).filter((g) => g.faction).length}・浪人${generalsOf(gs, 0).length}</span>
+          <span class="spacer"></span>
+          名前の版 <select id="variant"><option value="jp" ${this.variant === 'jp' ? 'selected' : ''}>日本版</option><option value="cn" ${this.variant === 'cn' ? 'selected' : ''}>中国版</option></select>
+          <button id="bgmBtn" title="曲の音量（押すたびに切・小・中・大）">曲：${BGM_LEVEL_NAME[bgmLevel()]}</button>
+          ${back === 'save' ? '<button id="back">別のセーブ</button>' : '<button id="toModes">モードを選ぶ</button>'}
+        </header>`;
+  }
+
+  /** 上の帯のボタン（名前の版・曲・戻る）。screen：名前の版を変えたあとに出し直す画面 */
+  private bindHeader(screen: 'mode' | 'nation' | 'local'): void {
+    const q = <E extends HTMLElement>(s: string) => this.root.querySelector<E>(s);
+    q<HTMLSelectElement>('#variant')!.onchange = (e) => { this.variant = (e.target as HTMLSelectElement).value as Variant; this.rebuild(screen); };   // 0.1秒ほどで終わるので、表示は出さない
+    q<HTMLButtonElement>('#bgmBtn')!.onclick = (e) => { setBgmLevel((bgmLevel() + 1) % BGM_LEVEL_NAME.length); (e.currentTarget as HTMLButtonElement).textContent = `曲：${BGM_LEVEL_NAME[bgmLevel()]}`; };
+    const back = q<HTMLButtonElement>('#back');
+    if (back) back.onclick = async () => {
+      if (await confirmBox(this.root.querySelector('.setup')!, { title: '別のセーブを選ぶ', body: '<p>題の画面に戻って、別のセーブを読み込みます。</p>', ok: '題の画面へ', cancel: 'やめる', danger: true })) this.titleScreen();
+    };
+    const toModes = q<HTMLButtonElement>('#toModes');
+    if (toModes) toModes.onclick = () => this.modeScreen();
+  }
+
+  private enterSetupLike(): void {
     document.body.classList.remove('title');
     // 編成の画面には、陣営の絵を暗く敷く（日本版は陣幕、中国版は戦車の陣）
     setScene(sceneUrl('setup', this.variant));
     bgm('title');
-    const gs = this.gs!;
     cancelAnimationFrame(this.aiTimer); clearTimeout(this.aiTimer);
+  }
+
+  // ------------------------------------------------------------ モードを選ぶ
+
+  /** 世界を読み込んだあとの最初の画面：国モードか局地戦モードかを選ぶ */
+  private modeScreen(): void {
+    this.enterSetupLike();
+    const gs = this.gs!;
+    this.root.innerHTML = `
+      <div class="setup modes">
+        ${this.headerHtml('save')}
+        <h2 class="modes-title">遊び方を選ぶ</h2>
+        <div class="mode-cards">
+          <button class="mode-card" id="modeNation">
+            <span class="mode-kind">国モード</span>
+            <b>国を選ぶ</b>
+            <span class="mode-text">一つの国の主になって、領を取り合い、天下を目指します。月ごとに武将を動かし、兵を集め、普請や外交をして、攻め込み・攻められれば戦います。</span>
+          </button>
+          <button class="mode-card" id="modeLocal">
+            <span class="mode-kind">局地戦モード</span>
+            <b>局地戦を1戦だけ遊ぶ</b>
+            <span class="mode-text">攻め手と守り手の勢力と武将を選んで、1戦だけ戦います。戦いの結果は、ほかに持ち越しません。</span>
+          </button>
+        </div>
+        ${gs.log.length ? `<details class="dim"><summary>変換の記録（${gs.log.length}件）</summary>${gs.log.map(esc).join('<br>')}</details>` : ''}
+      </div>`;
+    this.bindHeader('mode');
+    this.root.querySelector<HTMLButtonElement>('#modeNation')!.onclick = () => this.nationScreen();
+    this.root.querySelector<HTMLButtonElement>('#modeLocal')!.onclick = () => this.setupScreen();
+  }
+
+  // ------------------------------------------------------------ 国を選ぶ（国モード）
+
+  private nationScreen(): void {
+    this.enterSetupLike();
+    const gs = this.gs!, facs = this.factionsBySize();
+    if (!gs.factions[this.nation]) this.nation = facs[0].id;
+    const row = (f: (typeof facs)[number]): string => {
+      const lord = gs.generals[f.lordId], provs = gs.provinces.filter((p) => p.owner === f.id).length;
+      const cap = gs.provinces[f.capital]?.name.ja ?? '';
+      const traits = traitsOf(f).map((t) => t.name).join('・');
+      return `<label class="nation ${f.id === this.nation ? 'on' : ''}"><input type="radio" name="nation" value="${f.id}" ${f.id === this.nation ? 'checked' : ''}>
+        <span class="swatch" style="background:rgb(${f.color.join(',')})"></span>
+        <span><b>${esc(f.name.ja)}</b> <span class="dim">本拠 ${esc(cap)}</span><br>
+        <span class="dim">領${provs}・武将${generalsOf(gs, f.id).length}・兵糧${Math.round(f.supply)}${lord ? `・当主 ${esc(lord.name.ja)} Lv${lord.level}` : ''}${traits ? `・特色 ${esc(traits)}` : ''}</span></span></label>`;
+    };
+    this.root.innerHTML = `
+      <div class="setup nations">
+        ${this.headerHtml('modes')}
+        <h2 class="modes-title">国を選ぶ <span class="dim small">（国モード）</span></h2>
+        <p class="dim">主になる国を選んでください。大きな国ほど楽に、小さな国ほど難しくなります。</p>
+        <div class="nation-list">${facs.map(row).join('')}</div>
+        <footer>
+          <select id="difficulty" title="戦略の難しさ：自分の収入と領の落ちにくさ、相手の攻めやすさが変わる">${(['easy', 'normal', 'hard'] as const).map((d) => `<option value="${d}" ${this.difficulty === d ? 'selected' : ''}>難しさ：${S.difficulty[d].name}</option>`).join('')}</select>
+          <span class="spacer"></span>
+          <button id="campaignWatch" title="どの国も選ばず、国どうしの取り合いを見る">国を選ばず観戦する</button>
+          <button id="campaign" class="primary">${esc(gs.factions[this.nation].name.ja)}で始める</button>
+        </footer>
+      </div>`;
+    this.bindHeader('nation');
+    this.root.querySelectorAll<HTMLInputElement>('input[name="nation"]').forEach((r) => {
+      r.onchange = () => {
+        this.nation = Number(r.value);
+        this.root.querySelectorAll('.nation').forEach((el) => el.classList.toggle('on', el.contains(r)));
+        this.root.querySelector<HTMLButtonElement>('#campaign')!.textContent = `${gs.factions[this.nation].name.ja}で始める`;
+      };
+    });
+    this.root.querySelector<HTMLSelectElement>('#difficulty')!.onchange = (e) => { this.difficulty = (e.target as HTMLSelectElement).value as Difficulty; };
+    this.root.querySelector<HTMLButtonElement>('#campaign')!.onclick = () => busy('戦略を始めています…', () => this.startCampaign(this.nation));
+    this.root.querySelector<HTMLButtonElement>('#campaignWatch')!.onclick = () => busy('戦略を始めています…', () => this.startCampaign(0));
+  }
+
+  // ------------------------------------------------------------ 局地戦の編成（局地戦モード）
+
+  private setupScreen(): void {
+    this.enterSetupLike();
+    const gs = this.gs!;
     const facs = this.factionsBySize();
     const opts = (sel: number) => facs.map((f) => `<option value="${f.id}" ${f.id === sel ? 'selected' : ''}>${esc(f.name.ja)}（武将${generalsOf(gs, f.id).length}）</option>`).join('');
     const def = gs.factions[this.setup.defender];
     const place = gs.provinces[def.capital]?.name.ja ?? '';
     this.root.innerHTML = `
       <div class="setup">
-        <header>
-          <b>${esc(gs.worldName.ja)}</b> ${gs.year < 0 ? `前${-gs.year + 1}` : gs.year}年${gs.month}月
-          <span class="dim">勢力${facs.length}・武将${Object.values(gs.generals).filter((g) => g.faction).length}・浪人${generalsOf(gs, 0).length}</span>
-          <span class="spacer"></span>
-          名前の版 <select id="variant"><option value="jp" ${this.variant === 'jp' ? 'selected' : ''}>日本版</option><option value="cn" ${this.variant === 'cn' ? 'selected' : ''}>中国版</option></select>
-          <button id="bgmBtn" title="曲の音量（押すたびに切・小・中・大）">曲：${BGM_LEVEL_NAME[bgmLevel()]}</button>
-          <button id="back">別のセーブ</button>
-        </header>
+        ${this.headerHtml('modes')}
         <div class="cols">
           ${([0, 1] as Side[]).map((s) => `
             <section>
@@ -261,21 +360,9 @@ export class App {
           </select>
           <button id="start" class="primary">戦闘開始</button>
         </footer>
-        <footer>
-          <span class="dim">上は1戦だけの合戦。領を取り合う戦略で遊ぶなら：</span>
-          <span class="spacer"></span>
-          <select id="difficulty" title="戦略の難しさ：自分の収入と領の落ちにくさ、相手の攻めやすさが変わる">${(['easy', 'normal', 'hard'] as const).map((d) => `<option value="${d}" ${this.difficulty === d ? 'selected' : ''}>難しさ：${S.difficulty[d].name}</option>`).join('')}</select>
-          <button id="campaign">攻め手の勢力で戦略を始める</button>
-          <button id="campaignWatch">観戦で戦略を始める</button>
-        </footer>
-        ${gs.log.length ? `<details class="dim"><summary>変換の記録（${gs.log.length}件）</summary>${gs.log.map(esc).join('<br>')}</details>` : ''}
       </div>`;
     const q = <E extends HTMLElement>(s: string) => this.root.querySelector<E>(s)!;
-    q<HTMLSelectElement>('#variant').onchange = (e) => { this.variant = (e.target as HTMLSelectElement).value as Variant; this.rebuild(); };   // 0.1秒ほどで終わるので、表示は出さない
-    q<HTMLButtonElement>('#back').onclick = async () => {
-      if (await confirmBox(this.root.querySelector('.setup')!, { title: '別のセーブを選ぶ', body: '<p>題の画面に戻って、別のセーブを読み込みます。いまの編成は残りません。</p>', ok: '題の画面へ', cancel: 'やめる', danger: true })) this.titleScreen();
-    };
-    q<HTMLButtonElement>('#bgmBtn').onclick = (e) => { setBgmLevel((bgmLevel() + 1) % BGM_LEVEL_NAME.length); (e.currentTarget as HTMLButtonElement).textContent = `曲：${BGM_LEVEL_NAME[bgmLevel()]}`; };
+    this.bindHeader('local');
     q<HTMLSelectElement>('#control').onchange = (e) => { this.setup.control = (e.target as HTMLSelectElement).value as Control; };
     this.root.querySelectorAll<HTMLSelectElement>('[data-fac]').forEach((sel) => {
       sel.onchange = () => {
@@ -295,9 +382,6 @@ export class App {
         this.setup.picks[side] = list;
       };
     });
-    q<HTMLSelectElement>('#difficulty').onchange = (e) => { this.difficulty = (e.target as HTMLSelectElement).value as Difficulty; };
-    q<HTMLButtonElement>('#campaign').onclick = () => busy('戦略を始めています…', () => this.startCampaign(this.setup.attacker));
-    q<HTMLButtonElement>('#campaignWatch').onclick = () => busy('戦略を始めています…', () => this.startCampaign(0));
     q<HTMLButtonElement>('#start').onclick = () => {
       if (this.setup.attacker === this.setup.defender) { toast('攻め手と守り手に同じ勢力は選べません'); return; }
       if (!this.setup.picks[0].length || !this.setup.picks[1].length) { toast('武将を1人以上選んでください'); return; }
