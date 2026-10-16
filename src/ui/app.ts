@@ -30,7 +30,7 @@ import { NationMap } from '../render/nationMap';
 
 import {
   canUseSkill, canUseTactic, forecastSkill, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
-  tacticSuccess, tacticTargetCells, tacticVictims,
+  tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { unitAt } from '../rules/move';
 import { affinityOf, agility, attackPower, basicSkill, defense, FIELD, intellect, moveOf, outOfCommand, skillOf, supplyMultOf, terrainMod } from '../rules/stats';
@@ -47,7 +47,7 @@ const SAMPLES: [string, string][] = [
   ['rome_fid3_212bc', 'ローマ 前212年'],
   ['invented_archipelago_y30', '架空の多島海 30年目'],
 ];
-type Mode = { type: 'idle' } | { type: 'skill'; id: string } | { type: 'tactic'; id: string };
+type Mode = { type: 'idle' } | { type: 'skill'; id: string } | { type: 'tactic'; id: string } | { type: 'breach'; id: '' };
 type Control = 'attack' | 'defend' | 'both' | 'watch';
 /** おまかせの陣営が1手ごとに空ける間（ミリ秒）。速さ1〜5 */
 const AI_DELAY = [900, 500, 260, 110, 0];
@@ -550,12 +550,11 @@ export class App {
     const armed = touch && this.hoverCell === cell;
     if (touch) this.hoverCell = cell;
     if (u && this.isHumanTurn() && this.mode.type !== 'idle') {
-      const targets = this.mode.type === 'skill' ? skillTargetCells(st, u, skillOf(this.mode.id)) : tacticTargetCells(st, u, D.byTactic[this.mode.id]);
+      const targets = this.modeTargets(u);
       // 指のときは、1度目で見込みを出し、同じマスをもう1度押すと実行する
       if (touch && !armed && targets.includes(cell)) { this.refresh(); return; }
       if (targets.includes(cell)) {
-        const a: Action = this.mode.type === 'skill' ? { type: 'skill', unit: u.id, skill: this.mode.id, target: cell } : { type: 'tactic', unit: u.id, tactic: this.mode.id, target: cell };
-        this.act(a);
+        this.act(this.modeAction(u, cell)!);
       } else this.mode = { type: 'idle' };
       this.refresh();
       return;
@@ -849,6 +848,11 @@ export class App {
     const st = this.st!, u = this.sel();
     const none = { text: '', area: new Set<number>() };
     if (!u || this.mode.type === 'idle' || this.hoverCell < 0) return none;
+    if (this.mode.type === 'breach') {
+      if (!breachTargets(st, u).includes(this.hoverCell)) return none;
+      const s = st.structures![this.hoverCell], d = breachParts(st, u, this.hoverCell).base;
+      return { text: `${TERRAIN_NAME[s.kind]}：およそ${d}（耐久 ${s.hp}／${s.max}）${d >= s.hp ? '・壊れる見込み' : `・あと${Math.ceil(s.hp / d)}回ほど`}`, area: new Set([this.hoverCell]) };
+    }
     if (this.mode.type === 'skill') {
       const s = skillOf(this.mode.id);
       if (!skillTargetCells(st, u, s).includes(this.hoverCell)) return none;
@@ -882,6 +886,10 @@ export class App {
     const st = this.st!, u = this.sel();
     if (!u || this.mode.type === 'idle') return '';
     const pre = (t: string): string => `<div class="minfo">${esc(t)}</div>`;
+    if (this.mode.type === 'breach') {
+      const rows = breachTargets(st, u).map((c) => { const s = st.structures![c], d = breachParts(st, u, c).base; return `<tr><td>${TERRAIN_NAME[s.kind]}</td><td>${d}</td><td>${s.hp}／${s.max}</td><td>${d >= s.hp ? '壊れる' : `あと${Math.ceil(s.hp / d)}回`}</td></tr>`; });
+      return `<table class="expect"><tr><th>造り</th><th>ダメージ</th><th>耐久</th><th>見込み</th></tr>${rows.join('')}</table>` + pre('通常攻撃で、門・砦の門・柵を打って壊します。ダメージ＝威力 × 攻撃 ÷ 造りの防御（石火矢・大筒の系統は2倍、火の攻撃は1.5倍）。門と砦の門は、壊すまで攻め手は通れません。');
+    }
     if (this.mode.type === 'skill') {
       const s = skillOf(this.mode.id);
       const rows = skillTargetCells(st, u, s).map((cell) => unitAt(st, cell)).filter((t): t is BUnit => !!t && t.side !== u.side).map((t) => {
@@ -915,7 +923,7 @@ export class App {
       hover: this.hoverCell,
       move: u && human && this.mode.type === 'idle' ? new Set(moveCells(st, u)) : undefined,
       target: u && human && this.mode.type !== 'idle'
-        ? new Set(this.mode.type === 'skill' ? skillTargetCells(st, u, skillOf(this.mode.id)) : tacticTargetCells(st, u, D.byTactic[this.mode.id]))
+        ? new Set(this.modeTargets(u))
         : undefined,
       area: fc.area.size ? fc.area : undefined,
       commandOf: u ? st.units[u.leader] : this.inspect !== null ? st.units[st.units[this.inspect].leader] : undefined,
@@ -932,11 +940,14 @@ export class App {
         `<button data-${kind}="${id}" ${ok ? '' : 'disabled'} class="${this.mode.type === kind && this.mode.id === id ? 'on' : ''}" data-tip="${esc(kind === 'skill' ? skillTip(skillOf(id)) : tacticTip(D.byTactic[id]))}">${label}</button>`;
       actions += u.skills.map((id) => { const s = skillOf(id); return btn('skill', id, this.skillLabel(s), act && canUseSkill(st, u, s) && skillTargetCells(st, u, s).length > 0); }).join('');
       actions += u.tactics.map((id) => { const t = D.byTactic[id]; return btn('tactic', id, this.tacticLabel(t), act && canUseTactic(u, t) && tacticTargetCells(st, u, t).length > 0); }).join('');
+      const br = act ? breachTargets(st, u) : [];
+      if (br.length) actions += `<button data-breach="1" class="${this.mode.type === 'breach' ? 'on' : ''}" data-tip="届く所の門・砦の門・柵を通常攻撃で打って壊します。門と砦の門は、壊すまで攻め手は通れません。石火矢・大筒の系統は2倍、火の攻撃は1.5倍の力で壊します。壊れた門は道に、柵は平地になります。">壊す（門・柵） <small>${br.length}か所</small></button>`;
       actions += `<button id="wait" ${act ? '' : 'disabled'}>待機</button>`;
-      actions += `<button id="cancel">${this.mode.type !== 'idle' ? '技・軍略をやめる' : '選択を解く'}</button>`;
+      actions += `<button id="cancel">${this.mode.type !== 'idle' ? (this.mode.type === 'breach' ? '壊すのをやめる' : '技・軍略をやめる') : '選択を解く'}</button>`;
       if (this.undo && this.undo.unit === u.id && !u.acted) actions += `<button id="undo">移動を取り消す</button>`;
     }
-    const cell = this.hoverCell >= 0 ? `<div class="dim">マス：${TERRAIN_NAME[st.map.terrain[this.hoverCell]]}</div>` : '';
+    const hs = this.hoverCell >= 0 ? st.structures?.[this.hoverCell] : undefined;
+    const cell = this.hoverCell >= 0 ? `<div class="dim">マス：${TERRAIN_NAME[st.map.terrain[this.hoverCell]]}${hs ? `（耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}）` : ''}</div>` : '';
     this.root.querySelector('#panel')!.innerHTML = `
       <div class="turn" style="background:${SIDE_COLOR[st.turn]}">${esc(st.sideNames[st.turn])}の番 <small>${st.round}／${st.maxRounds}巡</small></div>
       ${this.skyLine()}
@@ -951,6 +962,7 @@ export class App {
       </div>`;
     this.root.querySelectorAll<HTMLButtonElement>('[data-skill]').forEach((b) => { b.onclick = () => { this.mode = { type: 'skill', id: b.dataset.skill! }; this.autoTarget(); this.showInfo(); }; });
     this.root.querySelectorAll<HTMLButtonElement>('[data-tactic]').forEach((b) => { b.onclick = () => { this.mode = { type: 'tactic', id: b.dataset.tactic! }; this.autoTarget(); this.showInfo(); }; });
+    this.root.querySelectorAll<HTMLButtonElement>('[data-breach]').forEach((b) => { b.onclick = () => { this.mode = { type: 'breach', id: '' }; this.autoTarget(); this.showInfo(); }; });
     const on = (id: string, fn: () => void) => { const b = this.root.querySelector<HTMLButtonElement>(id); if (b) b.onclick = fn; };
     on('#cancel', () => this.cancel());
     on('#wait', () => { this.act({ type: 'wait', unit: u!.id }); this.refresh(); });
@@ -999,13 +1011,30 @@ export class App {
     logEl.scrollTop = logEl.scrollHeight;
   }
 
+  /** いま選んでいる技・軍略・「壊す」の対象に選べるマス */
+  private modeTargets(u: BUnit): number[] {
+    const st = this.st!;
+    if (this.mode.type === 'skill') return skillTargetCells(st, u, skillOf(this.mode.id));
+    if (this.mode.type === 'tactic') return tacticTargetCells(st, u, D.byTactic[this.mode.id]);
+    if (this.mode.type === 'breach') return breachTargets(st, u);
+    return [];
+  }
+
+  /** いま選んでいるものを、そのマスに使う行動 */
+  private modeAction(u: BUnit, cell: number): Action | null {
+    if (this.mode.type === 'skill') return { type: 'skill', unit: u.id, skill: this.mode.id, target: cell };
+    if (this.mode.type === 'tactic') return { type: 'tactic', unit: u.id, tactic: this.mode.id, target: cell };
+    if (this.mode.type === 'breach') return { type: 'breach', unit: u.id, target: cell };
+    return null;
+  }
+
   /** 対象が自分のマスだけの技・軍略（周囲に効くもの）は、同じボタンを2回押すと使える */
   private autoTarget(): void {
     const st = this.st!, u = this.sel();
     if (!u || this.mode.type === 'idle') return;
-    const cells = this.mode.type === 'skill' ? skillTargetCells(st, u, skillOf(this.mode.id)) : tacticTargetCells(st, u, D.byTactic[this.mode.id]);
-    if (cells.length === 1 && cells[0] === u.pos) {
-      const a: Action = this.mode.type === 'skill' ? { type: 'skill', unit: u.id, skill: this.mode.id, target: u.pos } : { type: 'tactic', unit: u.id, tactic: this.mode.id, target: u.pos };
+    const cells = this.modeTargets(u);
+    if (this.mode.type !== 'breach' && cells.length === 1 && cells[0] === u.pos) {
+      const a = this.modeAction(u, u.pos)!;
       // 同じボタンをもう一度押すと使う（1回目は、効く範囲と予測を見せるだけ）
       if (this.armed === this.mode.id) { this.armed = null; this.act(a); }
       else { this.armed = this.mode.id; this.hoverCell = u.pos; toast('自分の周りに使います。もう一度同じボタンを押すか、自分のマスをクリックしてください'); }

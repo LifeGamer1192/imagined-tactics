@@ -39,7 +39,7 @@ export const SIDE_RGB: [RGB, RGB] = [VERMILION, INDIGO];
 export const TERRAIN_WASH: Record<TerrainKind, RGB> = {
   plain: [230, 226, 200], road: [232, 220, 190], bridge: [226, 212, 182], forest: [204, 212, 184], mountain: [210, 204, 192],
   swamp: [208, 214, 198], water: [196, 210, 214], castle: [238, 230, 212], town: [234, 224, 204], cliff: [176, 170, 160],
-  camp: [234, 224, 198], fort: [226, 214, 192], paddy: [206, 216, 190], wall: [200, 194, 182], gate: [228, 214, 186], tower: [222, 210, 188], desert: [232, 214, 170], snowfield: [238, 240, 240], void: [0, 0, 0],
+  camp: [234, 224, 198], fort: [226, 214, 192], paddy: [206, 216, 190], wall: [200, 194, 182], gate: [228, 214, 186], tower: [222, 210, 188], desert: [232, 214, 170], snowfield: [238, 240, 240], palisade: [222, 208, 180], lookout: [222, 210, 188], fortgate: [228, 214, 186], void: [0, 0, 0],
 };
 
 /** hist-sim の地形（Biome の番号）→ 戦略マップの淡い塗り */

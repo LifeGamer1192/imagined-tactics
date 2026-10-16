@@ -14,7 +14,7 @@ import { D } from '../data/db';
 import type { SkillDef, TacticDef } from '../data/types';
 import {
   canCounter, canUseSkill, canUseTactic, healAmount, hitChance, skillDamage, skillTargetCells, skillVictims,
-  tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims,
+  tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { MinHeap } from '../core/heap';
 import { reach, stepCost } from '../rules/move';
@@ -430,7 +430,13 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
         consider({ ...base, attack: heals ? 0 : r.value, support: heals ? r.value : 0, counter: r.counter }, { type: 'skill', unit: u.id, skill: sid, target: t });
       }
     }
-    for (const tid of u.tactics) {
+    // 造りを壊す（攻め手だけ）：閉じた門を開けると道が開くので、少し高く見る。相手を攻められるときは、ふつうそちらが勝つ
+    for (const cell of breachTargets(st, u)) {
+      const str = st.structures![cell], dmg = breachParts(st, u, cell).base;
+      let v = AI.castle.breach * Math.min(1, dmg / str.hp) + (dmg >= str.hp ? AI.castle.breachKill : 0);
+      if (str.closed) v *= AI.castle.breachClosed;
+      consider({ ...base, attack: v * (1 + urgent) }, { type: 'breach', unit: u.id, target: cell });
+    }    for (const tid of u.tactics) {
       const tac = D.byTactic[tid];
       if (!canUseTactic(u, tac)) continue;
       for (const t of tacticTargetCells(st, u, tac)) {

@@ -4,7 +4,7 @@ import { D } from '../data/db';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import {
   atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, skillTargetCells,
-  skillVictims, successParts, tacticParts, tacticTargetCells, tacticVictims,
+  skillVictims, successParts, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
 } from '../rules/combat';
 import { killExp } from '../rules/growth';
 import { reach, unitAt } from '../rules/move';
@@ -418,6 +418,14 @@ export function apply(st: BattleState, a: Action): boolean {
       closeAct(st, u, act);
       return true;
     }
+    case 'breach': {
+      if (!canAct(st, u) || !breachTargets(st, u).includes(a.target)) return false;
+      const act = openAct(st, u, 'breach', '', a.target, 0);
+      doBreach(st, u, a.target);
+      afterAction(st, u);
+      closeAct(st, u, act);
+      return true;
+    }
     case 'wait': {
       if (!canAct(st, u)) return false;
       const act = openAct(st, u, 'wait', '', u.pos, 0);
@@ -428,13 +436,32 @@ export function apply(st: BattleState, a: Action): boolean {
   }
 }
 
+/** 造りの名前（記録に出す） */
+const STRUCT_NAME: Record<string, string> = { gate: '門', fortgate: '砦の門', palisade: '柵' };
+
+/** 造りを壊す：乱数を掛けたダメージを耐久から引き、0になれば決まった地形（門は道、柵は平地）に変わる */
+function doBreach(st: BattleState, u: BUnit, cell: number): void {
+  const str = st.structures![cell];
+  const p = breachParts(st, u, cell);
+  const roll = st.rng.range(D.combat.randomMin, D.combat.randomMax);
+  const dmg = Math.max(1, Math.round(p.base * roll));
+  str.hp = Math.max(0, str.hp - dmg);
+  const what = STRUCT_NAME[str.kind] ?? str.kind;
+  log(st, 'breach', { uid: u.id, unit: u.name, what, dmg, hp: str.hp, max: str.max, cell, base: p.base, power: p.power, atk: Math.round(p.atk * 10) / 10, def: p.def, siege: p.siege, fire: p.fire, roll: Math.round(roll * 1000) / 1000 });
+  if (str.hp > 0) return;
+  st.map.terrain[cell] = str.rubble;
+  delete st.structures![cell];
+  st.mapVersion = (st.mapVersion ?? 0) + 1;
+  log(st, 'broken', { unit: u.name, uid: u.id, what, cell });
+}
+
 // ---------------------------------------------------------------- 細かい記録の見出し
 
 /**
  * 行動の見出し（'act'）を記録に足す。画面の「通常・詳細」の記録は、これを見出しにして、続く記録をひとまとめに出す。
  * side は、そのときの陣営（寝返り中は変わる）。mp は使った気力。
  */
-function openAct(st: BattleState, u: BUnit, kind: 'skill' | 'tactic' | 'wait', id: string, cell: number, mp: number): { at: number; exp: number } {
+function openAct(st: BattleState, u: BUnit, kind: 'skill' | 'tactic' | 'wait' | 'breach', id: string, cell: number, mp: number): { at: number; exp: number } {
   log(st, 'act', { uid: u.id, side: u.side, kind, id, cell, from: u.pos, mp, mpLeft: u.mp - mp, n: 0, exp: 0 });
   return { at: st.log.length - 1, exp: u.expGained };
 }

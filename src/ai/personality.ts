@@ -18,7 +18,7 @@ export interface AiConfig {
     attackerApproachFloor: number; generalSpread: number;
   };
   /** 天守の取り合い：攻め手が天守にいる値・天守へ近づく重み、守り手が天守を守る値と、その気になる敵の近さ */
-  castle: { hold: number; approach: number; guard: number; guardRange: number };
+  castle: { hold: number; approach: number; guard: number; guardRange: number; breach: number; breachKill: number; breachClosed: number };
 }
 export const AI = aiJson as unknown as AiConfig;
 

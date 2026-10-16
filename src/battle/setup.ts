@@ -5,7 +5,7 @@ import { personalityOf } from '../ai/personality';
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { stepCost } from '../rules/move';
-import type { BattleMap } from './map';
+import { BM, type BattleMap } from './map';
 import type { BUnit, BattleState, Side } from './types';
 import { skyFor, type Sky } from './weather';
 
@@ -53,6 +53,13 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
   // 古いデータで月が無くても動くよう、無ければ春（4月）として扱う
   const auto = skyFor(gs.month ?? 4, code);
   const weather = sky?.weather ?? auto.weather;
+  // 造りは戦いの中で壊れて地形が変わるので、地形は写して使う（同じマップを次の戦いに使っても元のまま）
+  map = { ...map, terrain: [...map.terrain] };
+  const structures: NonNullable<BattleState['structures']> = {};
+  map.terrain.forEach((k, i) => {
+    const s = k === 'gate' || k === 'fortgate' || k === 'palisade' ? BM.structures[k] : undefined;
+    if (s) structures[i] = { kind: k, hp: s.hp, max: s.hp, def: s.def, closed: s.closed, rubble: s.rubble };
+  });
   const st: BattleState = {
     // 雪の日は足が遅くなるぶん、戦いの上限を少し延ばす（攻め手が時間切れで負けやすくなりすぎないように）
     map, units: [], turn: 0, round: 1, maxRounds: maxRounds + (weather === 'snow' ? D.combat.weather.snowExtraRounds : 0), winner: null,
@@ -60,6 +67,7 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
     weather, night: sky?.night ?? auto.night,
     // 城の戦場：攻め手は天守を押さえ続ければ勝ち
     ...(map.seat !== undefined && map.holdTurns ? { hold: { cell: map.seat, need: map.holdTurns, count: 0 } } : {}),
+    ...(Object.keys(structures).length ? { structures, mapVersion: 0 } : {}),
   };
   const g = map.grid;
   const taken = new Set<number>();

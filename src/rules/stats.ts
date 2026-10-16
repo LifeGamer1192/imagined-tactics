@@ -172,7 +172,7 @@ export function fieldMult(st: BattleState, a: BUnit, id: string, range: [number,
 }
 const TERRAIN_LABEL: Partial<Record<TerrainKind, string>> = {
   plain: '草原', road: '道', bridge: '橋', forest: '森', mountain: '山', swamp: '湿地', water: '水の上', castle: '城', town: '街', cliff: '段差',
-  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓', desert: '荒れ地', snowfield: '雪原',
+  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓', desert: '荒れ地', snowfield: '雪原', palisade: '柵', lookout: '物見櫓', fortgate: '砦の門',
 };
 const WEATHER_LABEL: Record<string, string> = { clear: '晴れ', rain: '雨', fog: '霧', snow: '雪' };
 

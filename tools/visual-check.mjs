@@ -177,6 +177,32 @@ async function run(tag, ctxOpts) {
       ok(`[${tag}] 東寄りから攻めると攻め手が東の辺・城が西`, /東/.test(flipInfo.edge) && flipInfo.atkEast && flipInfo.castleWest, flipInfo.edge);
       await shot('battle_flipped');
     }
+    // 砦の戦場：柵・砦の門・物見櫓が描かれ、砦の門の隣の攻め手に「壊す」が出る
+    const fortInfo = await page.evaluate(async () => {
+      const { mapFromProvince } = await import('/src/battle/map.ts');
+      const { createBattle } = await import('/src/battle/setup.ts');
+      const a = window.__app, gs = a.gs, atk = gs.factions[a.setup.attacker], def = gs.factions[a.setup.defender];
+      const p = gs.provinces.find((x) => !x.out && x.owner === def.id && x.id !== def.capital) ?? gs.provinces[def.capital];
+      const map = mapFromProvince(a.save.world, p.id, { fort: 0.4, capital: false });
+      const st = createBattle(gs, map, a.setup.picks, 'fortview', [atk.name.ja, def.name.ja], undefined, { weather: 'clear', night: false });
+      a.openBattle(st, new Set([0]), () => null, { label: '編成に戻る', fn: () => a.setupScreen() }, true);
+      const g = map.grid, gate = map.terrain.indexOf('fortgate');
+      if (gate < 0) return null;
+      const spot = g.neighbors(gate).find((j) => map.terrain[j] !== 'palisade' && map.terrain[j] !== 'fort' && map.terrain[j] !== 'void' && map.depth[j] < map.depth[gate]);
+      for (const u of st.units) if (u.pos === spot) u.pos = st.map.spawn[u.side].find((i) => !st.units.some((x) => x.pos === i));
+      const t = st.units.find((u) => u.side === 0 && u.kind === 'troop' && u.alive);
+      t.pos = spot; a.selected = t.id; a.mode = { type: 'idle' }; a.refresh();
+      return { kinds: ['palisade', 'fortgate', 'lookout'].map((k) => map.terrain.includes(k)) };
+    });
+    if (fortInfo) {
+      await page.waitForTimeout(1900);
+      ok(`[${tag}] 砦の戦場に柵・砦の門・物見櫓`, fortInfo.kinds.every(Boolean), JSON.stringify(fortInfo.kinds));
+      ok(`[${tag}] 砦の門の隣の攻め手に「壊す」ボタン`, !!(await page.$('[data-breach]')));
+      await press('[data-breach]');
+      await page.waitForTimeout(250);
+      ok(`[${tag}] 壊すを選ぶと、造りの耐久と見込みの表`, /造り/.test((await page.textContent('table.expect').catch(() => '')) ?? ''));
+      await shot('battle_fort_breach');
+    }
     // 編成に戻るの窓
     await press('#quit');
     await page.waitForSelector('.confirm');

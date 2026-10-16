@@ -34,6 +34,8 @@ const TEXT: Record<string, string> = {
   'hold': '{unit}が天守を押さえている（{count}／{need}）',
   'holdLost': '{side}は天守から追い出された',
   'castleTaken': '{unit}が天守を落とした。{side}の勝ち',
+  'breach': '{unit}が{what}を打った（{dmg}。耐久 {hp}／{max}）',
+  'broken': '{unit}が{what}を打ち破った',
   'turn': '── {side}の番（{round}巡目）──',
 };
 

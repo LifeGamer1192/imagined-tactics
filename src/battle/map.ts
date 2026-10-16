@@ -34,7 +34,7 @@ export interface BattleMap {
 const LEGEND: Record<string, TerrainKind> = {
   '.': 'plain', '=': 'road', 'B': 'bridge', 'T': 'forest', '^': 'mountain', ',': 'swamp',
   '~': 'water', 'C': 'castle', 'W': 'town', '#': 'cliff',
-  'A': 'camp', 'F': 'fort', 'P': 'paddy', 'H': 'wall', 'G': 'gate', 'Y': 'tower', 'D': 'desert', 'S': 'snowfield', '_': 'void',
+  'A': 'camp', 'F': 'fort', 'P': 'paddy', 'H': 'wall', 'G': 'gate', 'Y': 'tower', 'D': 'desert', 'S': 'snowfield', 'L': 'palisade', 'O': 'lookout', 'Q': 'fortgate', '_': 'void',
 };
 export const TERRAIN_CHAR: Record<TerrainKind, string> = Object.fromEntries(Object.entries(LEGEND).map(([k, v]) => [v, k])) as Record<TerrainKind, string>;
 
@@ -96,6 +96,8 @@ export const BM = battlemapJson as unknown as {
   water: { seaMax: number; riverMax: number };
   unrest: { from: number; swamp: number; forest: number };
   buildings: Record<string, { name: string; text: string; income?: number; coastal?: boolean }>;
+  structures: Record<'gate' | 'fortgate' | 'palisade', { hp: number; def: number; rubble: TerrainKind; closed: boolean }> & { siegeLines: number[]; siegeMult: number; fireMult: number };
+  lookout: { fortFrom: number };
   build: { costs: Record<string, number>; fortStep: number; fortMax: number; fortCostBase: number; fortCostPerFort: number; aiChance: number; aiSupplyMonths: number };
 };
 
@@ -350,6 +352,17 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
   const roadSet = new Set([...road, ...road2]);
   const nearRoad = (i: number) => roadSet.has(i) || grid.neighbors(i).some((j) => roadSet.has(j));
   const taken = new Set<number>();
+  // 物見櫓：砦・城のある領は、まん中あたりの高い所に物見櫓（乗った側の飛び道具が強まる。攻め手が取れば攻め手が使える）
+  if (look.fort >= BM.lookout.fortFrom || look.capital) {
+    const lr = R('lookout'), score: Partial<Record<TerrainKind, number>> = { mountain: 3, forest: 2, plain: 1, paddy: 0.5, desert: 1, snowfield: 0.5 };
+    let best = -1, bestS = -1;
+    for (const i of board) {
+      if (D(i) < -1 || D(i) > 2 || nearRoad(i) || taken.has(i)) continue;
+      const s = (score[terrain[i]] ?? -1) + lr.float() * 0.9;
+      if (s > bestS) { bestS = s; best = i; }
+    }
+    if (best >= 0 && bestS > 0) { terrain[best] = 'lookout'; taken.add(best); features.push('物見櫓'); }
+  }
   for (const b of ['temple', 'monastery']) {
     if (!has(b)) continue;
     const tr = R(b), score: Partial<Record<TerrainKind, number>> = { mountain: 3, forest: 2, plain: 1, paddy: 1, swamp: 0.5 };
@@ -426,6 +439,23 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
     front.forEach((i) => { terrain[i] = 'camp'; });
     features.push('出丸');
   }
+  // 柵と砦の門：砦は、前と横を柵で囲み、街道の入口に砦の門（攻め手は壊さないと通れない）。陣は前に馬防柵。城壁の無い城は、城壁の代わりに柵を一列（街道は通す）
+  // 柵は、街のマスには立てない（家並みが柵の代わり）
+  const fenceable = (i: number) => onBoard(i) && i !== seat && !roadSet.has(i) && (OPEN.has(terrain[i]) || terrain[i] === 'camp' || terrain[i] === 'water');
+  let fenced = 0;
+  if (terrain[seat] === 'fort') {
+    const gateCell = road.find((i) => D(i) === D(seat) - 1);
+    for (const j of grid.neighbors(seat)) {
+      if (!onBoard(j) || D(j) > D(seat)) continue;
+      if (j === gateCell) { terrain[j] = 'fortgate'; features.push('砦の門'); continue; }
+      if (fenceable(j)) { terrain[j] = 'palisade'; fenced++; }
+    }
+  } else if (terrain[seat] === 'camp') {
+    for (const i of layer(RAD - 3)) if (Math.abs(L(i) - L(seat)) <= 3 && fenceable(i)) { terrain[i] = 'palisade'; fenced++; }
+  } else if (terrain[seat] === 'castle' && !siege) {
+    for (const i of layer(RAD - 4)) if (Math.abs(L(i) - L(seat)) <= 4 && fenceable(i)) { terrain[i] = 'palisade'; fenced++; }
+  }
+  if (fenced) features.push('柵');
   // 兵糧蔵：城のそばに陣を2つ（体力が回復する）
   if (has('granary')) {
     const near = grid.range(seat, 2, 1).filter((i) => behind(i) && (OPEN.has(terrain[i]) || terrain[i] === 'town'))
@@ -447,7 +477,7 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
 }
 
 /** 配置場所に使えない地形 */
-const BLOCKED_SPAWN = new Set<TerrainKind>(['water', 'cliff', 'wall', 'tower', 'void']);
+const BLOCKED_SPAWN = new Set<TerrainKind>(['water', 'cliff', 'wall', 'tower', 'void', 'palisade', 'lookout', 'fortgate']);
 
 /** 盤の各マスの、条件を満たすマス（陸）までの歩数 */
 function landDistance(grid: HexGrid, board: number[], isLand: (i: number) => boolean): number[] {

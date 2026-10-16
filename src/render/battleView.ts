@@ -19,12 +19,12 @@ const BAKE = 2;
 
 export const TERRAIN_NAME: Record<TerrainKind, string> = {
   plain: '草原', road: '道', bridge: '橋', forest: '森', mountain: '山', swamp: '湿地', water: '川・湖・海', castle: '城', town: '街', cliff: '段差',
-  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓', desert: '荒れ地', snowfield: '雪原', void: '盤の外',
+  camp: '陣', fort: '砦', paddy: '棚田', wall: '城壁', gate: '門', tower: '櫓', desert: '荒れ地', snowfield: '雪原', palisade: '柵', lookout: '物見櫓', fortgate: '砦の門', void: '盤の外',
 };
 /** 絵が無いときに代わりに書く字 */
 const GLYPH: Partial<Record<TerrainKind, string>> = {
   forest: '森', mountain: '山', swamp: '沼', castle: '城', town: '街', cliff: '崖', bridge: '橋',
-  camp: '陣', fort: '砦', paddy: '田', wall: '壁', gate: '門', tower: '櫓', desert: '荒', snowfield: '雪',
+  camp: '陣', fort: '砦', paddy: '田', wall: '壁', gate: '門', tower: '櫓', desert: '荒', snowfield: '雪', palisade: '柵', lookout: '物', fortgate: '門',
 };
 /** 地形の記号：絵の組、幅（マスの大きさに対する倍率）、種類を選ぶ候補 */
 const SYMBOL: Partial<Record<TerrainKind, { groups: string[]; w: number }>> = {
@@ -37,6 +37,8 @@ const SYMBOL: Partial<Record<TerrainKind, { groups: string[]; w: number }>> = {
   cliff: { groups: ['map/ink_hill'], w: 1.6 },
   wall: { groups: ['map/sym_wall'], w: 1.9 },
   tower: { groups: ['map/sym_palisade'], w: 1.15 },
+  palisade: { groups: ['map/sym_palisade'], w: 1.3 },
+  fortgate: { groups: ['map/sym_fortgate'], w: 1.5 },
 };
 
 /** 画面の演出。ゲームの状態（st）は先に確定していて、ここは見せ方だけを受け持つ。時刻は performance.now() のミリ秒 */
@@ -65,7 +67,7 @@ export type Fx =
   | { kind: 'hp'; unit: number; hp: number; t0: number; dur: number };
 /** 城壁・門・櫓の、版ごとの絵（public/art/map/jp・cn）。無ければ SYMBOL の絵や線で描く */
 const FORT_SYMBOL: Partial<Record<TerrainKind, { name: string; w: number }>> = {
-  wall: { name: 'sym_wall', w: 1.9 }, gate: { name: 'sym_gate', w: 1.7 }, tower: { name: 'sym_tower', w: 1.45 },
+  wall: { name: 'sym_wall', w: 1.9 }, gate: { name: 'sym_gate', w: 1.7 }, tower: { name: 'sym_tower', w: 1.45 }, lookout: { name: 'sym_lookout', w: 1.55 },
 };
 export const SIDE_COLOR = [css(SIDE_RGB[0]), css(SIDE_RGB[1])];
 
@@ -158,13 +160,19 @@ export class BattleView {
     // 草原の3枚目（枯れ草）は色が大きく違い、まだらに見えるので使わない
     if (k === 'plain') return art('hex/plain', v * 0.66);
     // 門は道の地に、門の形を描き足す
-    if (k === 'gate') return art('hex/road', v);
+    if (k === 'gate' || k === 'fortgate') return art('hex/road', v);
+    // 柵・物見櫓は、草原の地に記号を描く
+    if (k === 'palisade' || k === 'lookout') return art('hex/plain', v * 0.66);
     return art(`hex/${k}`, v);
   }
 
   /** 動かない層（紙、地形の塗り、道、記号）を先に描いておく */
+  /** 下の層を描いたときの、戦場の地形の版（造りが壊れると変わる） */
+  private bakedVersion = 0;
+
   private bake(): HTMLCanvasElement {
     const st = this.st!, g = st.map.grid;
+    this.bakedVersion = st.mapVersion ?? 0;
     const [w, h] = g.pixelSize(HEX);
     const c = this.base ?? document.createElement('canvas');
     c.width = Math.ceil(w * BAKE); c.height = Math.ceil(h * BAKE);
@@ -262,7 +270,7 @@ export class BattleView {
     for (let i = 0; i < g.n; i++) {
       const k = st.map.terrain[i];
       // 絵を敷いたマスには、記号を重ねない（橋だけは、水の絵の上に橋の記号を置く）
-      if (tiled[i] && k !== 'bridge' && k !== 'gate') continue;
+      if (tiled[i] && k !== 'bridge' && k !== 'gate' && k !== 'fortgate' && k !== 'palisade' && k !== 'lookout') continue;
       // 城壁・門・櫓は、名前の版（日本・中国）ごとの絵があればそれを使う
       const own = FORT_SYMBOL[k], ownGroup = own ? `map/${getVariant()}/${own.name}` : '';
       const sym = own && artCount(ownGroup) ? { groups: [ownGroup], w: own.w } : SYMBOL[k];
@@ -400,7 +408,8 @@ export class BattleView {
     ctx.setTransform(z, 0, 0, z, -this.cam.x * z, -this.cam.y * z);
     const g = st.map.grid;
     const [w, h] = g.pixelSize(HEX);
-    const base = this.baseDirty || !this.base ? this.bake() : this.base;
+    // 造りが壊れて地形が変わったら、下の層を描き直す
+    const base = this.baseDirty || !this.base || (st.mapVersion ?? 0) !== this.bakedVersion ? this.bake() : this.base;
     ctx.drawImage(base, 0, 0, w, h);
     // 紙のふち
     ctx.strokeStyle = 'rgba(24,22,20,0.7)'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, w, h);
@@ -408,6 +417,7 @@ export class BattleView {
     const shade = (cells: Set<number> | undefined, fill: string, stroke: string) => {
       if (!cells) return;
       for (const i of cells) {
+        if (st.map.terrain[i] === 'void') continue;
         const [x, y] = g.center(i, HEX);
         this.hexPath(ctx, x, y, HEX - 2);
         ctx.fillStyle = fill; ctx.fill();
@@ -420,6 +430,13 @@ export class BattleView {
     shade(this.hl.move, css(INDIGO, 0.22), css(INDIGO, 0.7));
     shade(this.hl.target, css(VERMILION, 0.26), css(VERMILION, 0.85));
     shade(this.hl.area, css(OCHRE, 0.4), css([150, 105, 30], 0.9));
+    // 造りの耐久：門・砦の門・柵の下に細い棒（傷んでいるときだけ）
+    for (const [cs, s] of Object.entries(st.structures ?? {})) {
+      if (s.hp >= s.max) continue;
+      const [x, y] = g.center(Number(cs), HEX), bw = HEX * 0.9, ratio = s.hp / s.max;
+      ctx.fillStyle = 'rgba(30,24,16,0.55)'; ctx.fillRect(x - bw / 2, y + HEX * 0.62, bw, 5);
+      ctx.fillStyle = css(ratio > 0.5 ? OCHRE : VERMILION); ctx.fillRect(x - bw / 2, y + HEX * 0.62, bw * ratio, 5);
+    }
     // 天守：金の点線の輪と、押さえた巡の数（攻め手が押さえているときは朱）
     if (st.hold) {
       const [x, y] = g.center(st.hold.cell, HEX);

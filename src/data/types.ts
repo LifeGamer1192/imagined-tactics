@@ -9,6 +9,8 @@ export type TerrainKind = 'plain' | 'road' | 'bridge' | 'forest' | 'mountain' | 
   | 'camp' | 'fort' | 'paddy' | 'wall' | 'gate' | 'tower'
   /** 荒れ地（砂漠・寒冷砂漠・ツンドラ）と雪原（氷河） */
   | 'desert' | 'snowfield'
+  /** 柵（騎馬は通れない。攻め手が壊せる）・物見櫓（乗った側の飛び道具が強まる）・砦の門（攻め手は壊さないと通れない） */
+  | 'palisade' | 'lookout' | 'fortgate'
   /** 六角形の盤の外（長方形の隅）。入れず、描かない */
   | 'void';
 /** 天気。晴れは補正なし */

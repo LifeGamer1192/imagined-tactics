@@ -4,6 +4,13 @@
   "paddy": { "byIncome": [2, 8, 20], "aqueduct": 2, "unrest": 0.3 },
   "road": { "secondIncome": 15 },
   "water": { "seaMax": 0.25, "riverMax": 0.15 },
+  "structures": {
+    "gate": { "hp": 150, "def": 140, "rubble": "road", "closed": true },
+    "fortgate": { "hp": 90, "def": 110, "rubble": "road", "closed": true },
+    "palisade": { "hp": 60, "def": 80, "rubble": "plain", "closed": false },
+    "siegeLines": [10], "siegeMult": 2.0, "fireMult": 1.5
+  },
+  "lookout": { "fortFrom": 0.35 },
   "unrest": { "from": 0.2, "swamp": 0.25, "forest": 0.15 },
   "buildings": {
     "temple": { "name": "寺", "text": "戦場のまん中あたりの高い所に砦（寺）が建つ" },

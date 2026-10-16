@@ -244,6 +244,21 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
         lastImpact = when; gap(when);
         break;
       }
+      case 'breach': {
+        // 造りを打つ：マスが光り、ダメージの数字と打つ音
+        const cell = num(e.vars.cell);
+        if (cell < 0) break;
+        push({ kind: 'flash', cells: [cell], color: OCHRE, t0: at(t), dur: 320 * scale });
+        note(cell, String(num(e.vars.dmg)), OCHRE, false, t);
+        sound('hit', t);
+        lastImpact = t; t += T.strikeGap;
+        break;
+      }
+      case 'broken': {
+        const cell = num(e.vars.cell);
+        if (cell >= 0) { chip(cell, '打ち破った', VERMILION, t); sound('defeat', t); }
+        break;
+      }
       case 'miss': {
         if (uid < 0 || tid < 0) break;
         const when = attack(uid, tid, cur?.fx ?? fallback(uid, tid), false, true);

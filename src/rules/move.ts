@@ -20,6 +20,9 @@ export function unitAt(st: BattleState, pos: number): BUnit | undefined {
 /** 移動コスト（入れない地形は null） */
 export function stepCost(st: BattleState, u: BUnit, pos: number): number | null {
   const k = st.map.terrain[pos];
+  // 閉じた造り（門・砦の門）は、壊れるまで攻め手は通れない（守り手は通れる）
+  const s = st.structures?.[pos];
+  if (s && s.closed && u.side === 0) return null;
   const c = D.terrain.moveCost[k][affinityOf(u)];
   // 雪：道と建物のほかは、少し重くなる
   if (c !== null && st.weather === 'snow' && !D.terrain.snowFree.includes(k)) return c + D.combat.weather.snowMoveCost;

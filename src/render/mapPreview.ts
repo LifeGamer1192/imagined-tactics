@@ -6,10 +6,10 @@ import type { TerrainKind } from '../data/types';
 
 const COLOR: Record<TerrainKind, string> = {
   plain: '#d8d0a2', road: '#c4a46a', bridge: '#9c7444', forest: '#6e8c58', mountain: '#8c7f6a', swamp: '#7d988a', water: '#6a98b6',
-  castle: '#b23a2c', town: '#c8885a', cliff: '#544a42', camp: '#d2a23c', fort: '#9c5636', paddy: '#a2bd6c', wall: '#3e3834', gate: '#b8b0a0', tower: '#6a4c38', desert: '#e0c486', snowfield: '#f2f4f4', void: 'transparent',
+  castle: '#b23a2c', town: '#c8885a', cliff: '#544a42', camp: '#d2a23c', fort: '#9c5636', paddy: '#a2bd6c', wall: '#3e3834', gate: '#b8b0a0', tower: '#6a4c38', desert: '#e0c486', snowfield: '#f2f4f4', palisade: '#7a5a3a', lookout: '#8a5a30', fortgate: '#b8b0a0', void: 'transparent',
 };
 /** 下見の中に字を添えるマス */
-const MARK: Partial<Record<TerrainKind, string>> = { castle: '城', fort: '砦', camp: '陣', town: '街', gate: '門' };
+const MARK: Partial<Record<TerrainKind, string>> = { castle: '城', fort: '砦', camp: '陣', town: '街', gate: '門', fortgate: '門', lookout: '物', palisade: '柵' };
 
 /** 下見の絵（data URL）。size はマスの中心から角までの長さ */
 export function mapPreviewUrl(m: BattleMap, size = 10): string {

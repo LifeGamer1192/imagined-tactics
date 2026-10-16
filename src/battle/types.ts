@@ -1,7 +1,7 @@
 // 戦闘中の状態。画面には依存しない。
 
 import type { RNG } from '../core/rng';
-import type { Affinity, Passive, StatusId, TacticKind, Weather } from '../data/types';
+import type { Affinity, Passive, StatusId, TacticKind, TerrainKind, Weather } from '../data/types';
 import type { DamageParts, HealParts, HitParts, StatParts, SuccessParts, TacticParts } from '../rules/combat';
 import type { Personality } from '../ai/personality';
 import type { BattleMap } from './map';
@@ -154,6 +154,13 @@ export interface BattleState {
    * count が need に届くか、時間切れのとき天守に攻め手がいれば、攻め手の勝ち。城のある戦場だけ
    */
   hold?: { cell: number; need: number; count: number };
+  /**
+   * 壊せる造り（門・砦の門・柵）：マス → 種類・残りの耐久・もとの耐久・防御・閉じているか（閉じた造りは、攻め手は通れない）。
+   * 耐久が0になると、決まった地形（門は道、柵は平地）に変わる
+   */
+  structures?: Record<number, { kind: TerrainKind; hp: number; max: number; def: number; closed: boolean; rubble: TerrainKind }>;
+  /** 戦場の地形が変わった回数（造りが壊れると増える。描き直しの合図） */
+  mapVersion?: number;
 }
 
 export type Action =
@@ -161,4 +168,6 @@ export type Action =
   | { type: 'skill'; unit: number; skill: string; target: number }
   | { type: 'tactic'; unit: number; tactic: string; target: number }
   | { type: 'wait'; unit: number }
+  /** 造り（門・砦の門・柵）を壊す。通常攻撃の届くマスの、だれもいない造り */
+  | { type: 'breach'; unit: number; target: number }
   | { type: 'endTurn' };

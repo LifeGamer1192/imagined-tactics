@@ -3,9 +3,10 @@
 import type { BUnit, BattleState } from '../battle/types';
 import { D } from '../data/db';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
+import { BM } from '../battle/map';
 import { unitAt } from './move';
 import {
-  affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf, fieldMult, type FieldParts,
+  affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf, fieldMult, type FieldParts, basicSkill, attackKinds,
   tacticResist, terrainAt, terrainMod,
 } from './stats';
 
@@ -313,4 +314,30 @@ export function forecastSkill(st: BattleState, a: BUnit, skill: SkillDef, t: BUn
     ? { damage: skillDamage(st, t, basicOfTarget!, a, true), hit: hitChance(st, t, basicOfTarget!, a) }
     : null;
   return { damage: skillDamage(st, a, skill, t), hit: hitChance(st, a, skill, t), crit: critChance(a), counter };
+}
+
+// ---------------------------------------------------------------- 造りを壊す（門・砦の門・柵）
+
+/** 壊せる造りのマス：攻め手の駒の、通常攻撃の届くマスにある、だれもいない造り。守り手の駒は壊さない */
+export function breachTargets(st: BattleState, u: BUnit): number[] {
+  if (u.side !== 0 || !st.structures) return [];
+  const s = basicSkill(u);
+  if (!s || s.noDamage) return [];
+  const [min, max] = skillRange(st, u, s);
+  return st.map.grid.range(u.pos, max, min).filter((i) => st.structures![i] && !unitAt(st, i));
+}
+
+/** 造りを壊すダメージの内訳：通常攻撃の威力 × 攻撃 ÷ 造りの防御 × 攻城（石火矢・大筒の系統）× 火 */
+export interface BreachParts { base: number; power: number; atk: number; def: number; siege: number; fire: number }
+
+export function breachParts(st: BattleState, u: BUnit, cell: number): BreachParts {
+  const s = basicSkill(u)!, str = st.structures![cell], S = BM.structures;
+  const line = u.kind === 'troop' ? D.byUnit[u.defId]?.line : undefined;
+  const p: BreachParts = {
+    base: 0, power: s.power, atk: attackPower(st, u), def: str.def,
+    siege: line !== undefined && S.siegeLines.includes(line) ? S.siegeMult : 1,
+    fire: attackKinds(u, s.id, s.range, false).includes('fire') ? S.fireMult : 1,
+  };
+  p.base = Math.max(1, Math.floor(p.power * p.atk / p.def * p.siege * p.fire));
+  return p;
 }

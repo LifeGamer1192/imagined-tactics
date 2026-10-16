@@ -216,7 +216,9 @@ function actBlock(st: BattleState, at: number, detail: boolean): string {
   const actor = who(st, uid, side);
   if (v.kind === 'wait') return detail ? `<div class="blk b${side}"><div class="hd dim">${actor}：待機</div></div>` : '';
   let what: string;
-  if (v.kind === 'skill') {
+  if (v.kind === 'breach') {
+    what = '<b>造りを壊す</b>';
+  } else if (v.kind === 'skill') {
     const s = skillOf(String(v.id));
     const shape = s.shape.type === 'around' ? `（周囲${s.shape.n}）` : s.shape.type === 'line' ? `（直線${s.shape.n}）` : '';
     what = `<b>${esc(L(s.name))}</b>${shape}`;
