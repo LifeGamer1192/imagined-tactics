@@ -8,7 +8,7 @@ import { StrategyView } from '../render/strategyView';
 import {
   autoMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
   declareWar, dismissTroop, garrisonOf, recruit, recruitCost, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
-  S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap,
+  S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink,
 } from '../strategy/campaign';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
@@ -525,7 +525,7 @@ export class CampaignScreen {
     if (own) {
       const f = c.gs.factions[g.faction];
       const opts = Object.keys(f.recruit).filter((u) => !recruitProblem(c, g, u))
-        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（兵糧${recruitCost(u, f)}）</option>`).join('');
+        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（兵糧${recruitCost(u, f, isExclave(c, g.prov))}）</option>`).join('');
       rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button></span>` : '';
       // 昇進：武将は役職、兵は兵種。条件を満たした昇進先だけをボタンにする
       const ups: string[] = [];
@@ -613,6 +613,19 @@ export class CampaignScreen {
       <div class="udesc small">${esc(unitTip(t.unitId, t.level))}</div></div>`;
   }
 
+  /** 飛び地の警告：何が悪くなっているかと、直し方（取ればつながる領の名前） */
+  private exclaveHtml(prov: number): string {
+    const c = this.c, gs = c.gs, p = gs.provinces[prov], f = gs.factions[p.owner];
+    const link = exclaveLink(c, prov).map((id) => gs.provinces[id]);
+    const names = link.slice(0, 4).map((q) => `<b>${esc(q.name.ja)}</b>${q.owner && gs.factions[q.owner] ? `<span class="dim">（${esc(gs.factions[q.owner].name.ja)}）</span>` : '<span class="dim">（持ち主なし）</span>'}`).join('・');
+    const how = link.length
+      ? `${names}${link.length > 4 ? ` ほか、計${link.length}領` : ''}を取ると、本拠（${esc(gs.provinces[f.capital].name.ja)}）とつながって解けます。`
+      : `本拠（${esc(gs.provinces[f.capital].name.ja)}）とつながる道がありません。まわりの領を取って、本拠からの道をつくってください。`;
+    return `<div class="exclave"><b>⚠ 飛び地です</b>　本拠から、自分の領づたい（陸の隣と海路）にたどり着けません。
+      <div class="small">罰：収入${Math.round(S.exclave.incomeMult * 100)}%・守備兵が弱い（レベル${Math.abs(S.exclave.garrisonLevel)}減・${Math.abs(S.exclave.garrisonTroops)}隊減）・徴兵の兵糧×${S.exclave.recruitCostMult}</div>
+      <div class="small">直し方：${how}</div></div>`;
+  }
+
   /** 戦場の下見：この領で今戦うとどんな戦場になるか（領のようすが変わるたびに作り直す） */
   private previewHtml(prov: number): string {
     const key = `${prov}:${JSON.stringify(provinceLook(this.c, prov))}`;
@@ -625,7 +638,7 @@ export class CampaignScreen {
     }
     return `<details class="bmap" ${this.previewOpen ? 'open' : ''}><summary>戦場：${esc(pv.features || '野戦')}</summary>
       <img src="${pv.url}" alt="この領の戦場" draggable="false">
-      <div class="dim small">左から攻め、右で守ります。領の地形・人口・収入・不穏・城の強さ・建物で形が決まり、普請や本拠の移りで変わります。</div></details>`;
+      <div class="dim small">西から攻めたときの形です（左から攻め、右で守る）。実際の戦いでは、攻めてくる向きに合わせて地形の向きと左右が変わります。領の地形・人口・収入・不穏・城の強さ・建物で形が決まり、普請や本拠の移りで変わります。</div></details>`;
   }
 
   /** 普請の欄：建物を建てる、城を固める */
@@ -673,6 +686,7 @@ export class CampaignScreen {
           ${town ? `<img class="town" src="${town}" alt="" draggable="false">` : ''}
           <div><b>${esc(p.name.ja)}</b> <span class="dim">${owner ? esc(owner.name.ja) : '持ち主なし'}${rel}${owner?.capital === p.id ? '・本拠' : ''}</span></div>
           <div class="dim">人口${Math.round(p.pop)} 収入${Math.round(p.income)} 城${Math.round(p.fort * 100)}% 不穏${Math.round(p.unrest * 100)}%${p.coastal ? ' 海沿い' : ''}</div>
+          ${owner && isExclave(c, p.id) ? this.exclaveHtml(p.id) : ''}
           ${this.previewHtml(p.id)}
         </div>
         ${this.siegeHtml(p.id)}${me && owner && !own ? this.diplomacyHtml(me.id, owner.id) : ''}

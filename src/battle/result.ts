@@ -26,6 +26,12 @@ export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary
   const rng = new RNG(codeToSeed(`${gs.seed}:${gs.tick}:result:${st.round}:${st.units.filter((u) => u.alive).length}`));
   const sum: BattleSummary = { winner: st.winner, rounds: st.round, levelUps: [], lost: [], beaten: [], beatenSides: [], beatenIds: [] };
   const remove = new Map<string, Set<number>>();
+  // 同じ武将に同じ名前の兵が2隊以上いるときは「（2隊目）」を添える（失った兵と、上がった兵を見分けられるように）
+  const troopUnits = st.units.filter((u) => u.kind !== 'general');
+  const label = (u: (typeof st.units)[number]): string => {
+    const same = troopUnits.filter((x) => x.generalId === u.generalId && x.name === u.name).sort((a, b) => a.troopIndex - b.troopIndex);
+    return same.length > 1 ? `${u.name}（${same.indexOf(u) + 1}隊目）` : u.name;
+  };
   for (const u of st.units) {
     const g = gs.generals[u.generalId];
     if (!g) continue;
@@ -42,11 +48,11 @@ export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary
     if (lost) {
       if (!remove.has(g.id)) remove.set(g.id, new Set());
       remove.get(g.id)!.add(u.troopIndex);
-      sum.lost.push({ general: g.name.ja, unit: u.name, side: u.home });
+      sum.lost.push({ general: g.name.ja, unit: `${label(u)} Lv${t.level}`, side: u.home });
       continue;
     }
     const from = t.level;
-    if (u.expGained > 0 && gainTroopExp(t, u.expGained * D.combat.expGain, rng) > 0) sum.levelUps.push({ name: `${g.name.ja}の${u.name}`, from, to: t.level, side: u.home });
+    if (u.expGained > 0 && gainTroopExp(t, u.expGained * D.combat.expGain, rng) > 0) sum.levelUps.push({ name: `${g.name.ja}の${label(u)}`, from, to: t.level, side: u.home });
   }
   for (const [gid, idxs] of remove) gs.generals[gid].troops = gs.generals[gid].troops.filter((_t, i) => !idxs.has(i));
   return sum;

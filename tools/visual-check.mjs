@@ -51,7 +51,17 @@ async function run(tag, ctxOpts) {
       await press('#modeNation');
       await page.waitForSelector('#campaign'); await idle(); await page.waitForTimeout(300);
       ok(`[${tag}] 国を選ぶ画面に国の一覧と始めるボタン`, (await page.$$('input[name="nation"]')).length >= 2 && (await page.isVisible('#campaign')) && (await page.isVisible('#campaignWatch')));
+      ok(`[${tag}] 国を選ぶ画面に広域地図`, await page.$eval('.nation-map canvas', (el) => el.width > 100 && el.height > 50));
       await shot('nations_jp');
+      // ランダム：選ばれる国が変わり、地図も描き直される
+      const nBefore = await page.$eval('input[name="nation"]:checked', (el) => el.value);
+      const mapBefore = await page.$eval('.nation-map canvas', (el) => el.toDataURL());
+      await press('#nationRandom');
+      await page.waitForTimeout(250);
+      const nAfter = await page.$eval('input[name="nation"]:checked', (el) => el.value);
+      ok(`[${tag}] ランダムで国が変わり、地図のハイライトも変わる`, nAfter !== nBefore && (await page.$eval('.nation-map canvas', (el) => el.toDataURL())) !== mapBefore && /で始める/.test(await page.textContent('#campaign')));
+      await page.$eval('.nation-map', (el) => el.scrollIntoView({ block: 'center' }));
+      await shot('nations_random');
       await press('#toModes');
       await page.waitForSelector('#modeLocal'); await idle();
     }
@@ -98,6 +108,9 @@ async function run(tag, ctxOpts) {
     ok(`[${tag}] 技を選ぶと説明と期待値の表`, !!(await page.$('.minfo')) && /期待値/.test(await page.textContent('table.expect')));
     await shot('battle_skill_info');
     if (!touch) {
+      // 欄が送られると小窓は消える作りなので、先にボタンを見える所に出して、送りが収まってから重ねる
+      await page.$eval(`[data-skill="${plan.skill}"]`, (el) => el.scrollIntoView({ block: 'center' }));
+      await page.waitForTimeout(400);
       await page.hover(`[data-skill="${plan.skill}"]`);
       await page.waitForTimeout(200);
       ok(`[${tag}] 技のボタンに重ねると小窓`, !!(await page.$('.tip')));
@@ -115,6 +128,32 @@ async function run(tag, ctxOpts) {
     await page.waitForSelector('.confirm');
     await shot('battle_waitall_confirm');
     await press('.confirm [data-a="no"]');
+    // 方位の印と、番の交代の帯（「開戦」は始めの1回だけ）
+    ok(`[${tag}] 戦場に方位の印`, !!(await page.$('.compass .needle')));
+    await page.evaluate(() => { const a = window.__app; a.human = new Set([0, 1]); a.endTurn(); });
+    await page.waitForTimeout(250);
+    const turnText = await page.$eval('.splash', (el) => el.textContent).catch(() => '');
+    ok(`[${tag}] 番が替わると「◯◯の番」（開戦ではない）`, /の番$/.test(turnText ?? '') && !(turnText ?? '').includes('開戦'), turnText ?? '');
+    await shot('battle_turn_splash');
+    await page.waitForTimeout(1200);
+    // 東から攻める戦場：攻め手が右、城が左
+    const flipInfo = await page.evaluate(async () => {
+      const { mapFromProvince } = await import('/src/battle/map.ts');
+      const { createBattle } = await import('/src/battle/setup.ts');
+      const a = window.__app, gs = a.gs, def = gs.factions[a.setup.defender], atk = gs.factions[a.setup.attacker];
+      const p = gs.provinces[def.capital], from = [...p.nb].find((n) => gs.provinces[n].cx > p.cx);
+      if (from === undefined) return null;
+      const map = mapFromProvince(a.save.world, def.capital, { capital: true, from });
+      const st = createBattle(gs, map, a.setup.picks, 'flip', [atk.name.ja, def.name.ja], undefined, { weather: 'clear', night: false });
+      a.openBattle(st, new Set([0]), () => null, { label: '編成に戻る', fn: () => a.setupScreen() }, true);
+      const g = map.grid;
+      return { flip: map.flip, atkRight: st.units.filter((u) => u.side === 0).every((u) => g.col(u.pos) >= g.w / 2) };
+    });
+    if (flipInfo) {
+      await page.waitForTimeout(1900);
+      ok(`[${tag}] 東から攻めると攻め手が右・城が左`, flipInfo.flip && flipInfo.atkRight);
+      await shot('battle_flipped');
+    }
     // 編成に戻るの窓
     await press('#quit');
     await page.waitForSelector('.confirm');
@@ -174,6 +213,19 @@ async function run(tag, ctxOpts) {
   ok(`[${tag}] 同じ月にもう一度は普請できない`, await page.$eval('#buildGo', (el) => el.disabled));
   await page.$eval('details.bmap', (el) => el.scrollIntoView({ block: 'start' }));
   await shot('map_preview_after');
+  // 飛び地の警告と直し方
+  const exName = await page.evaluate(async () => {
+    const cam = await import('/src/strategy/campaign.ts');
+    const s = window.__campaign, c = s.c;
+    for (const f of Object.values(c.gs.factions)) { const e = [...cam.exclavesOf(c, f.id)]; if (e.length) { s.selected = e[0]; s.refresh(); document.querySelector('.exclave')?.scrollIntoView({ block: 'center' }); return c.gs.provinces[e[0]].name.ja; } }
+    return null;
+  });
+  if (exName) {
+    await page.waitForTimeout(200);
+    ok(`[${tag}] 飛び地の領に警告と直し方`, /飛び地です/.test(await page.textContent('.exclave')) && /直し方：/.test(await page.textContent('.exclave')), exName);
+    await shot('exclave_warning');
+  }
+  await page.evaluate(() => { const s = window.__campaign; s.selected = s.c.gs.factions[s.c.player].capital; s.refresh(); });
   // 特性・性格・兵の小窓
   if (touch) { await page.$eval('.trait', (el) => el.scrollIntoView({ block: 'center' })); const r = await page.$eval('.trait', (el) => { const q = el.getClientRects()[0]; return { x: q.x + q.width / 2, y: q.y + q.height / 2 }; }); await page.touchscreen.tap(r.x, r.y); } else { await page.hover('.trait'); }
   await page.waitForTimeout(250);

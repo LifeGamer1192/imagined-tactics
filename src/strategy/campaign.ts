@@ -110,7 +110,53 @@ export function neighborsOf(c: Campaign, prov: number): number[] {
   return [...new Set([...p.nb, ...(p.coastal ? p.sea : [])])];
 }
 
-export type Relation = 'self' | 'ally' | 'truce' | 'war' | 'neutral';
+/**
+ * 飛び地：本拠から、自分の領づたい（地図の線：陸の隣と海路）にたどり着けない領。
+ * 収入が大きく減り、守備兵が弱く（落ちやすく）、徴兵が高くつく（strategy.json の exclave）。
+ */
+export function exclavesOf(c: Campaign, f: number): Set<number> {
+  const fac = c.gs.factions[f], out = new Set<number>();
+  if (!fac) return out;
+  const seen = new Set<number>([fac.capital]);
+  const queue = [fac.capital];
+  while (queue.length) {
+    const p = queue.pop()!;
+    for (const n of neighborsOf(c, p)) if (!seen.has(n) && c.gs.provinces[n].owner === f) { seen.add(n); queue.push(n); }
+  }
+  for (const p of c.gs.provinces) if (p.owner === f && !seen.has(p.id)) out.add(p.id);
+  return out;
+}
+export const isExclave = (c: Campaign, prov: number): boolean => { const o = c.gs.provinces[prov]?.owner; return !!o && exclavesOf(c, o).has(prov); };
+
+/**
+ * 飛び地を本拠とつなげるのに取る領：取る数がいちばん少ない道すじの、自分の領でない領（近い順）。
+ * つなげようが無ければ空。自分の領は数えずに通れる（0-1 の幅優先）。
+ */
+export function exclaveLink(c: Campaign, prov: number): number[] {
+  const f = c.gs.provinces[prov]?.owner;
+  if (!f || !isExclave(c, prov)) return [];
+  const ex = exclavesOf(c, f);
+  const main = new Set(provincesOf(c, f).filter((p) => !ex.has(p.id)).map((p) => p.id));
+  const cost = new Map<number, number>([[prov, 0]]), prev = new Map<number, number>();
+  const dq: number[] = [prov];
+  while (dq.length) {
+    const p = dq.shift()!;
+    if (main.has(p)) {
+      const out: number[] = [];
+      for (let q: number | undefined = prev.get(p); q !== undefined && q !== prov; q = prev.get(q)) if (c.gs.provinces[q].owner !== f) out.unshift(q);
+      return out;
+    }
+    for (const n of neighborsOf(c, p)) {
+      const np = c.gs.provinces[n];
+      if (!np || np.out) continue;
+      const w = np.owner === f ? 0 : 1, nc = cost.get(p)! + w;
+      if (nc < (cost.get(n) ?? Infinity)) { cost.set(n, nc); prev.set(n, p); if (w) dq.push(n); else dq.unshift(n); }
+    }
+  }
+  return [];
+}
+
+export type Relation ='self' | 'ally' | 'truce' | 'war' | 'neutral';
 
 export function relation(c: Campaign, a: number, b: number): Relation {
   if (a === b) return 'self';
@@ -140,9 +186,9 @@ export function strengthOf(g: GGeneral): number {
 const strengthSum = (gs: GGeneral[]): number => gs.slice(0, MAX_GENERALS).reduce((s, g) => s + strengthOf(g), 0);
 
 /** 徴兵の費用。勢力を渡すと、勢力の特色による割引を入れる */
-export function recruitCost(unitId: string, f?: GFaction): number {
+export function recruitCost(unitId: string, f?: GFaction, exclave = false): number {
   const u = D.byUnit[unitId];
-  let mult = 1;
+  let mult = exclave ? S.exclave.recruitCostMult : 1;
   if (f) for (const t of traitsOf(f)) if (t.cost?.lines.includes(u.line)) mult *= t.cost.mult;
   return Math.round(u.cost * SUPPLY.recruitCostMult * mult);
 }
@@ -176,7 +222,7 @@ export function recruitProblem(c: Campaign, g: GGeneral, unitId: string): string
   // 軍略の兵（伝令・間者の系統）は本陣付きの少数の役なので、武将1人につき1隊まで
   if (isTactical(unitId) && g.troops.filter((t) => isTactical(t.unitId)).length >= S.tactical.capPerGeneral) return `軍略の兵は${S.tactical.capPerGeneral}隊までです`;
   if (g.id in c.away) return '諸国巡りに出ています';
-  if (f.supply < recruitCost(unitId, f)) return '兵糧が足りません';
+  if (f.supply < recruitCost(unitId, f, isExclave(c, g.prov))) return '兵糧が足りません';
   return null;
 }
 
@@ -184,7 +230,7 @@ export function recruit(c: Campaign, gid: string, unitId: string): boolean {
   const g = c.gs.generals[gid];
   if (!g || recruitProblem(c, g, unitId)) return false;
   const f = c.gs.factions[g.faction];
-  f.supply -= recruitCost(unitId, f);
+  f.supply -= recruitCost(unitId, f, isExclave(c, g.prov));
   g.troops.push(makeTroop(D.byUnit[unitId], recruitLevel(unitId, f) + (c.player && f.id !== c.player ? S.difficulty[c.difficulty].aiTroopLevel : 0)));
   return true;
 }
@@ -236,11 +282,11 @@ export function provinceLook(c: Campaign, prov: number): ProvinceLook {
   return { capital: !!f && f.capital === prov, fort: p.fort, buildings: p.buildings, pop: p.pop, income: p.income, unrest: p.unrest, coastal: p.coastal, river: p.river };
 }
 
-/** その領で今戦うときの戦場。領のようすが変われば（普請、本拠が移る、など）、戦場も変わる */
-export const provinceMap = (c: Campaign, prov: number): BattleMap => mapFromProvince(c.world, prov, provinceLook(c, prov));
+/** その領で今戦うときの戦場。領のようすが変われば（普請、本拠が移る、など）、戦場も変わる。from：攻めてくる領（戦場の向き） */
+export const provinceMap = (c: Campaign, prov: number, from?: number): BattleMap => mapFromProvince(c.world, prov, { ...provinceLook(c, prov), from });
 
 export function battleMapFor(c: Campaign, pb: PendingBattle): BattleMap {
-  return provinceMap(c, pb.prov);
+  return provinceMap(c, pb.prov, pb.from);
 }
 
 // ---- 普請：領に建物を建てる、城を固める（1つの領で1か月に1回、兵糧を使う）。建てたものは、その領の戦場に現れる
@@ -308,9 +354,11 @@ export function garrisonOf(c: Campaign, prov: number): { level: number; troops: 
   const G = S.garrison, p = c.gs.provinces[prov], f = c.gs.factions[p.owner];
   let level = G.levelBase + Math.round(p.fort * G.levelPerFort) + (p.pop >= G.cityPop ? G.levelCity : p.pop >= G.townPop ? G.levelTown : 0);
   if (f && f.capital === prov) level += G.levelCapital;
+  const ex = !!f && isExclave(c, prov);
+  if (ex) level += S.exclave.garrisonLevel;
   // 自分の領の守備兵は、難しさで少し強さが変わる
   if (f && f.id === c.player) level = Math.round(level * S.difficulty[c.difficulty].playerSiege);
-  const troops = G.troopsBase + Math.round(p.fort * G.troopsPerFort) + (p.pop >= G.townPop ? G.troopsTown : 0);
+  const troops = G.troopsBase + Math.round(p.fort * G.troopsPerFort) + (p.pop >= G.townPop ? G.troopsTown : 0) + (ex ? S.exclave.garrisonTroops : 0);
   return { level: Math.max(1, Math.min(G.levelMax, level)), troops: Math.max(1, Math.min(G.troopsMax, troops)) };
 }
 
@@ -385,7 +433,9 @@ function capture(c: Campaign, pb: PendingBattle): void {
 function refreshIncome(c: Campaign): void {
   for (const f of Object.values(c.gs.factions)) {
     const mult = traitsOf(f).reduce((m, t) => m * (t.incomeMult ?? 1), 1) * (f.id === c.player ? S.difficulty[c.difficulty].playerIncome : 1);
-    f.income = Math.round(provincesOf(c, f.id).reduce((s, p) => s + p.income, 0) * mult);
+    // 飛び地の収入は大きく減る
+    const ex = exclavesOf(c, f.id);
+    f.income = Math.round(provincesOf(c, f.id).reduce((s, p) => s + p.income * (ex.has(p.id) ? S.exclave.incomeMult : 1), 0) * mult);
   }
 }
 

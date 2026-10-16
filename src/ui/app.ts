@@ -26,6 +26,7 @@ import { skillTip, tacticTip } from './describe';
 import { initTips } from './tip';
 import { busy } from './busy';
 import { prewarm } from '../render/strategyView';
+import { NationMap } from '../render/nationMap';
 
 import {
   canUseSkill, canUseTactic, forecastSkill, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
@@ -309,23 +310,50 @@ export class App {
       <div class="setup nations">
         ${this.headerHtml('modes')}
         <h2 class="modes-title">国を選ぶ <span class="dim small">（国モード）</span></h2>
-        <p class="dim">主になる国を選んでください。大きな国ほど楽に、小さな国ほど難しくなります。</p>
-        <div class="nation-list">${facs.map(row).join('')}</div>
+        <p class="dim">主になる国を選んでください（一覧か地図を押す）。大きな国ほど楽に、小さな国ほど難しくなります。</p>
+        <div class="nation-body">
+          <div class="nation-list">${facs.map(row).join('')}</div>
+          <div class="nation-map"><div class="dim small">広域地図（明るいのが選んでいる国、白い点が本拠）</div></div>
+        </div>
         <footer>
           <select id="difficulty" title="戦略の難しさ：自分の収入と領の落ちにくさ、相手の攻めやすさが変わる">${(['easy', 'normal', 'hard'] as const).map((d) => `<option value="${d}" ${this.difficulty === d ? 'selected' : ''}>難しさ：${S.difficulty[d].name}</option>`).join('')}</select>
+          <button id="nationRandom" title="国をくじで選ぶ">ランダム</button>
           <span class="spacer"></span>
           <button id="campaignWatch" title="どの国も選ばず、国どうしの取り合いを見る">国を選ばず観戦する</button>
           <button id="campaign" class="primary">${esc(gs.factions[this.nation].name.ja)}で始める</button>
         </footer>
       </div>`;
     this.bindHeader('nation');
-    this.root.querySelectorAll<HTMLInputElement>('input[name="nation"]').forEach((r) => {
-      r.onchange = () => {
-        this.nation = Number(r.value);
-        this.root.querySelectorAll('.nation').forEach((el) => el.classList.toggle('on', el.contains(r)));
-        this.root.querySelector<HTMLButtonElement>('#campaign')!.textContent = `${gs.factions[this.nation].name.ja}で始める`;
-      };
-    });
+    // 広域地図：一覧の横（スマホでは下）。幅が決まってから描く
+    const holder = this.root.querySelector<HTMLElement>('.nation-map')!;
+    const nm = new NationMap(this.save!.world, gs);
+    holder.appendChild(nm.canvas);
+    // 広い画面では枠の高さにも収める（縦長の世界でもはみ出さない）。狭い画面では幅いっぱい
+    const drawMap = () => {
+      const wd = Math.max(160, holder.clientWidth - 16);
+      const narrow = window.innerWidth <= 720, hAvail = holder.clientHeight - 40;
+      nm.draw(Math.floor(narrow || hAvail <= 0 ? wd : Math.min(wd, hAvail / nm.aspect)), this.nation);
+    };
+    const pick = (id: number, scroll: boolean) => {
+      if (!gs.factions[id]) return;
+      this.nation = id;
+      this.root.querySelectorAll<HTMLLabelElement>('.nation').forEach((el) => {
+        const r = el.querySelector<HTMLInputElement>('input')!, on = Number(r.value) === id;
+        r.checked = on; el.classList.toggle('on', on);
+        if (on && scroll) el.scrollIntoView({ block: 'nearest' });
+      });
+      this.root.querySelector<HTMLButtonElement>('#campaign')!.textContent = `${gs.factions[id].name.ja}で始める`;
+      drawMap();
+    };
+    requestAnimationFrame(drawMap);
+    const onResize = () => { if (this.root.contains(holder)) drawMap(); else window.removeEventListener('resize', onResize); };
+    window.addEventListener('resize', onResize);
+    nm.canvas.onclick = (e) => { const r = nm.canvas.getBoundingClientRect(); pick(nm.factionAt(e.clientX - r.left, e.clientY - r.top), true); };
+    this.root.querySelectorAll<HTMLInputElement>('input[name="nation"]').forEach((r) => { r.onchange = () => pick(Number(r.value), false); });
+    this.root.querySelector<HTMLButtonElement>('#nationRandom')!.onclick = () => {
+      const others = facs.filter((f) => f.id !== this.nation);
+      if (others.length) pick(others[Math.floor(Math.random() * others.length)].id, true);
+    };
     this.root.querySelector<HTMLSelectElement>('#difficulty')!.onchange = (e) => { this.difficulty = (e.target as HTMLSelectElement).value as Difficulty; };
     this.root.querySelector<HTMLButtonElement>('#campaign')!.onclick = () => busy('戦略を始めています…', () => this.startCampaign(this.nation));
     this.root.querySelector<HTMLButtonElement>('#campaignWatch')!.onclick = () => busy('戦略を始めています…', () => this.startCampaign(0));
@@ -415,7 +443,8 @@ export class App {
     const gs = this.gs!, w = this.save!.world;
     const def = gs.factions[this.setup.defender], atk = gs.factions[this.setup.attacker];
     const prov = gs.provinces[def.capital];
-    const map = mapFromProvince(w, def.capital, prov ? { capital: true, fort: prov.fort, buildings: prov.buildings, pop: prov.pop, income: prov.income, unrest: prov.unrest, coastal: prov.coastal, river: prov.river } : { capital: true });
+    // 攻め手の本拠から攻めてくる向きで、戦場の左右が決まる
+    const map = mapFromProvince(w, def.capital, prov ? { capital: true, fort: prov.fort, buildings: prov.buildings, pop: prov.pop, income: prov.income, unrest: prov.unrest, coastal: prov.coastal, river: prov.river, from: atk.capital } : { capital: true, from: atk.capital });
     const st = createBattle(gs, map, this.setup.picks, `ui:${Date.now()}`, [atk.name.ja, def.name.ja]);
     const human = new Set<Side>(this.setup.control === 'attack' ? [0] : this.setup.control === 'defend' ? [1] : this.setup.control === 'both' ? [0, 1] : []);
     this.openBattle(st, human, (s) => applyBattleResult(gs, s), { label: '編成に戻る', fn: () => { this.autoPick(); this.setupScreen(); } }, true);
@@ -440,6 +469,7 @@ export class App {
     this.root.innerHTML = `
       <div class="battle">
         <canvas></canvas>
+        ${this.compassHtml(st)}
         <aside><div id="panel"></div><div id="ctl" class="speed"></div><div id="log"></div></aside>
       </div>`;
     this.renderCtl();
@@ -460,6 +490,15 @@ export class App {
     this.refresh();
     this.splash('開戦');
     this.maybeAi();
+  }
+
+  /** 方位の印：戦場は攻めてくる向きに合わせて回してあるので、北がどちらかを示す */
+  private compassHtml(st: BattleState): string {
+    const [nx, ny] = st.map.north ?? [0, -1];
+    const deg = Math.round(Math.atan2(nx, -ny) * 180 / Math.PI);
+    const side = (s: Side) => (st.map.flip ? (s === 0 ? '右' : '左') : (s === 0 ? '左' : '右'));
+    return `<div class="compass" data-tip="戦場は、攻め手が攻めてきた向きに合わせてあります。矢印の先が北です。攻め手（${esc(st.sideNames[0])}）は${side(0)}、守り手（${esc(st.sideNames[1])}）は${side(1)}から始まります。">
+      <span class="needle" style="transform:rotate(${deg}deg)"><i></i><b>北</b></span></div>`;
   }
 
   private pushTurnLog(): void {
@@ -580,7 +619,8 @@ export class App {
     if (this.human.size || FX_SCALE[this.aiSpeed] > 0) play('turn');
     this.pushTurnLog();
     this.refresh();
-    this.splash('開戦');
+    // 「開戦」は戦いの始めの1回だけ。番が替わったときは、だれの番かを小さく出す（おまかせどうしを速く進めているときは出さない）
+    if (this.human.size || FX_SCALE[this.aiSpeed] > 0) this.splash(`${st.sideNames[st.turn]}の番`, true);
     this.maybeAi();
   }
 
@@ -690,16 +730,16 @@ export class App {
     if (wait > 0) window.setTimeout(show, wait + 80); else show();
   }
 
-  /** 画面の真ん中に、筆の帯と大きな文字を一瞬だけ出す（開戦） */
-  private splash(text: string): void {
+  /** 画面の真ん中に、筆の帯と大きな文字を一瞬だけ出す（開戦は大きく、番の交代は小さく短く） */
+  private splash(text: string, turn = false): void {
     const frame = this.root.querySelector('.battle');
     if (!frame) return;
     frame.querySelector('.splash')?.remove();
     const el = document.createElement('div');
-    el.className = 'splash';
+    el.className = turn ? 'splash turn' : 'splash';
     el.innerHTML = `<span>${esc(text)}</span>`;
     frame.appendChild(el);
-    window.setTimeout(() => el.remove(), 1700);
+    window.setTimeout(() => el.remove(), turn ? 1100 : 1700);
   }
 
   /** 戦いの結果を、陣営ごとにまとめる：倒された武将、失われた兵（だれの何の兵か）、レベルアップ */

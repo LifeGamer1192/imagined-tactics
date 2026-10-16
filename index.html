@@ -53,7 +53,18 @@
     .splash { position: absolute; z-index: 20; left: calc((100% - 340px) / 2); top: 42%; transform: translate(-50%, -50%); width: min(560px, 80vw); height: 150px; display: flex; align-items: center; justify-content: center; pointer-events: none; background: var(--brush-ink) center / 100% 100% no-repeat; animation: splash 1.6s ease-out forwards; }
     .splash span { font: 800 64px var(--mincho); color: #fff6e8; letter-spacing: 0.3em; text-shadow: 0 2px 10px rgba(0,0,0,0.8); padding-left: 0.3em; }
     @keyframes splash { 0% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.3); } 18% { opacity: 1; transform: translate(-50%, -50%) scaleX(1.04); } 30% { transform: translate(-50%, -50%) scaleX(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -52%); } }
-    @media (max-width: 760px) { .splash { left: 50%; top: 23%; height: 100px; } .splash span { font-size: 42px; } }
+    .compass { position: absolute; z-index: 5; left: 10px; top: 10px; width: 54px; height: 54px; border-radius: 50%; background: rgba(36,30,22,0.78); border: 1px solid #8a7347; box-shadow: 0 2px 6px rgba(0,0,0,0.5); cursor: help; }
+.compass .needle { position: absolute; inset: 0; display: block; transition: transform 0.3s; }
+.compass .needle i { position: absolute; left: 50%; top: 7px; width: 0; height: 0; margin-left: -6px; border: 6px solid transparent; border-bottom: 16px solid #c8553a; border-top: 0; }
+.compass .needle b { position: absolute; left: 0; right: 0; top: 23px; text-align: center; font: 700 13px var(--mincho); color: #f4ead6; }
+.splash.turn { height: 96px; width: min(420px, 70vw); animation-duration: 1.05s; }
+.splash.turn span { font-size: 34px; letter-spacing: 0.15em; padding-left: 0.15em; }
+@media (max-width: 760px) {
+  .compass { width: 38px; height: 38px; left: 4px; top: 4px; opacity: 0.88; }
+  .compass .needle i { top: 4px; margin-left: -4px; border-width: 0 4px 11px; }
+  .compass .needle b { top: 16px; font-size: 10px; }
+}
+@media (max-width: 760px) { .splash { left: 50%; top: 23%; height: 100px; } .splash span { font-size: 42px; } .splash.turn { height: 70px; } .splash.turn span { font-size: 24px; } }
     /* 決着の見出し：朱の筆の帯の上に白い文字（負けたときは、墨を薄くした帯） */
     body .result h2.brushed { position: relative; display: inline-block; padding: 10px 46px 12px; color: #fff6e8; text-shadow: 0 2px 6px rgba(0,0,0,0.7); isolation: isolate; }
     body .result h2.brushed::before { content: ""; position: absolute; inset: -6px -10px; z-index: -1; background: var(--brush-red) center / 100% 100% no-repeat; }
@@ -99,7 +110,10 @@
     .mode-card .mode-kind { font-size: 13px; letter-spacing: 0.2em; color: var(--gold); }
     .mode-card .mode-text { color: #d6ccb8; line-height: 1.7; }
     #modeLocal { border-left-color: var(--accent); }
-    .nation-list { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 8px; align-content: start; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    .nation-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; }
+    .nation-map { min-height: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px; background: rgba(31,28,24,0.82); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+    .nation-map canvas { cursor: pointer; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.6); touch-action: manipulation; }
+    .nation-list { min-height: 0; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 8px; align-content: start; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
     .nation { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: rgba(31,28,24,0.82); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
     .nation.on { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
     .nation input { margin-top: 4px; }
@@ -108,10 +122,16 @@
       .mode-cards { grid-template-columns: 1fr; align-content: start; gap: 12px; }
       .mode-card { min-height: 0; padding: 16px; }
       .mode-card b { font-size: 21px; }
-      .nation-list { grid-template-columns: 1fr; }
+      .nation-list { grid-template-columns: 1fr; max-height: 40vh; }
+      .nation-body { display: flex; flex-direction: column; flex: none; }
+      .setup.nations { overflow-y: auto; }
       .nations footer #campaign { flex: 1 1 100%; order: 9; min-height: 44px; }
       .nations footer { padding-bottom: 52px; }
     }
+    .exclave { font-size: 13px; line-height: 1.55; color: #ffe2d4; background: rgba(150,44,26,0.55); border: 1px solid #e07a5c; border-left: 4px solid var(--accent); border-radius: 4px; padding: 5px 8px; }
+    .exclave > b:first-child { color: #fff2e8; }
+    body .card:has(> .town) > .exclave { margin-right: -72px; }
+    .exclave .dim { color: #f0c8b8; }
     details.bmap { max-height: none; overflow: visible; }
     details.bmap summary { cursor: pointer; font-size: 13px; }
     .card.build .rec { display: flex; }

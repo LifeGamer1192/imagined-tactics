@@ -17,6 +17,10 @@ export interface BattleMap {
   siege?: boolean;
   /** 領から作った戦場の目立つもの（城・城壁・町・寺・市・港など）。説明に出す */
   features?: string[];
+  /** 攻め手が右・守り手が左の向きか（東寄りから攻めるとき） */
+  flip?: boolean;
+  /** 画面の上での北の向き（右が +x、下が +y の単位ベクトル）。方位の印に使う */
+  north?: [number, number];
 }
 
 const LEGEND: Record<string, TerrainKind> = {
@@ -100,9 +104,11 @@ export interface ProvinceLook {
   unrest?: number;
   coastal?: boolean;
   river?: boolean;
+  /** 攻めてくる領（戦場の向きが決まる）。省くと、攻め手は西（左）から来る */
+  from?: number;
 }
 
-function lookOf(w: HWorld, id: number, o: ProvinceLook): Required<ProvinceLook> {
+function lookOf(w: HWorld, id: number, o: ProvinceLook): Required<Omit<ProvinceLook, 'from'>> {
   const ps = w.ps, p = w.provinces[id];
   const buildings = o.buildings ?? buildingsOf(ps.buildings[id] ?? 0);
   const pop = o.pop ?? ps.pop[id] ?? 0;
@@ -128,16 +134,25 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
   const has = (b: string) => look.buildings.includes(b);
   const R = (k: string) => new RNG(codeToSeed(`${w.seed}:map:${provId}:${k}`));
   const features: string[] = [];
+  // 向き：攻めてくる領（from）からこの領へ向かう向きを、戦場の攻め手 → 守り手にする。
+  // 攻め手が東寄りから来るときは左右を入れ替え、攻め手を右・守り手を左に置く（flip）。画面の右・下が、世界のどの向きかは R・D
+  const fromP = opts.from !== undefined && opts.from !== provId ? w.provinces[opts.from] : undefined;
+  let dx = 1, dy = 0;
+  if (fromP) { const ax = p.cx - fromP.cx, ay = p.cy - fromP.cy, l = Math.hypot(ax, ay); if (l > 1e-6) { dx = ax / l; dy = ay / l; } }
+  const flip = dx < -1e-9;
+  const Rx = flip ? -dx : dx, Ry = flip ? -dy : dy;
+  const Dx = -Ry, Dy = Rx;
+  const U = (c: number) => m.x[c] * Rx + m.y[c] * Ry, V = (c: number) => m.x[c] * Dx + m.y[c] * Dy;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const c of p.cells) {
-    x0 = Math.min(x0, m.x[c]); x1 = Math.max(x1, m.x[c]);
-    y0 = Math.min(y0, m.y[c]); y1 = Math.max(y1, m.y[c]);
+    x0 = Math.min(x0, U(c)); x1 = Math.max(x1, U(c));
+    y0 = Math.min(y0, V(c)); y1 = Math.max(y1, V(c));
   }
   // 小さな領でも周りの地形が入るよう、少し広げる
   const padX = Math.max((x1 - x0) * 0.15, 20), padY = Math.max((y1 - y0) * 0.15, 20);
   x0 -= padX; x1 += padX; y0 -= padY; y1 += padY;
   const cand: number[] = [];
-  for (let i = 0; i < m.n; i++) if (m.x[i] >= x0 - 30 && m.x[i] <= x1 + 30 && m.y[i] >= y0 - 30 && m.y[i] <= y1 + 30) cand.push(i);
+  for (let i = 0; i < m.n; i++) { const u = U(i), v = V(i); if (u >= x0 - 30 && u <= x1 + 30 && v >= y0 - 30 && v <= y1 + 30) cand.push(i); }
   const riverMin = m.riverMin ?? Infinity;
   const kindOf = (cell: number): TerrainKind => {
     const b = m.biome[cell];
@@ -150,8 +165,11 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
   };
   const terrain: TerrainKind[] = [];
   for (let i = 0; i < grid.n; i++) {
-    const fx = x0 + (x1 - x0) * (grid.col(i) + 0.5) / grid.w;
-    const fy = y0 + (y1 - y0) * (grid.row(i) + 0.5 * (grid.col(i) & 1) + 0.5) / (grid.h + 0.5);
+    // 作るのは攻め手が左の形。左右を入れ替えるときは、入れ替えたあとの列の位置の地形を読む（列の数が奇数なので、ずれの向きは変わらない）
+    const col = flip ? grid.w - 1 - grid.col(i) : grid.col(i);
+    const fu = x0 + (x1 - x0) * (col + 0.5) / grid.w;
+    const fv = y0 + (y1 - y0) * (grid.row(i) + 0.5 * (col & 1) + 0.5) / (grid.h + 0.5);
+    const fx = fu * Rx + fv * Dx, fy = fu * Ry + fv * Dy;
     let best = cand[0] ?? p.seat, bestD = Infinity;
     for (const c of cand) {
       const d = (m.x[c] - fx) ** 2 + (m.y[c] - fy) ** 2;
@@ -329,9 +347,18 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
     near.slice(0, 2).forEach((i) => { terrain[i] = 'camp'; });
   }
   for (const b of BUILDING_ORDER) if (has(b) && b !== 'walls') features.push(BM.buildings[b]?.name ?? b);
+  // 左右を入れ替える：攻め手が右、守り手（城・城壁）が左になる
+  let out = terrain;
+  if (flip) {
+    out = new Array<TerrainKind>(grid.n);
+    for (let i = 0; i < grid.n; i++) out[grid.idx(grid.w - 1 - grid.col(i), grid.row(i))] = terrain[i];
+  }
+  const [left, right] = spawnZones(grid, out);
   return {
-    grid, terrain, name: w.provinceName[provId]?.ja ?? `第${provId}領`, spawn: spawnZones(grid, terrain), siege: terrain.includes('wall'),
-    features: [...new Set(features)],
+    grid, terrain: out, name: w.provinceName[provId]?.ja ?? `第${provId}領`, spawn: flip ? [right, left] : [left, right], siege: out.includes('wall'),
+    features: [...new Set(features)], flip,
+    // 画面の上で北がどちらか（右が +x、下が +y）
+    north: [-Ry, -Dy],
   };
 }
 

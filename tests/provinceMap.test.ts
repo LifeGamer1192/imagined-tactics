@@ -5,7 +5,10 @@ import { convert } from '../src/convert/convert';
 import type { Affinity } from '../src/data/types';
 import { D } from '../src/data/db';
 import { fromJSON, restore, snapshot, toJSON } from '../src/persist/save';
-import { build, buildCost, buildProblem, finishMonth, newCampaign, provinceLook, provinceMap, provincesOf } from '../src/strategy/campaign';
+import { build, buildCost, buildProblem, exclaveLink, exclavesOf, finishMonth, garrisonOf, newCampaign, provinceLook, provinceMap, provincesOf, recruitCost } from '../src/strategy/campaign';
+import { createBattle } from '../src/battle/setup';
+import { applyBattleResult } from '../src/battle/result';
+import { generalsOf, makeTroop } from '../src/convert/convert';
 import { FIXTURES, loadFixture } from './helpers';
 
 function reachable(map: BattleMap, aff: Affinity, from: number): Set<number> {
@@ -100,5 +103,102 @@ describe('battle map of each province', () => {
     const c2 = restore(fromJSON(toJSON(snapshot(c))));
     expect(mapToText(provinceMap(c2, p.id))).toBe(mapToText(provinceMap(c, p.id)));
     expect(c2.built[p.id]).toBe(c.built[p.id]);
+  });
+});
+
+describe('the battle map faces the way the attack comes', () => {
+  it('attackers start on the side they came from; the seat is on the other side; everyone can reach it', async () => {
+    for (const f of ['sengoku_fid5_1575', 'invented_archipelago_y30']) {
+      const save = await loadFixture(f), gs = convert(save);
+      const c = newCampaign(gs, save.world, 0);
+      let flips = 0, n = 0;
+      for (const p of gs.provinces.filter((x) => !x.out && x.nb.length)) {
+        for (const from of p.nb.slice(0, 3)) {
+          const m = provinceMap(c, p.id, from), g = m.grid, mid = Math.floor(g.h / 2);
+          const q = gs.provinces[from];
+          expect(m.flip, `${f} ${p.id}<-${from}`).toBe(p.cx - q.cx < -1e-9);
+          const meanCol = (z: number[]) => z.reduce((s, i) => s + g.col(i), 0) / z.length;
+          // 攻め手の配置場所は、攻めてきた側（flip なら右）
+          expect(meanCol(m.spawn[0]) > g.w / 2, `${f} ${p.id}<-${from}`).toBe(!!m.flip);
+          expect(meanCol(m.spawn[1]) > g.w / 2).toBe(!m.flip);
+          const seat = g.idx(m.flip ? 1 : g.w - 2, mid);
+          expect(['castle', 'fort', 'camp']).toContain(m.terrain[seat]);
+          for (const a of D.terrain.affinities) expect(reachable(m, a, g.idx(m.flip ? g.w - 2 : 1, mid)).has(seat), `${f} ${p.id}<-${from} ${a}`).toBe(true);
+          // 北の向きは単位ベクトル
+          expect(Math.hypot(...m.north!)).toBeCloseTo(1, 5);
+          if (m.flip) flips++;
+          n++;
+        }
+      }
+      // 東から攻める戦いも、西から攻める戦いもある
+      expect(flips, f).toBeGreaterThan(n * 0.15);
+      expect(flips, f).toBeLessThan(n * 0.85);
+    }
+  }, 60000);
+
+  it('places each side in its own zone when the map is flipped', async () => {
+    const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
+    const c = newCampaign(gs, save.world, 0);
+    const p = gs.provinces.find((x) => !x.out && x.nb.some((n) => x.cx - gs.provinces[n].cx < -5))!;
+    const from = p.nb.find((n) => p.cx - gs.provinces[n].cx < -5)!;
+    const m = provinceMap(c, p.id, from);
+    expect(m.flip).toBe(true);
+    const [fa, fb] = Object.values(gs.factions).sort((a, b) => generalsOf(gs, b.id).length - generalsOf(gs, a.id).length);
+    const st = createBattle(gs, m, [generalsOf(gs, fa.id).slice(0, 3).map((g) => g.id), generalsOf(gs, fb.id).slice(0, 3).map((g) => g.id)], 'flip');
+    const g = m.grid;
+    for (const u of st.units) expect(u.side === 0 ? g.col(u.pos) >= g.w / 2 : g.col(u.pos) < g.w / 2, `${u.name} side ${u.side} col ${g.col(u.pos)}`).toBe(true);
+  });
+});
+
+describe('exclaves', () => {
+  it('a province cut off from the capital earns less, is held by a weaker garrison and costs more to recruit in', async () => {
+    const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
+    const c = newCampaign(gs, save.world, 0);
+    // 本拠とつながった領を1つ、まわりの領ごと別の勢力のものにして、飛び地を作る
+    const f = Object.values(gs.factions).sort((a, b) => provincesOf(c, b.id).length - provincesOf(c, a.id).length)[0];
+    const capNb = new Set([...gs.provinces[f.capital].nb, ...gs.provinces[f.capital].sea]);
+    const target = provincesOf(c, f.id).find((p) => p.id !== f.capital && !capNb.has(p.id) && !exclavesOf(c, f.id).has(p.id))!;
+    const before = { garrison: garrisonOf(c, target.id), income: f.income };
+    const other = Object.values(gs.factions).find((x) => x.id !== f.id)!;
+    for (const n of [...target.nb, ...target.sea]) if (gs.provinces[n].owner === f.id) gs.provinces[n].owner = other.id;
+    expect(exclavesOf(c, f.id).has(target.id)).toBe(true);
+    // 直し方：示された領を取れば、つながって飛び地でなくなる
+    const link = exclaveLink(c, target.id);
+    expect(link.length).toBeGreaterThan(0);
+    expect(link.every((id) => gs.provinces[id].owner !== f.id)).toBe(true);
+    const saved = link.map((id) => gs.provinces[id].owner);
+    for (const id of link) gs.provinces[id].owner = f.id;
+    expect(exclavesOf(c, f.id).has(target.id)).toBe(false);
+    link.forEach((id, k) => { gs.provinces[id].owner = saved[k]; });
+    const after = garrisonOf(c, target.id);
+    expect(after.level).toBeLessThan(before.garrison.level);
+    expect(after.troops).toBeLessThanOrEqual(before.garrison.troops);
+    expect(recruitCost('u01a', f, true)).toBeGreaterThan(recruitCost('u01a', f));
+    // 収入：飛び地のぶんは ×0.4 で数える
+    finishMonth(c);
+    const lost = [...target.nb, ...target.sea].reduce((s, n) => s + (gs.provinces[n].owner === other.id ? gs.provinces[n].income : 0), 0);
+    expect(f.income).toBeLessThan(before.income - lost + 0.5 - target.income * 0.5);
+    // 始めの世界にも飛び地はあり、本拠は飛び地にならない
+    for (const x of Object.values(gs.factions)) expect(exclavesOf(c, x.id).has(x.capital)).toBe(false);
+  });
+});
+
+describe('battle result', () => {
+  it('tells apart two troops of the same name, so a lost one is not mistaken for one that rose', async () => {
+    const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
+    const [fa, fb] = Object.values(gs.factions).sort((a, b) => generalsOf(gs, b.id).length - generalsOf(gs, a.id).length);
+    const a = generalsOf(gs, fa.id)[0], b = generalsOf(gs, fb.id)[0];
+    const unit = D.byUnit[a.troops[0]?.unitId ?? 'u01a'];
+    a.troops = [makeTroop(unit, 3), makeTroop(unit, 3)];
+    const st = createBattle(gs, mapFromProvince(save.world, fb.capital), [[a.id], [b.id]], 'twins');
+    const twins = st.units.filter((u) => u.generalId === a.id && u.kind !== 'general');
+    twins[0].alive = false; twins[0].hp = 0;
+    twins[1].expGained = 5000;
+    st.winner = 1;
+    const sum = applyBattleResult(gs, st);
+    const lost = sum.lost.find((l) => l.general === a.name.ja)!;
+    const up = sum.levelUps.find((l) => l.name.startsWith(`${a.name.ja}の`))!;
+    expect(lost.unit).toContain('1隊目');
+    expect(up.name).toContain('2隊目');
   });
 });
