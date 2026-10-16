@@ -1,0 +1,7 @@
+node_modules
+dist
+*.local
+shots
+release
+/*.png
+public/data

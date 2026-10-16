@@ -1,0 +1,776 @@
+{
+ "bg/defeat_cn": [
+  "bg/defeat_cn.webp"
+ ],
+ "bg/defeat_jp": [
+  "bg/defeat_jp.webp"
+ ],
+ "bg/desk": [
+  "bg/desk.webp"
+ ],
+ "bg/panel": [
+  "bg/panel.webp"
+ ],
+ "bg/season_autumn": [
+  "bg/season_autumn.webp"
+ ],
+ "bg/season_spring": [
+  "bg/season_spring.webp"
+ ],
+ "bg/season_summer": [
+  "bg/season_summer.webp"
+ ],
+ "bg/season_winter": [
+  "bg/season_winter.webp"
+ ],
+ "bg/setup_cn": [
+  "bg/setup_cn.webp"
+ ],
+ "bg/setup_jp": [
+  "bg/setup_jp.webp"
+ ],
+ "bg/title": [
+  "bg/title.webp"
+ ],
+ "bg/victory_cn": [
+  "bg/victory_cn.webp"
+ ],
+ "bg/victory_jp": [
+  "bg/victory_jp.webp"
+ ],
+ "bg/weather_clear": [
+  "bg/weather_clear.webp"
+ ],
+ "bg/weather_fog": [
+  "bg/weather_fog.webp"
+ ],
+ "bg/weather_rain": [
+  "bg/weather_rain.webp"
+ ],
+ "bg/weather_snow": [
+  "bg/weather_snow.webp"
+ ],
+ "figure/cn/general": [
+  "figure/cn/general.webp"
+ ],
+ "figure/cn/lord": [
+  "figure/cn/lord.webp"
+ ],
+ "figure/cn/monk": [
+  "figure/cn/monk.webp"
+ ],
+ "figure/cn/strategist": [
+  "figure/cn/strategist.webp"
+ ],
+ "figure/cn/wanderer": [
+  "figure/cn/wanderer.webp"
+ ],
+ "figure/cn/woman": [
+  "figure/cn/woman.webp"
+ ],
+ "figure/jp/general": [
+  "figure/jp/general.webp"
+ ],
+ "figure/jp/lord": [
+  "figure/jp/lord.webp"
+ ],
+ "figure/jp/monk": [
+  "figure/jp/monk.webp"
+ ],
+ "figure/jp/strategist": [
+  "figure/jp/strategist.webp"
+ ],
+ "figure/jp/wanderer": [
+  "figure/jp/wanderer.webp"
+ ],
+ "figure/jp/woman": [
+  "figure/jp/woman.webp"
+ ],
+ "hex/camp": [
+  "hex/camp_0.webp"
+ ],
+ "hex/cliff": [
+  "hex/cliff_0.webp",
+  "hex/cliff_1.webp"
+ ],
+ "hex/cn/castle": [
+  "hex/cn/castle_0.webp"
+ ],
+ "hex/cn/town": [
+  "hex/cn/town_0.webp",
+  "hex/cn/town_1.webp"
+ ],
+ "hex/forest": [
+  "hex/forest_0.webp",
+  "hex/forest_1.webp",
+  "hex/forest_2.webp"
+ ],
+ "hex/fort": [
+  "hex/fort_0.webp"
+ ],
+ "hex/jp/castle": [
+  "hex/jp/castle_0.webp"
+ ],
+ "hex/jp/town": [
+  "hex/jp/town_0.webp",
+  "hex/jp/town_1.webp"
+ ],
+ "hex/mountain": [
+  "hex/mountain_0.webp",
+  "hex/mountain_1.webp",
+  "hex/mountain_2.webp"
+ ],
+ "hex/paddy": [
+  "hex/paddy_0.webp"
+ ],
+ "hex/plain": [
+  "hex/plain_0.webp",
+  "hex/plain_1.webp",
+  "hex/plain_2.webp"
+ ],
+ "hex/road": [
+  "hex/road_0.webp"
+ ],
+ "hex/swamp": [
+  "hex/swamp_0.webp",
+  "hex/swamp_1.webp"
+ ],
+ "hex/water": [
+  "hex/water_0.webp",
+  "hex/water_1.webp",
+  "hex/water_2.webp"
+ ],
+ "map/antique_broadleaf": [
+  "map/antique_broadleaf_0.webp",
+  "map/antique_broadleaf_1.webp",
+  "map/antique_broadleaf_2.webp"
+ ],
+ "map/antique_conifer": [
+  "map/antique_conifer_0.webp",
+  "map/antique_conifer_1.webp"
+ ],
+ "map/antique_dune": [
+  "map/antique_dune_0.webp"
+ ],
+ "map/antique_hill": [
+  "map/antique_hill_0.webp",
+  "map/antique_hill_1.webp"
+ ],
+ "map/antique_mountain": [
+  "map/antique_mountain_0.webp",
+  "map/antique_mountain_1.webp",
+  "map/antique_mountain_2.webp",
+  "map/antique_mountain_3.webp"
+ ],
+ "map/antique_palm": [
+  "map/antique_palm_0.webp"
+ ],
+ "map/antique_reed": [
+  "map/antique_reed_0.webp"
+ ],
+ "map/antique_snow": [
+  "map/antique_snow_0.webp",
+  "map/antique_snow_1.webp"
+ ],
+ "map/cn/sym_gate": [
+  "map/cn/sym_gate.webp"
+ ],
+ "map/cn/sym_lookout": [
+  "map/cn/sym_lookout.webp"
+ ],
+ "map/cn/sym_tower": [
+  "map/cn/sym_tower.webp"
+ ],
+ "map/cn/sym_wall": [
+  "map/cn/sym_wall.webp"
+ ],
+ "map/ink_broadleaf": [
+  "map/ink_broadleaf_0.webp",
+  "map/ink_broadleaf_1.webp"
+ ],
+ "map/ink_conifer": [
+  "map/ink_conifer_0.webp",
+  "map/ink_conifer_1.webp"
+ ],
+ "map/ink_dune": [
+  "map/ink_dune_0.webp"
+ ],
+ "map/ink_hill": [
+  "map/ink_hill_0.webp",
+  "map/ink_hill_1.webp",
+  "map/ink_hill_2.webp"
+ ],
+ "map/ink_mountain": [
+  "map/ink_mountain_0.webp",
+  "map/ink_mountain_1.webp",
+  "map/ink_mountain_2.webp"
+ ],
+ "map/ink_palm": [
+  "map/ink_palm_0.webp"
+ ],
+ "map/ink_reed": [
+  "map/ink_reed_0.webp"
+ ],
+ "map/ink_snow": [
+  "map/ink_snow_0.webp",
+  "map/ink_snow_1.webp"
+ ],
+ "map/jp/sym_gate": [
+  "map/jp/sym_gate.webp"
+ ],
+ "map/jp/sym_lookout": [
+  "map/jp/sym_lookout.webp"
+ ],
+ "map/jp/sym_tower": [
+  "map/jp/sym_tower.webp"
+ ],
+ "map/jp/sym_wall": [
+  "map/jp/sym_wall.webp"
+ ],
+ "map/sym_bridge": [
+  "map/sym_bridge.webp"
+ ],
+ "map/sym_fortgate": [
+  "map/sym_fortgate.webp"
+ ],
+ "map/sym_palisade": [
+  "map/sym_palisade.webp"
+ ],
+ "map/sym_swamp": [
+  "map/sym_swamp.webp"
+ ],
+ "map/sym_wall": [
+  "map/sym_wall.webp"
+ ],
+ "map/town_east_capital": [
+  "map/town_east_capital_0.webp",
+  "map/town_east_capital_1.webp"
+ ],
+ "map/town_east_great": [
+  "map/town_east_great_0.webp",
+  "map/town_east_great_1.webp"
+ ],
+ "map/town_east_ruin": [
+  "map/town_east_ruin_0.webp",
+  "map/town_east_ruin_1.webp",
+  "map/town_east_ruin_2.webp",
+  "map/town_east_ruin_3.webp"
+ ],
+ "map/town_east_town": [
+  "map/town_east_town_0.webp",
+  "map/town_east_town_1.webp"
+ ],
+ "map/town_east_village": [
+  "map/town_east_village_0.webp",
+  "map/town_east_village_1.webp"
+ ],
+ "map/town_east_walled": [
+  "map/town_east_walled_0.webp",
+  "map/town_east_walled_1.webp",
+  "map/town_east_walled_2.webp",
+  "map/town_east_walled_3.webp"
+ ],
+ "map/town_ink_capital": [
+  "map/town_ink_capital_0.webp"
+ ],
+ "map/town_ink_great": [
+  "map/town_ink_great_0.webp",
+  "map/town_ink_great_1.webp",
+  "map/town_ink_great_2.webp",
+  "map/town_ink_great_3.webp"
+ ],
+ "map/town_ink_ruin": [
+  "map/town_ink_ruin_0.webp",
+  "map/town_ink_ruin_1.webp",
+  "map/town_ink_ruin_2.webp"
+ ],
+ "map/town_ink_town": [
+  "map/town_ink_town_0.webp",
+  "map/town_ink_town_1.webp"
+ ],
+ "map/town_ink_village": [
+  "map/town_ink_village_0.webp",
+  "map/town_ink_village_1.webp",
+  "map/town_ink_village_2.webp"
+ ],
+ "map/town_ink_walled": [
+  "map/town_ink_walled_0.webp",
+  "map/town_ink_walled_1.webp",
+  "map/town_ink_walled_2.webp"
+ ],
+ "map/town_west_capital": [
+  "map/town_west_capital_0.webp"
+ ],
+ "map/town_west_great": [
+  "map/town_west_great_0.webp",
+  "map/town_west_great_1.webp",
+  "map/town_west_great_2.webp"
+ ],
+ "map/town_west_ruin": [
+  "map/town_west_ruin_0.webp",
+  "map/town_west_ruin_1.webp",
+  "map/town_west_ruin_2.webp"
+ ],
+ "map/town_west_town": [
+  "map/town_west_town_0.webp",
+  "map/town_west_town_1.webp"
+ ],
+ "map/town_west_village": [
+  "map/town_west_village_0.webp",
+  "map/town_west_village_1.webp",
+  "map/town_west_village_2.webp",
+  "map/town_west_village_3.webp"
+ ],
+ "map/town_west_walled": [
+  "map/town_west_walled_0.webp",
+  "map/town_west_walled_1.webp",
+  "map/town_west_walled_2.webp"
+ ],
+ "map/wonder_antique_academy": [
+  "map/wonder_antique_academy_0.webp"
+ ],
+ "map/wonder_antique_arena": [
+  "map/wonder_antique_arena_0.webp"
+ ],
+ "map/wonder_antique_canal": [
+  "map/wonder_antique_canal_0.webp"
+ ],
+ "map/wonder_antique_cathedral": [
+  "map/wonder_antique_cathedral_0.webp"
+ ],
+ "map/wonder_antique_cave_temples": [
+  "map/wonder_antique_cave_temples_0.webp"
+ ],
+ "map/wonder_antique_colossus": [
+  "map/wonder_antique_colossus_0.webp"
+ ],
+ "map/wonder_antique_grand_canal": [
+  "map/wonder_antique_grand_canal_0.webp"
+ ],
+ "map/wonder_antique_great_buddha": [
+  "map/wonder_antique_great_buddha_0.webp"
+ ],
+ "map/wonder_antique_great_wall": [
+  "map/wonder_antique_great_wall_0.webp"
+ ],
+ "map/wonder_antique_library": [
+  "map/wonder_antique_library_0.webp"
+ ],
+ "map/wonder_antique_lighthouse": [
+  "map/wonder_antique_lighthouse_0.webp"
+ ],
+ "map/wonder_antique_long_wall": [
+  "map/wonder_antique_long_wall_0.webp"
+ ],
+ "map/wonder_antique_observatory": [
+  "map/wonder_antique_observatory_0.webp"
+ ],
+ "map/wonder_antique_pagoda": [
+  "map/wonder_antique_pagoda_0.webp"
+ ],
+ "map/wonder_antique_palace": [
+  "map/wonder_antique_palace_0.webp"
+ ],
+ "map/wonder_antique_temple_of_heaven": [
+  "map/wonder_antique_temple_of_heaven_0.webp"
+ ],
+ "map/wonder_ink_academy": [
+  "map/wonder_ink_academy_0.webp"
+ ],
+ "map/wonder_ink_arena": [
+  "map/wonder_ink_arena_0.webp"
+ ],
+ "map/wonder_ink_canal": [
+  "map/wonder_ink_canal_0.webp"
+ ],
+ "map/wonder_ink_cathedral": [
+  "map/wonder_ink_cathedral_0.webp"
+ ],
+ "map/wonder_ink_cave_temples": [
+  "map/wonder_ink_cave_temples_0.webp"
+ ],
+ "map/wonder_ink_grand_canal": [
+  "map/wonder_ink_grand_canal_0.webp"
+ ],
+ "map/wonder_ink_great_buddha": [
+  "map/wonder_ink_great_buddha_0.webp"
+ ],
+ "map/wonder_ink_great_wall": [
+  "map/wonder_ink_great_wall_0.webp"
+ ],
+ "map/wonder_ink_library": [
+  "map/wonder_ink_library_0.webp"
+ ],
+ "map/wonder_ink_lighthouse": [
+  "map/wonder_ink_lighthouse_0.webp"
+ ],
+ "map/wonder_ink_long_wall": [
+  "map/wonder_ink_long_wall_0.webp"
+ ],
+ "map/wonder_ink_observatory": [
+  "map/wonder_ink_observatory_0.webp"
+ ],
+ "map/wonder_ink_pagoda": [
+  "map/wonder_ink_pagoda_0.webp"
+ ],
+ "map/wonder_ink_palace": [
+  "map/wonder_ink_palace_0.webp"
+ ],
+ "map/wonder_ink_temple_of_heaven": [
+  "map/wonder_ink_temple_of_heaven_0.webp"
+ ],
+ "scene/death_cn": [
+  "scene/death_cn.webp"
+ ],
+ "scene/death_jp": [
+  "scene/death_jp.webp"
+ ],
+ "scene/defect_cn": [
+  "scene/defect_cn.webp"
+ ],
+ "scene/defect_jp": [
+  "scene/defect_jp.webp"
+ ],
+ "scene/envoy_cn": [
+  "scene/envoy_cn.webp"
+ ],
+ "scene/envoy_jp": [
+  "scene/envoy_jp.webp"
+ ],
+ "scene/promote_cn": [
+  "scene/promote_cn.webp"
+ ],
+ "scene/promote_jp": [
+  "scene/promote_jp.webp"
+ ],
+ "scene/succession_cn": [
+  "scene/succession_cn.webp"
+ ],
+ "scene/succession_jp": [
+  "scene/succession_jp.webp"
+ ],
+ "scene/travel_cn": [
+  "scene/travel_cn.webp"
+ ],
+ "scene/travel_jp": [
+  "scene/travel_jp.webp"
+ ],
+ "ui/brush_ink": [
+  "ui/brush_ink.webp"
+ ],
+ "ui/brush_red": [
+  "ui/brush_red.webp"
+ ],
+ "ui/corner_bl": [
+  "ui/corner_bl.webp"
+ ],
+ "ui/corner_br": [
+  "ui/corner_br.webp"
+ ],
+ "ui/corner_tl": [
+  "ui/corner_tl.webp"
+ ],
+ "ui/corner_tr": [
+  "ui/corner_tr.webp"
+ ],
+ "unit/cn/u01a": [
+  "unit/cn/u01a.webp"
+ ],
+ "unit/cn/u01b": [
+  "unit/cn/u01b.webp"
+ ],
+ "unit/cn/u01c": [
+  "unit/cn/u01c.webp"
+ ],
+ "unit/cn/u02a": [
+  "unit/cn/u02a.webp"
+ ],
+ "unit/cn/u02b": [
+  "unit/cn/u02b.webp"
+ ],
+ "unit/cn/u03a": [
+  "unit/cn/u03a.webp"
+ ],
+ "unit/cn/u03b": [
+  "unit/cn/u03b.webp"
+ ],
+ "unit/cn/u04a": [
+  "unit/cn/u04a.webp"
+ ],
+ "unit/cn/u04b": [
+  "unit/cn/u04b.webp"
+ ],
+ "unit/cn/u05a": [
+  "unit/cn/u05a.webp"
+ ],
+ "unit/cn/u05b": [
+  "unit/cn/u05b.webp"
+ ],
+ "unit/cn/u05c": [
+  "unit/cn/u05c.webp"
+ ],
+ "unit/cn/u06a": [
+  "unit/cn/u06a.webp"
+ ],
+ "unit/cn/u06b": [
+  "unit/cn/u06b.webp"
+ ],
+ "unit/cn/u07a": [
+  "unit/cn/u07a.webp"
+ ],
+ "unit/cn/u07b": [
+  "unit/cn/u07b.webp"
+ ],
+ "unit/cn/u07c": [
+  "unit/cn/u07c.webp"
+ ],
+ "unit/cn/u08a": [
+  "unit/cn/u08a.webp"
+ ],
+ "unit/cn/u08b": [
+  "unit/cn/u08b.webp"
+ ],
+ "unit/cn/u08b2": [
+  "unit/cn/u08b2.webp"
+ ],
+ "unit/cn/u09a": [
+  "unit/cn/u09a.webp"
+ ],
+ "unit/cn/u09b": [
+  "unit/cn/u09b.webp"
+ ],
+ "unit/cn/u09c": [
+  "unit/cn/u09c.webp"
+ ],
+ "unit/cn/u10a": [
+  "unit/cn/u10a.webp"
+ ],
+ "unit/cn/u10b": [
+  "unit/cn/u10b.webp"
+ ],
+ "unit/cn/u10c": [
+  "unit/cn/u10c.webp"
+ ],
+ "unit/cn/u11a": [
+  "unit/cn/u11a.webp"
+ ],
+ "unit/cn/u11b": [
+  "unit/cn/u11b.webp"
+ ],
+ "unit/cn/u11c": [
+  "unit/cn/u11c.webp"
+ ],
+ "unit/cn/u12a": [
+  "unit/cn/u12a.webp"
+ ],
+ "unit/cn/u12b": [
+  "unit/cn/u12b.webp"
+ ],
+ "unit/cn/u12b2": [
+  "unit/cn/u12b2.webp"
+ ],
+ "unit/cn/u13a": [
+  "unit/cn/u13a.webp"
+ ],
+ "unit/cn/u13b": [
+  "unit/cn/u13b.webp"
+ ],
+ "unit/cn/u13c": [
+  "unit/cn/u13c.webp"
+ ],
+ "unit/cn/u14a": [
+  "unit/cn/u14a.webp"
+ ],
+ "unit/cn/u14b": [
+  "unit/cn/u14b.webp"
+ ],
+ "unit/cn/u14c": [
+  "unit/cn/u14c.webp"
+ ],
+ "unit/cn/u15a": [
+  "unit/cn/u15a.webp"
+ ],
+ "unit/cn/u15b": [
+  "unit/cn/u15b.webp"
+ ],
+ "unit/cn/u15c": [
+  "unit/cn/u15c.webp"
+ ],
+ "unit/cn/u16a": [
+  "unit/cn/u16a.webp"
+ ],
+ "unit/cn/u16b": [
+  "unit/cn/u16b.webp"
+ ],
+ "unit/cn/u16c": [
+  "unit/cn/u16c.webp"
+ ],
+ "unit/cn/u17a": [
+  "unit/cn/u17a.webp"
+ ],
+ "unit/cn/u17b": [
+  "unit/cn/u17b.webp"
+ ],
+ "unit/cn/u17c": [
+  "unit/cn/u17c.webp"
+ ],
+ "unit/cn/u18a": [
+  "unit/cn/u18a.webp"
+ ],
+ "unit/cn/u18b": [
+  "unit/cn/u18b.webp"
+ ],
+ "unit/cn/u18c": [
+  "unit/cn/u18c.webp"
+ ],
+ "unit/jp/u01a": [
+  "unit/jp/u01a.webp"
+ ],
+ "unit/jp/u01b": [
+  "unit/jp/u01b.webp"
+ ],
+ "unit/jp/u01c": [
+  "unit/jp/u01c.webp"
+ ],
+ "unit/jp/u02a": [
+  "unit/jp/u02a.webp"
+ ],
+ "unit/jp/u02b": [
+  "unit/jp/u02b.webp"
+ ],
+ "unit/jp/u03a": [
+  "unit/jp/u03a.webp"
+ ],
+ "unit/jp/u03b": [
+  "unit/jp/u03b.webp"
+ ],
+ "unit/jp/u04a": [
+  "unit/jp/u04a.webp"
+ ],
+ "unit/jp/u04b": [
+  "unit/jp/u04b.webp"
+ ],
+ "unit/jp/u05a": [
+  "unit/jp/u05a.webp"
+ ],
+ "unit/jp/u05b": [
+  "unit/jp/u05b.webp"
+ ],
+ "unit/jp/u05c": [
+  "unit/jp/u05c.webp"
+ ],
+ "unit/jp/u06a": [
+  "unit/jp/u06a.webp"
+ ],
+ "unit/jp/u06b": [
+  "unit/jp/u06b.webp"
+ ],
+ "unit/jp/u07a": [
+  "unit/jp/u07a.webp"
+ ],
+ "unit/jp/u07b": [
+  "unit/jp/u07b.webp"
+ ],
+ "unit/jp/u07c": [
+  "unit/jp/u07c.webp"
+ ],
+ "unit/jp/u08a": [
+  "unit/jp/u08a.webp"
+ ],
+ "unit/jp/u08b": [
+  "unit/jp/u08b.webp"
+ ],
+ "unit/jp/u08b2": [
+  "unit/jp/u08b2.webp"
+ ],
+ "unit/jp/u09a": [
+  "unit/jp/u09a.webp"
+ ],
+ "unit/jp/u09b": [
+  "unit/jp/u09b.webp"
+ ],
+ "unit/jp/u09c": [
+  "unit/jp/u09c.webp"
+ ],
+ "unit/jp/u10a": [
+  "unit/jp/u10a.webp"
+ ],
+ "unit/jp/u10b": [
+  "unit/jp/u10b.webp"
+ ],
+ "unit/jp/u10c": [
+  "unit/jp/u10c.webp"
+ ],
+ "unit/jp/u11a": [
+  "unit/jp/u11a.webp"
+ ],
+ "unit/jp/u11b": [
+  "unit/jp/u11b.webp"
+ ],
+ "unit/jp/u11c": [
+  "unit/jp/u11c.webp"
+ ],
+ "unit/jp/u12a": [
+  "unit/jp/u12a.webp"
+ ],
+ "unit/jp/u12b": [
+  "unit/jp/u12b.webp"
+ ],
+ "unit/jp/u12b2": [
+  "unit/jp/u12b2.webp"
+ ],
+ "unit/jp/u13a": [
+  "unit/jp/u13a.webp"
+ ],
+ "unit/jp/u13b": [
+  "unit/jp/u13b.webp"
+ ],
+ "unit/jp/u13c": [
+  "unit/jp/u13c.webp"
+ ],
+ "unit/jp/u14a": [
+  "unit/jp/u14a.webp"
+ ],
+ "unit/jp/u14b": [
+  "unit/jp/u14b.webp"
+ ],
+ "unit/jp/u14c": [
+  "unit/jp/u14c.webp"
+ ],
+ "unit/jp/u15a": [
+  "unit/jp/u15a.webp"
+ ],
+ "unit/jp/u15b": [
+  "unit/jp/u15b.webp"
+ ],
+ "unit/jp/u15c": [
+  "unit/jp/u15c.webp"
+ ],
+ "unit/jp/u16a": [
+  "unit/jp/u16a.webp"
+ ],
+ "unit/jp/u16b": [
+  "unit/jp/u16b.webp"
+ ],
+ "unit/jp/u16c": [
+  "unit/jp/u16c.webp"
+ ],
+ "unit/jp/u17a": [
+  "unit/jp/u17a.webp"
+ ],
+ "unit/jp/u17b": [
+  "unit/jp/u17b.webp"
+ ],
+ "unit/jp/u17c": [
+  "unit/jp/u17c.webp"
+ ],
+ "unit/jp/u18a": [
+  "unit/jp/u18a.webp"
+ ],
+ "unit/jp/u18b": [
+  "unit/jp/u18b.webp"
+ ],
+ "unit/jp/u18c": [
+  "unit/jp/u18c.webp"
+ ]
+}

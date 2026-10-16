@@ -1,0 +1,51 @@
+{
+  "siege": { "base": 0, "perFort": 0, "unownedMult": 0.5, "idleDecay": 0.5 },
+  "move": { "range": 3 },
+  "officer": { "minTroopLevel": 5, "nameMax": 100, "unit": "u01a", "raiseCostBase": 100, "raiseCostPerLevel": 10, "lowerRefund": 0.6667, "leaderTraits": ["brave", "warrior", "charismatic", "wise", "scholar", "pious"] },
+  "reserve": { "max": 12 },
+  "garrison": {
+    "levelBase": 1, "levelPerFort": 5, "levelTown": 1, "levelCity": 2, "levelCapital": 1, "levelMax": 10,
+    "troopsBase": 1, "troopsPerFort": 2, "troopsTown": 1, "troopsMax": 4, "townPop": 8000, "cityPop": 30000,
+    "units": ["u01a", "u06a"], "skipLines": [3, 16, 17, 18]
+  },
+  "quest": { "months": 2, "item": 0.3, "ronin": 0.3, "exp": 0.25, "expAmount": 400 },
+  "people": {
+    "oldAge": 60, "deathPerYearOver": 0.012, "comingOfAge": 15,
+    "wound": { "months": 3, "short": 2, "shortTraits": ["brave", "warrior"], "long": 3, "longTraits": ["sickly"] },
+    "defectLoyalty": 0, "defectChance": 0.006, "surrenderChance": 0.35, "tieJoinChance": 0.5, "roninJoinChance": 0.02,
+    "joinTies": ["friend", "sworn", "mentor", "pupil", "companion", "love", "spouse"],
+    "strongTies": ["sworn", "love", "spouse"], "oldLordTies": ["lord", "servant"],
+    "rivalExp": 150, "rivalLoserExp": 60, "avengeKillChance": 0.5, "avengeExp": 200, "mentorExp": 120, "bondLoyalty": 1, "grudgeLoyalty": 1
+  },
+  "diplomacy": { "allianceOpinion": 20, "truceMonths": 24, "truceStrengthRatio": 1.5, "aiTruceAfter": 18, "aiTruceChance": 0.1, "opinionOnWar": -60, "opinionOnBreak": -40, "opinionOnAlliance": 20,
+    "opinionAllyOfVictim": -20, "opinionSharedEnemy": 1, "opinionDrift": 0.5, "opinionOnRefuse": -5, "opinionOnTruce": 10,
+    "offerChance": 0.08, "offerMonths": 3, "vassalStrengthRatio": 4, "vassalOpinion": 0, "callToArmsOpinion": 30 },
+  "difficulty": {
+    "easy": { "name": "やさしい", "playerIncome": 1.25, "playerSiege": 1.3, "aiVsPlayer": 0.7, "aiTroopLevel": 0, "aiEmptyChance": 0.15 },
+    "normal": { "name": "ふつう", "playerIncome": 1, "playerSiege": 1, "aiVsPlayer": 1, "aiTroopLevel": 0, "aiEmptyChance": 0.3 },
+    "hard": { "name": "むずかしい", "playerIncome": 0.85, "playerSiege": 0.85, "aiVsPlayer": 1.3, "aiTroopLevel": 1, "aiEmptyChance": 0.5 }
+  },
+  "ai": {
+    "attackRatio": 1.6, "attackChance": 0.4, "neutralMult": 0.6, "aggressionRatio": 0.4, "cautionRatio": 0.3, "aggressionChance": 0.4,
+    "cunningEmptyBonus": 0.5, "honorNeutralPenalty": 0.5, "warBonus": 1.5, "emptyDefenseShare": 0.35,  "reserveSupply": 150
+  },
+  "supply": { "capMonths": 24, "capMin": 1500 },
+  "tactical": { "lines": [17, 18], "capPerGeneral": 1 },
+  "traits": {
+    "economy": {
+      "agrarian": { "name": "農耕", "text": "収入+10%、槍の兵が安い", "incomeMult": 1.1, "cost": { "lines": [1], "mult": 0.85 } },
+      "pastoral": { "name": "牧畜", "text": "騎馬の兵が安く、練度+1", "cost": { "lines": [7, 13], "mult": 0.8 }, "level": { "lines": [7, 13], "add": 1 } },
+      "trade": { "name": "交易", "text": "収入+20%", "incomeMult": 1.2 },
+      "mining": { "name": "鉱山", "text": "飛び道具・工兵・火の兵が安い", "cost": { "lines": [4, 10, 15], "mult": 0.8 } },
+      "maritime": { "name": "海運", "text": "船が安く、練度+1", "cost": { "lines": [3, 16], "mult": 0.75 }, "level": { "lines": [3, 16], "add": 1 } }
+    },
+    "government": {
+      "tribe": { "name": "部族", "text": "すべての兵の練度+1", "troopLevel": 1 },
+      "chiefdom": { "name": "豪族連合", "text": "領が落ちにくい", "siegeMult": 1.2 },
+      "monarchy": { "name": "王権", "text": "家臣が寝返りにくい", "defectMult": 0.5 },
+      "empire": { "name": "帝国", "text": "収入+10%、領が落ちにくい", "incomeMult": 1.1, "siegeMult": 1.1 },
+      "republic": { "name": "合議", "text": "収入+10%、家臣が寝返りにくい", "incomeMult": 1.1, "defectMult": 0.7 },
+      "theocracy": { "name": "神権", "text": "医の兵が安く、家臣が寝返りにくい", "cost": { "lines": [8], "mult": 0.7 }, "defectMult": 0.7 }
+    }
+  }
+}

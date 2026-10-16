@@ -1,0 +1,2857 @@
+[
+ {
+  "id": "u01a",
+  "name": {
+   "jp": "雑兵",
+   "cn": "徒卒"
+  },
+  "line": 1,
+  "tier": 1,
+  "cost": 15,
+  "hp": 430,
+  "mp": 46,
+  "str": 45,
+  "int": 15,
+  "agi": 45,
+  "def": 88,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k001"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u01b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u01b",
+  "name": {
+   "jp": "足軽槍組",
+   "cn": "戈兵"
+  },
+  "line": 1,
+  "tier": 2,
+  "cost": 31,
+  "hp": 505,
+  "mp": 53,
+  "str": 56,
+  "int": 19,
+  "agi": 53,
+  "def": 102,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k002"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "regen",
+    "pct": 5,
+    "rank": "A"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u01c",
+    "lv": 20
+   }
+  ]
+ },
+ {
+  "id": "u01c",
+  "name": {
+   "jp": "長柄足軽",
+   "cn": "戟兵"
+  },
+  "line": 1,
+  "tier": 3,
+  "cost": 68,
+  "hp": 571,
+  "mp": 150,
+  "str": 68,
+  "int": 35,
+  "agi": 66,
+  "def": 111,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    2,
+    6
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    1,
+    3
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k003",
+   "k004"
+  ],
+  "tactics": [
+   "x01",
+   "x29"
+  ],
+  "passives": [
+   {
+    "type": "regen",
+    "pct": 10,
+    "rank": "S"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u02a",
+  "name": {
+   "jp": "陣太鼓",
+   "cn": "鼓手"
+  },
+  "line": 2,
+  "tier": 1,
+  "cost": 21,
+  "hp": 217,
+  "mp": 111,
+  "str": 31,
+  "int": 53,
+  "agi": 49,
+  "def": 88,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    1,
+    6
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k005"
+  ],
+  "tactics": [
+   "x25",
+   "x31"
+  ],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u02b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u02b",
+  "name": {
+   "jp": "法螺貝衆",
+   "cn": "金鼓隊"
+  },
+  "line": 2,
+  "tier": 2,
+  "cost": 39,
+  "hp": 284,
+  "mp": 180,
+  "str": 35,
+  "int": 64,
+  "agi": 53,
+  "def": 102,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    1,
+    6
+   ],
+   "mp": [
+    2,
+    6
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    1,
+    2
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k006",
+   "k007"
+  ],
+  "tactics": [
+   "x25",
+   "x31",
+   "x04",
+   "x30"
+  ],
+  "passives": [],
+  "promote": []
+ },
+ {
+  "id": "u03a",
+  "name": {
+   "jp": "小早",
+   "cn": "舟卒"
+  },
+  "line": 3,
+  "tier": 1,
+  "cost": 26,
+  "hp": 255,
+  "mp": 143,
+  "str": 35,
+  "int": 53,
+  "agi": 49,
+  "def": 88,
+  "move": 4,
+  "affinity": "water",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k008",
+   "k009"
+  ],
+  "tactics": [
+   "x22",
+   "x23",
+   "x24"
+  ],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u03b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u03b",
+  "name": {
+   "jp": "関船",
+   "cn": "突冒"
+  },
+  "line": 3,
+  "tier": 2,
+  "cost": 56,
+  "hp": 341,
+  "mp": 197,
+  "str": 37,
+  "int": 61,
+  "agi": 53,
+  "def": 102,
+  "move": 4,
+  "affinity": "water",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    2,
+    6
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    1,
+    2
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k010",
+   "k011",
+   "k012"
+  ],
+  "tactics": [
+   "x22",
+   "x23",
+   "x24",
+   "x03"
+  ],
+  "passives": [],
+  "promote": []
+ },
+ {
+  "id": "u04a",
+  "name": {
+   "jp": "鉄砲足軽",
+   "cn": "弩兵"
+  },
+  "line": 4,
+  "tier": 1,
+  "cost": 31,
+  "hp": 305,
+  "mp": 102,
+  "str": 34,
+  "int": 48,
+  "agi": 46,
+  "def": 88,
+  "move": 6,
+  "affinity": "plain",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k013",
+   "k014"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u04b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u04b",
+  "name": {
+   "jp": "鉄砲組",
+   "cn": "強弩隊"
+  },
+  "line": 4,
+  "tier": 2,
+  "cost": 46,
+  "hp": 387,
+  "mp": 149,
+  "str": 40,
+  "int": 54,
+  "agi": 57,
+  "def": 102,
+  "move": 6,
+  "affinity": "plain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    2,
+    6
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k015",
+   "k016"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": []
+ },
+ {
+  "id": "u05a",
+  "name": {
+   "jp": "素破",
+   "cn": "游卒"
+  },
+  "line": 5,
+  "tier": 1,
+  "cost": 31,
+  "hp": 331,
+  "mp": 0,
+  "str": 46,
+  "int": 35,
+  "agi": 42,
+  "def": 88,
+  "move": 4,
+  "affinity": "forest",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k017",
+   "k018"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u05b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u05b",
+  "name": {
+   "jp": "透波",
+   "cn": "刺客"
+  },
+  "line": 5,
+  "tier": 2,
+  "cost": 46,
+  "hp": 420,
+  "mp": 0,
+  "str": 55,
+  "int": 39,
+  "agi": 53,
+  "def": 102,
+  "move": 5,
+  "affinity": "forest",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k019",
+   "k020"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u05c",
+    "lv": 20
+   }
+  ]
+ },
+ {
+  "id": "u05c",
+  "name": {
+   "jp": "伊賀者",
+   "cn": "死士"
+  },
+  "line": 5,
+  "tier": 3,
+  "cost": 64,
+  "hp": 490,
+  "mp": 39,
+  "str": 74,
+  "int": 46,
+  "agi": 74,
+  "def": 111,
+  "move": 5,
+  "affinity": "forest",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    3
+   ]
+  },
+  "skills": [
+   "k021",
+   "k022",
+   "k023"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "crit",
+    "pct": 15,
+    "rank": "B"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u06a",
+  "name": {
+   "jp": "弓足軽",
+   "cn": "弓兵"
+  },
+  "line": 6,
+  "tier": 1,
+  "cost": 34,
+  "hp": 352,
+  "mp": 0,
+  "str": 53,
+  "int": 40,
+  "agi": 50,
+  "def": 88,
+  "move": 5,
+  "affinity": "forest",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k024"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "bane",
+    "vs": "rider",
+    "pct": 10,
+    "rank": "B"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u06b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u06b",
+  "name": {
+   "jp": "弓組",
+   "cn": "射士隊"
+  },
+  "line": 6,
+  "tier": 2,
+  "cost": 49,
+  "hp": 400,
+  "mp": 0,
+  "str": 63,
+  "int": 42,
+  "agi": 63,
+  "def": 102,
+  "move": 6,
+  "affinity": "forest",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    3
+   ]
+  },
+  "skills": [
+   "k025"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "bane",
+    "vs": "rider",
+    "pct": 31,
+    "rank": "A"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u07a",
+  "name": {
+   "jp": "軽騎",
+   "cn": "斥候騎"
+  },
+  "line": 7,
+  "tier": 1,
+  "cost": 34,
+  "hp": 430,
+  "mp": 0,
+  "str": 53,
+  "int": 26,
+  "agi": 59,
+  "def": 102,
+  "move": 6,
+  "affinity": "plain",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k026"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "remove",
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u07b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u07b",
+  "name": {
+   "jp": "騎馬隊",
+   "cn": "騎兵"
+  },
+  "line": 7,
+  "tier": 2,
+  "cost": 49,
+  "hp": 495,
+  "mp": 60,
+  "str": 64,
+  "int": 30,
+  "agi": 78,
+  "def": 111,
+  "move": 6,
+  "affinity": "plain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k027",
+   "k028"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "remove",
+    "rank": null
+   },
+   {
+    "type": "evade",
+    "pct": 10,
+    "rank": "C"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u07c",
+    "lv": 20
+   }
+  ]
+ },
+ {
+  "id": "u07c",
+  "name": {
+   "jp": "赤備え",
+   "cn": "胡騎"
+  },
+  "line": 7,
+  "tier": 3,
+  "cost": 68,
+  "hp": 569,
+  "mp": 80,
+  "str": 82,
+  "int": 35,
+  "agi": 102,
+  "def": 117,
+  "move": 7,
+  "affinity": "plain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    3
+   ]
+  },
+  "skills": [
+   "k029",
+   "k030",
+   "k031"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "remove",
+    "rank": null
+   },
+   {
+    "type": "evade",
+    "pct": 15,
+    "rank": "B"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u08a",
+  "name": {
+   "jp": "金瘡医",
+   "cn": "医卒"
+  },
+  "line": 8,
+  "tier": 1,
+  "cost": 39,
+  "hp": 352,
+  "mp": 143,
+  "str": 39,
+  "int": 54,
+  "agi": 50,
+  "def": 102,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k032"
+  ],
+  "tactics": [
+   "x16",
+   "x15"
+  ],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u08b",
+    "lv": 10
+   },
+   {
+    "to": "u08b2",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u08b",
+  "name": {
+   "jp": "典薬衆",
+   "cn": "医官"
+  },
+  "line": 8,
+  "tier": 2,
+  "cost": 56,
+  "hp": 456,
+  "mp": 197,
+  "str": 43,
+  "int": 63,
+  "agi": 56,
+  "def": 111,
+  "move": 6,
+  "affinity": "rider",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    2,
+    6
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    1,
+    2
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k033"
+  ],
+  "tactics": [
+   "x16",
+   "x15",
+   "x28"
+  ],
+  "passives": [],
+  "promote": []
+ },
+ {
+  "id": "u08b2",
+  "name": {
+   "jp": "陣僧衆",
+   "cn": "巫医隊"
+  },
+  "line": 8,
+  "tier": 2,
+  "cost": 56,
+  "hp": 474,
+  "mp": 197,
+  "str": 45,
+  "int": 66,
+  "agi": 60,
+  "def": 117,
+  "move": 6,
+  "affinity": "plain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k034"
+  ],
+  "tactics": [
+   "x16",
+   "x15",
+   "x34",
+   "x33"
+  ],
+  "passives": [],
+  "promote": []
+ },
+ {
+  "id": "u09a",
+  "name": {
+   "jp": "竹束衆",
+   "cn": "盾兵"
+  },
+  "line": 9,
+  "tier": 1,
+  "cost": 39,
+  "hp": 484,
+  "mp": 0,
+  "str": 56,
+  "int": 31,
+  "agi": 50,
+  "def": 102,
+  "move": 4,
+  "affinity": "swamp",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k035"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "shield",
+    "chance": 21,
+    "rank": "A"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u09b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u09b",
+  "name": {
+   "jp": "盾衆",
+   "cn": "甲士"
+  },
+  "line": 9,
+  "tier": 2,
+  "cost": 56,
+  "hp": 623,
+  "mp": 0,
+  "str": 65,
+  "int": 35,
+  "agi": 59,
+  "def": 112,
+  "move": 5,
+  "affinity": "swamp",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k036"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "shield",
+    "chance": 21,
+    "rank": "A"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u09c",
+    "item": "item_shield_top"
+   }
+  ]
+ },
+ {
+  "id": "u09c",
+  "name": {
+   "jp": "鉄盾衆",
+   "cn": "虎賁"
+  },
+  "line": 9,
+  "tier": 3,
+  "cost": 88,
+  "hp": 768,
+  "mp": 0,
+  "str": 82,
+  "int": 40,
+  "agi": 74,
+  "def": 126,
+  "move": 5,
+  "affinity": "swamp",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    1,
+    3
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k037"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "shield",
+    "chance": 26,
+    "rank": "S"
+   },
+   {
+    "type": "doubleAct",
+    "rank": null
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u10a",
+  "name": {
+   "jp": "黒鍬衆",
+   "cn": "輜重兵"
+  },
+  "line": 10,
+  "tier": 1,
+  "cost": 46,
+  "hp": 534,
+  "mp": 0,
+  "str": 61,
+  "int": 0,
+  "agi": 34,
+  "def": 126,
+  "move": 3,
+  "affinity": "mountain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    0
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k038"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "immune",
+    "statuses": [
+     "poison",
+     "silence",
+     "stun",
+     "daze",
+     "defect",
+     "confuse"
+    ],
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u10b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u10b",
+  "name": {
+   "jp": "石火矢衆",
+   "cn": "投石車"
+  },
+  "line": 10,
+  "tier": 2,
+  "cost": 56,
+  "hp": 680,
+  "mp": 0,
+  "str": 74,
+  "int": 0,
+  "agi": 40,
+  "def": 132,
+  "move": 4,
+  "affinity": "mountain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    0
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k039",
+   "k040"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "immune",
+    "statuses": [
+     "poison",
+     "silence",
+     "stun",
+     "daze",
+     "defect",
+     "confuse"
+    ],
+    "rank": null
+   },
+   {
+    "type": "tacticResist",
+    "pct": 10,
+    "rank": "C"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u10c",
+    "lv": 20
+   }
+  ]
+ },
+ {
+  "id": "u10c",
+  "name": {
+   "jp": "大筒衆",
+   "cn": "飛石車"
+  },
+  "line": 10,
+  "tier": 3,
+  "cost": 74,
+  "hp": 837,
+  "mp": 0,
+  "str": 88,
+  "int": 0,
+  "agi": 43,
+  "def": 147,
+  "move": 4,
+  "affinity": "mountain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    5,
+    14
+   ],
+   "mp": [
+    0,
+    0
+   ],
+   "str": [
+    1,
+    3
+   ],
+   "int": [
+    0,
+    0
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k041",
+   "k042",
+   "k043"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "immune",
+    "statuses": [
+     "poison",
+     "silence",
+     "stun",
+     "daze",
+     "defect",
+     "confuse"
+    ],
+    "rank": null
+   },
+   {
+    "type": "tacticResist",
+    "pct": 21,
+    "rank": "B"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u11a",
+  "name": {
+   "jp": "大太刀衆",
+   "cn": "勇士"
+  },
+  "line": 11,
+  "tier": 1,
+  "cost": 49,
+  "hp": 532,
+  "mp": 0,
+  "str": 63,
+  "int": 39,
+  "agi": 34,
+  "def": 102,
+  "move": 4,
+  "affinity": "mountain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k044"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u11b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u11b",
+  "name": {
+   "jp": "野太刀衆",
+   "cn": "大斧兵"
+  },
+  "line": 11,
+  "tier": 2,
+  "cost": 64,
+  "hp": 623,
+  "mp": 48,
+  "str": 79,
+  "int": 43,
+  "agi": 40,
+  "def": 111,
+  "move": 5,
+  "affinity": "mountain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    3
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k045",
+   "k046"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "immune",
+    "statuses": [
+     "stun"
+    ],
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u11c",
+    "lv": 20
+   }
+  ]
+ },
+ {
+  "id": "u11c",
+  "name": {
+   "jp": "斬馬隊",
+   "cn": "鉞士"
+  },
+  "line": 11,
+  "tier": 3,
+  "cost": 78,
+  "hp": 766,
+  "mp": 150,
+  "str": 102,
+  "int": 48,
+  "agi": 43,
+  "def": 117,
+  "move": 5,
+  "affinity": "mountain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    2,
+    4
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k047",
+   "k048",
+   "k049"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "immune",
+    "statuses": [
+     "stun"
+    ],
+    "rank": null
+   },
+   {
+    "type": "counterDamage",
+    "pct": 21,
+    "rank": "S"
+   },
+   {
+    "type": "hit",
+    "pct": 10,
+    "rank": "A"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u12a",
+  "name": {
+   "jp": "山岳兵",
+   "cn": "山民兵"
+  },
+  "line": 12,
+  "tier": 1,
+  "cost": 59,
+  "hp": 440,
+  "mp": 111,
+  "str": 60,
+  "int": 31,
+  "agi": 56,
+  "def": 102,
+  "move": 5,
+  "affinity": "mountain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k050",
+   "k051"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "baneOnTerrain",
+    "terrain": "mountain",
+    "pct": 21,
+    "rank": "A"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u12b",
+    "lv": 10
+   },
+   {
+    "to": "u12b2",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u12b",
+  "name": {
+   "jp": "山岳薬師",
+   "cn": "山医"
+  },
+  "line": 12,
+  "tier": 2,
+  "cost": 84,
+  "hp": 585,
+  "mp": 153,
+  "str": 68,
+  "int": 40,
+  "agi": 63,
+  "def": 126,
+  "move": 5,
+  "affinity": "mountain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    1,
+    2
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k052",
+   "k053"
+  ],
+  "tactics": [
+   "x02"
+  ],
+  "passives": [
+   {
+    "type": "regen",
+    "pct": 10,
+    "rank": "S"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u12b2",
+  "name": {
+   "jp": "山岳精鋭",
+   "cn": "板楯兵"
+  },
+  "line": 12,
+  "tier": 2,
+  "cost": 84,
+  "hp": 522,
+  "mp": 121,
+  "str": 68,
+  "int": 40,
+  "agi": 66,
+  "def": 112,
+  "move": 6,
+  "affinity": "mountain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k054",
+   "k055"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "baneOnTerrain",
+    "terrain": "mountain",
+    "pct": 49,
+    "rank": "S"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u13a",
+  "name": {
+   "jp": "騎馬武者",
+   "cn": "戦車"
+  },
+  "line": 13,
+  "tier": 1,
+  "cost": 59,
+  "hp": 483,
+  "mp": 102,
+  "str": 55,
+  "int": 34,
+  "agi": 61,
+  "def": 102,
+  "move": 6,
+  "affinity": "rider",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k056"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u13b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u13b",
+  "name": {
+   "jp": "母衣衆",
+   "cn": "重戦車"
+  },
+  "line": 13,
+  "tier": 2,
+  "cost": 78,
+  "hp": 582,
+  "mp": 106,
+  "str": 68,
+  "int": 40,
+  "agi": 78,
+  "def": 111,
+  "move": 7,
+  "affinity": "rider",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    3
+   ]
+  },
+  "skills": [
+   "k057",
+   "k058"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u13c",
+    "lv": 20
+   }
+  ]
+ },
+ {
+  "id": "u13c",
+  "name": {
+   "jp": "旗本騎馬",
+   "cn": "駟馬戦車"
+  },
+  "line": 13,
+  "tier": 3,
+  "cost": 111,
+  "hp": 646,
+  "mp": 153,
+  "str": 84,
+  "int": 47,
+  "agi": 97,
+  "def": 117,
+  "move": 7,
+  "affinity": "rider",
+  "speed": "D",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    2,
+    3
+   ]
+  },
+  "skills": [
+   "k059",
+   "k060",
+   "k061"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "remove",
+    "rank": null
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u14a",
+  "name": {
+   "jp": "野伏",
+   "cn": "伏兵"
+  },
+  "line": 14,
+  "tier": 1,
+  "cost": 68,
+  "hp": 499,
+  "mp": 127,
+  "str": 59,
+  "int": 56,
+  "agi": 36,
+  "def": 111,
+  "move": 3,
+  "affinity": "forest",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k062",
+   "k063"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "immune",
+    "statuses": [
+     "daze"
+    ],
+    "rank": null
+   },
+   {
+    "type": "regen",
+    "pct": 5,
+    "on": "forest",
+    "rank": "B"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u14b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u14b",
+  "name": {
+   "jp": "伏兵衆",
+   "cn": "林兵"
+  },
+  "line": 14,
+  "tier": 2,
+  "cost": 88,
+  "hp": 630,
+  "mp": 137,
+  "str": 78,
+  "int": 60,
+  "agi": 40,
+  "def": 117,
+  "move": 4,
+  "affinity": "forest",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k064",
+   "k065",
+   "k066"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "immune",
+    "statuses": [
+     "daze"
+    ],
+    "rank": null
+   },
+   {
+    "type": "regen",
+    "pct": 10,
+    "on": "forest",
+    "rank": "A"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u14c",
+    "item": "item_ambush_top"
+   }
+  ]
+ },
+ {
+  "id": "u14c",
+  "name": {
+   "jp": "草の者",
+   "cn": "伏弩"
+  },
+  "line": 14,
+  "tier": 3,
+  "cost": 111,
+  "hp": 776,
+  "mp": 199,
+  "str": 96,
+  "int": 72,
+  "agi": 45,
+  "def": 127,
+  "move": 4,
+  "affinity": "forest",
+  "speed": "D",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    3
+   ],
+   "int": [
+    1,
+    2
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k067",
+   "k068",
+   "k069"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "immune",
+    "statuses": [
+     "confuse"
+    ],
+    "rank": null
+   },
+   {
+    "type": "regen",
+    "pct": 15,
+    "on": "forest",
+    "rank": "S"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u15a",
+  "name": {
+   "jp": "焙烙衆",
+   "cn": "火攻兵"
+  },
+  "line": 15,
+  "tier": 1,
+  "cost": 74,
+  "hp": 532,
+  "mp": 100,
+  "str": 60,
+  "int": 53,
+  "agi": 43,
+  "def": 112,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k070",
+   "k071"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u15b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u15b",
+  "name": {
+   "jp": "火矢衆",
+   "cn": "火牛"
+  },
+  "line": 15,
+  "tier": 2,
+  "cost": 102,
+  "hp": 691,
+  "mp": 130,
+  "str": 78,
+  "int": 59,
+  "agi": 49,
+  "def": 126,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    3
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k072",
+   "k073"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u15c",
+    "item": "item_fire_top"
+   }
+  ]
+ },
+ {
+  "id": "u15c",
+  "name": {
+   "jp": "国崩し",
+   "cn": "火牛陣"
+  },
+  "line": 15,
+  "tier": 3,
+  "cost": 126,
+  "hp": 806,
+  "mp": 213,
+  "str": 102,
+  "int": 69,
+  "agi": 58,
+  "def": 132,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "D",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    2,
+    3
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k074",
+   "k075",
+   "k076"
+  ],
+  "tactics": [],
+  "passives": [],
+  "promote": []
+ },
+ {
+  "id": "u16a",
+  "name": {
+   "jp": "安宅船",
+   "cn": "楼船"
+  },
+  "line": 16,
+  "tier": 1,
+  "cost": 78,
+  "hp": 544,
+  "mp": 126,
+  "str": 61,
+  "int": 53,
+  "agi": 40,
+  "def": 111,
+  "move": 4,
+  "affinity": "water",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k077",
+   "k078"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "regen",
+    "pct": 5,
+    "on": "water",
+    "rank": "B"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u16b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u16b",
+  "name": {
+   "jp": "大安宅船",
+   "cn": "大翼"
+  },
+  "line": 16,
+  "tier": 2,
+  "cost": 93,
+  "hp": 655,
+  "mp": 130,
+  "str": 80,
+  "int": 55,
+  "agi": 42,
+  "def": 117,
+  "move": 5,
+  "affinity": "water",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k079",
+   "k080",
+   "k081"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "regen",
+    "pct": 10,
+    "on": "water",
+    "rank": "A"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u16c",
+    "item": "item_ship_top"
+   }
+  ]
+ },
+ {
+  "id": "u16c",
+  "name": {
+   "jp": "鉄甲船",
+   "cn": "余皇"
+  },
+  "line": 16,
+  "tier": 3,
+  "cost": 111,
+  "hp": 812,
+  "mp": 192,
+  "str": 94,
+  "int": 63,
+  "agi": 56,
+  "def": 127,
+  "move": 5,
+  "affinity": "water",
+  "speed": "D",
+  "growth": {
+   "hp": [
+    4,
+    12
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    3
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k082",
+   "k083",
+   "k084"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "regen",
+    "pct": 15,
+    "on": "water",
+    "rank": "S"
+   }
+  ],
+  "promote": []
+ },
+ {
+  "id": "u17a",
+  "name": {
+   "jp": "使番衆",
+   "cn": "行人"
+  },
+  "line": 17,
+  "tier": 1,
+  "cost": 84,
+  "hp": 305,
+  "mp": 273,
+  "str": 47,
+  "int": 59,
+  "agi": 50,
+  "def": 102,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    1,
+    6
+   ],
+   "mp": [
+    2,
+    6
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    1,
+    2
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k085"
+  ],
+  "tactics": [
+   "x14",
+   "x06"
+  ],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u17b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u17b",
+  "name": {
+   "jp": "軍目付",
+   "cn": "軍正"
+  },
+  "line": 17,
+  "tier": 2,
+  "cost": 102,
+  "hp": 334,
+  "mp": 340,
+  "str": 53,
+  "int": 78,
+  "agi": 56,
+  "def": 111,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    3,
+    8
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    1,
+    2
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k086"
+  ],
+  "tactics": [
+   "x14",
+   "x06",
+   "x16",
+   "x12"
+  ],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u17c",
+    "lv": 20
+   }
+  ]
+ },
+ {
+  "id": "u17c",
+  "name": {
+   "jp": "軍奉行",
+   "cn": "大司馬"
+  },
+  "line": 17,
+  "tier": 3,
+  "cost": 117,
+  "hp": 396,
+  "mp": 441,
+  "str": 63,
+  "int": 96,
+  "agi": 59,
+  "def": 117,
+  "move": 6,
+  "affinity": "plain",
+  "speed": "D",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    4,
+    10
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    1,
+    3
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k087",
+   "k088"
+  ],
+  "tactics": [
+   "x14",
+   "x06",
+   "x16",
+   "x12",
+   "x18",
+   "x27"
+  ],
+  "passives": [],
+  "promote": []
+ },
+ {
+  "id": "u18a",
+  "name": {
+   "jp": "間者",
+   "cn": "間諜"
+  },
+  "line": 18,
+  "tier": 1,
+  "cost": 84,
+  "hp": 305,
+  "mp": 273,
+  "str": 47,
+  "int": 59,
+  "agi": 50,
+  "def": 102,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    1,
+    6
+   ],
+   "mp": [
+    2,
+    6
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    1,
+    2
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k089"
+  ],
+  "tactics": [
+   "x01",
+   "x05"
+  ],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u18b",
+    "lv": 10
+   }
+  ]
+ },
+ {
+  "id": "u18b",
+  "name": {
+   "jp": "調略衆",
+   "cn": "説客"
+  },
+  "line": 18,
+  "tier": 2,
+  "cost": 102,
+  "hp": 334,
+  "mp": 340,
+  "str": 53,
+  "int": 78,
+  "agi": 56,
+  "def": 111,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    2,
+    6
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    1,
+    3
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k090"
+  ],
+  "tactics": [
+   "x01",
+   "x05",
+   "x36",
+   "x32"
+  ],
+  "passives": [],
+  "promote": [
+   {
+    "to": "u18c",
+    "lv": 20
+   }
+  ]
+ },
+ {
+  "id": "u18c",
+  "name": {
+   "jp": "軍略衆",
+   "cn": "縦横家"
+  },
+  "line": 18,
+  "tier": 3,
+  "cost": 117,
+  "hp": 396,
+  "mp": 428,
+  "str": 58,
+  "int": 102,
+  "agi": 69,
+  "def": 117,
+  "move": 6,
+  "affinity": "plain",
+  "speed": "D",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    3,
+    8
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    2,
+    3
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k091",
+   "k092"
+  ],
+  "tactics": [
+   "x01",
+   "x05",
+   "x36",
+   "x32",
+   "x13"
+  ],
+  "passives": [],
+  "promote": []
+ }
+]

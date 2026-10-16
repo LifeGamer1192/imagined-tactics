@@ -1,0 +1,2395 @@
+[
+ {
+  "id": "ashigaru",
+  "name": {
+   "jp": "足軽",
+   "cn": "歩卒"
+  },
+  "sex": "m",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "str": 56
+  },
+  "unique": null,
+  "mod": {
+   "hp": 78,
+   "mp": 0,
+   "str": 2,
+   "int": 0,
+   "agi": 0
+  },
+  "def": 102,
+  "move": 4,
+  "line": "ashigaru",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": []
+ },
+ {
+  "id": "samurai",
+  "name": {
+   "jp": "侍",
+   "cn": "士"
+  },
+  "sex": "m",
+  "tier": 2,
+  "from": "ashigaru",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 117,
+   "mp": 10,
+   "str": 2,
+   "int": 0,
+   "agi": 0
+  },
+  "def": 117,
+  "move": 4,
+  "line": "ashigaru",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x16"
+  ]
+ },
+ {
+  "id": "samurai_taisho",
+  "name": {
+   "jp": "侍大将",
+   "cn": "将軍"
+  },
+  "sex": "m",
+  "tier": 3,
+  "from": "samurai",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 164,
+   "mp": 21,
+   "str": 4,
+   "int": 2,
+   "agi": 0
+  },
+  "def": 143,
+  "move": 4,
+  "line": "ashigaru",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x16",
+   "x06"
+  ]
+ },
+ {
+  "id": "gedo_musha",
+  "name": {
+   "jp": "外道武者",
+   "cn": "鬼将"
+  },
+  "sex": "m",
+  "tier": 3,
+  "from": "samurai",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 117,
+   "mp": 21,
+   "str": 6,
+   "int": 2,
+   "agi": 0
+  },
+  "def": 127,
+  "move": 4,
+  "line": "ashigaru",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x16",
+   "x05"
+  ]
+ },
+ {
+  "id": "kenshi",
+  "name": {
+   "jp": "剣士",
+   "cn": "剣客"
+  },
+  "sex": "m",
+  "tier": 2,
+  "from": "ashigaru",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 39,
+   "mp": 0,
+   "str": 4,
+   "int": 0,
+   "agi": 6
+  },
+  "def": 102,
+  "move": 5,
+  "line": "ashigaru",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": []
+ },
+ {
+  "id": "kengo",
+  "name": {
+   "jp": "剣豪",
+   "cn": "剣聖"
+  },
+  "sex": "m",
+  "tier": 3,
+  "from": "kenshi",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 78,
+   "mp": 0,
+   "str": 6,
+   "int": 0,
+   "agi": 8
+  },
+  "def": 112,
+  "move": 5,
+  "line": "ashigaru",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": []
+ },
+ {
+  "id": "nobushi",
+  "name": {
+   "jp": "野武士",
+   "cn": "蛮兵"
+  },
+  "sex": "m",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "str": 59
+  },
+  "unique": null,
+  "mod": {
+   "hp": 39,
+   "mp": 0,
+   "str": 4,
+   "int": 0,
+   "agi": 0
+  },
+  "def": 88,
+  "move": 4,
+  "line": "nobushi",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": []
+ },
+ {
+  "id": "aramusha",
+  "name": {
+   "jp": "荒武者",
+   "cn": "悍卒"
+  },
+  "sex": "m",
+  "tier": 2,
+  "from": "nobushi",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 78,
+   "mp": 15,
+   "str": 6,
+   "int": 0,
+   "agi": 2
+  },
+  "def": 102,
+  "move": 4,
+  "line": "nobushi",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": []
+ },
+ {
+  "id": "suigun_musha",
+  "name": {
+   "jp": "水軍武者",
+   "cn": "楼船士"
+  },
+  "sex": "m",
+  "tier": 3,
+  "from": "aramusha",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 117,
+   "mp": 31,
+   "str": 8,
+   "int": 0,
+   "agi": 4
+  },
+  "def": 111,
+  "move": 5,
+  "line": "nobushi",
+  "affinity": "water",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": []
+ },
+ {
+  "id": "rappa",
+  "name": {
+   "jp": "乱波",
+   "cn": "盗"
+  },
+  "sex": "m",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "agi": 59
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 31,
+   "str": 0,
+   "int": 0,
+   "agi": 4
+  },
+  "def": 78,
+  "move": 5,
+  "line": "rappa",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": []
+ },
+ {
+  "id": "shinobi",
+  "name": {
+   "jp": "忍び",
+   "cn": "斥候"
+  },
+  "sex": "m",
+  "tier": 2,
+  "from": "rappa",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 46,
+   "str": 0,
+   "int": 2,
+   "agi": 6
+  },
+  "def": 88,
+  "move": 5,
+  "line": "rappa",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x24",
+   "x39"
+  ]
+ },
+ {
+  "id": "jonin",
+  "name": {
+   "jp": "上忍",
+   "cn": "遊侠"
+  },
+  "sex": "m",
+  "tier": 3,
+  "from": "shinobi",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 39,
+   "mp": 59,
+   "str": 0,
+   "int": 4,
+   "agi": 8
+  },
+  "def": 102,
+  "move": 6,
+  "line": "rappa",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x24",
+   "x39",
+   "x32",
+   "x36"
+  ]
+ },
+ {
+  "id": "sohei",
+  "name": {
+   "jp": "僧兵",
+   "cn": "角抵士"
+  },
+  "sex": "m",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "str": 59
+  },
+  "unique": null,
+  "mod": {
+   "hp": 39,
+   "mp": 0,
+   "str": 2,
+   "int": 0,
+   "agi": 2
+  },
+  "def": 84,
+  "move": 4,
+  "line": "sohei",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": []
+ },
+ {
+  "id": "arahoshi",
+  "name": {
+   "jp": "荒法師",
+   "cn": "力士"
+  },
+  "sex": "m",
+  "tier": 2,
+  "from": "sohei",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 78,
+   "mp": 0,
+   "str": 4,
+   "int": 0,
+   "agi": 4
+  },
+  "def": 93,
+  "move": 5,
+  "line": "sohei",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": []
+ },
+ {
+  "id": "dairiki",
+  "name": {
+   "jp": "大力無双",
+   "cn": "扛鼎士"
+  },
+  "sex": "m",
+  "tier": 3,
+  "from": "arahoshi",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 117,
+   "mp": 0,
+   "str": 6,
+   "int": 0,
+   "agi": 6
+  },
+  "def": 102,
+  "move": 5,
+  "line": "sohei",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": []
+ },
+ {
+  "id": "gunbaisha",
+  "name": {
+   "jp": "軍配者",
+   "cn": "謀士"
+  },
+  "sex": "m",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "int": 59
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 88,
+   "str": 0,
+   "int": 4,
+   "agi": 0
+  },
+  "def": 68,
+  "move": 4,
+  "line": "gunbaisha",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": [
+   "x02",
+   "x21",
+   "x26"
+  ]
+ },
+ {
+  "id": "gunshi",
+  "name": {
+   "jp": "軍師",
+   "cn": "策士"
+  },
+  "sex": "m",
+  "tier": 2,
+  "from": "gunbaisha",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 117,
+   "str": 0,
+   "int": 8,
+   "agi": 0
+  },
+  "def": 78,
+  "move": 4,
+  "line": "gunbaisha",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x02",
+   "x21",
+   "x26",
+   "x01",
+   "x09",
+   "x33",
+   "x34"
+  ]
+ },
+ {
+  "id": "dai_gunshi",
+  "name": {
+   "jp": "大軍師",
+   "cn": "国士"
+  },
+  "sex": "m",
+  "tier": 3,
+  "from": "gunshi",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 147,
+   "str": 0,
+   "int": 12,
+   "agi": 0
+  },
+  "def": 88,
+  "move": 4,
+  "line": "gunbaisha",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x02",
+   "x21",
+   "x26",
+   "x01",
+   "x09",
+   "x33",
+   "x34",
+   "x05",
+   "x08",
+   "x37"
+  ]
+ },
+ {
+  "id": "so",
+  "name": {
+   "jp": "僧",
+   "cn": "祝"
+  },
+  "sex": "m",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "int": 59
+  },
+  "unique": null,
+  "mod": {
+   "hp": 59,
+   "mp": 39,
+   "str": 0,
+   "int": 2,
+   "agi": 0
+  },
+  "def": 102,
+  "move": 4,
+  "line": "so",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": [
+   "x15",
+   "x16"
+  ]
+ },
+ {
+  "id": "ajari",
+  "name": {
+   "jp": "阿闍梨",
+   "cn": "祭司"
+  },
+  "sex": "m",
+  "tier": 2,
+  "from": "so",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 59,
+   "mp": 68,
+   "str": 2,
+   "int": 4,
+   "agi": 0
+  },
+  "def": 111,
+  "move": 4,
+  "line": "so",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x15",
+   "x16",
+   "x12",
+   "x14"
+  ]
+ },
+ {
+  "id": "dai_sojo",
+  "name": {
+   "jp": "大僧正",
+   "cn": "大祭司"
+  },
+  "sex": "m",
+  "tier": 3,
+  "from": "ajari",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 102,
+   "mp": 102,
+   "str": 2,
+   "int": 6,
+   "agi": 0
+  },
+  "def": 117,
+  "move": 4,
+  "line": "so",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x15",
+   "x16",
+   "x12",
+   "x14",
+   "x18",
+   "x27"
+  ]
+ },
+ {
+  "id": "naginata",
+  "name": {
+   "jp": "薙刀衆",
+   "cn": "戟姫"
+  },
+  "sex": "f",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "str": 58
+  },
+  "unique": null,
+  "mod": {
+   "hp": 78,
+   "mp": 0,
+   "str": 4,
+   "int": 0,
+   "agi": 0
+  },
+  "def": 111,
+  "move": 4,
+  "line": "naginata",
+  "affinity": "swamp",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": []
+ },
+ {
+  "id": "onna_musha",
+  "name": {
+   "jp": "女武者",
+   "cn": "女将"
+  },
+  "sex": "f",
+  "tier": 2,
+  "from": "naginata",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 117,
+   "mp": 26,
+   "str": 6,
+   "int": 0,
+   "agi": 0
+  },
+  "def": 117,
+  "move": 5,
+  "line": "naginata",
+  "affinity": "swamp",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x22",
+   "x23"
+  ]
+ },
+ {
+  "id": "musha_gashira",
+  "name": {
+   "jp": "女武者頭",
+   "cn": "宮衛"
+  },
+  "sex": "f",
+  "tier": 3,
+  "from": "onna_musha",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 117,
+   "mp": 49,
+   "str": 6,
+   "int": 4,
+   "agi": 0
+  },
+  "def": 143,
+  "move": 5,
+  "line": "naginata",
+  "affinity": "swamp",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x22",
+   "x23",
+   "x07"
+  ]
+ },
+ {
+  "id": "yumime",
+  "name": {
+   "jp": "弓女",
+   "cn": "女射手"
+  },
+  "sex": "f",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "str": 54,
+   "agi": 59
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 0,
+   "str": 2,
+   "int": 0,
+   "agi": 4
+  },
+  "def": 78,
+  "move": 4,
+  "line": "yumime",
+  "affinity": "plain",
+  "attack": {
+   "kind": "bow",
+   "power": 80,
+   "range": [
+    1,
+    2
+   ],
+   "hit": 3
+  },
+  "tactics": []
+ },
+ {
+  "id": "yumi_gashira",
+  "name": {
+   "jp": "弓頭",
+   "cn": "射士"
+  },
+  "sex": "f",
+  "tier": 2,
+  "from": "yumime",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 21,
+   "str": 2,
+   "int": 2,
+   "agi": 6
+  },
+  "def": 88,
+  "move": 5,
+  "line": "yumime",
+  "affinity": "plain",
+  "attack": {
+   "kind": "bow",
+   "power": 88,
+   "range": [
+    1,
+    3
+   ],
+   "hit": 4
+  },
+  "tactics": []
+ },
+ {
+  "id": "kyusei",
+  "name": {
+   "jp": "弓聖",
+   "cn": "神射"
+  },
+  "sex": "f",
+  "tier": 3,
+  "from": "yumi_gashira",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 39,
+   "mp": 39,
+   "str": 2,
+   "int": 2,
+   "agi": 8
+  },
+  "def": 102,
+  "move": 5,
+  "line": "yumime",
+  "affinity": "plain",
+  "attack": {
+   "kind": "bow",
+   "power": 96,
+   "range": [
+    1,
+    3
+   ],
+   "hit": 6
+  },
+  "tactics": []
+ },
+ {
+  "id": "shirabyoshi",
+  "name": {
+   "jp": "白拍子",
+   "cn": "歌女"
+  },
+  "sex": "f",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "int": 56,
+   "agi": 49
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 59,
+   "str": 0,
+   "int": 2,
+   "agi": 2
+  },
+  "def": 74,
+  "move": 4,
+  "line": "shirabyoshi",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": [
+   "x25",
+   "x31"
+  ]
+ },
+ {
+  "id": "kugutsume",
+  "name": {
+   "jp": "傀儡女",
+   "cn": "楽女"
+  },
+  "sex": "f",
+  "tier": 2,
+  "from": "shirabyoshi",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 88,
+   "str": 0,
+   "int": 4,
+   "agi": 4
+  },
+  "def": 84,
+  "move": 4,
+  "line": "shirabyoshi",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x25",
+   "x31",
+   "x04"
+  ]
+ },
+ {
+  "id": "mai_meishu",
+  "name": {
+   "jp": "舞の名手",
+   "cn": "楽聖"
+  },
+  "sex": "f",
+  "tier": 3,
+  "from": "kugutsume",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 39,
+   "mp": 117,
+   "str": 0,
+   "int": 6,
+   "agi": 4
+  },
+  "def": 93,
+  "move": 5,
+  "line": "shirabyoshi",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x25",
+   "x31",
+   "x04",
+   "x11",
+   "x19"
+  ]
+ },
+ {
+  "id": "aruki_miko",
+  "name": {
+   "jp": "歩き巫女",
+   "cn": "舞女"
+  },
+  "sex": "f",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "str": 56,
+   "agi": 49
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 21,
+   "str": 2,
+   "int": 0,
+   "agi": 2
+  },
+  "def": 93,
+  "move": 4,
+  "line": "aruki_miko",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": [
+   "x01"
+  ]
+ },
+ {
+  "id": "kunoichi",
+  "name": {
+   "jp": "くノ一",
+   "cn": "女刺客"
+  },
+  "sex": "f",
+  "tier": 2,
+  "from": "aruki_miko",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 39,
+   "mp": 21,
+   "str": 2,
+   "int": 2,
+   "agi": 4
+  },
+  "def": 102,
+  "move": 5,
+  "line": "aruki_miko",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x01",
+   "x32"
+  ]
+ },
+ {
+  "id": "jonin_kunoichi",
+  "name": {
+   "jp": "上忍くノ一",
+   "cn": "女侠"
+  },
+  "sex": "f",
+  "tier": 3,
+  "from": "kunoichi",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 39,
+   "mp": 21,
+   "str": 4,
+   "int": 4,
+   "agi": 6
+  },
+  "def": 112,
+  "move": 5,
+  "line": "aruki_miko",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x01",
+   "x32",
+   "x36"
+  ]
+ },
+ {
+  "id": "onna_gunbaisha",
+  "name": {
+   "jp": "女軍配者",
+   "cn": "女謀士"
+  },
+  "sex": "f",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "int": 59
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 88,
+   "str": 0,
+   "int": 4,
+   "agi": 0
+  },
+  "def": 68,
+  "move": 4,
+  "line": "onna_gunbaisha",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": [
+   "x03",
+   "x24",
+   "x39"
+  ]
+ },
+ {
+  "id": "onna_gunshi",
+  "name": {
+   "jp": "女軍師",
+   "cn": "女策士"
+  },
+  "sex": "f",
+  "tier": 2,
+  "from": "onna_gunbaisha",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 117,
+   "str": 0,
+   "int": 8,
+   "agi": 0
+  },
+  "def": 78,
+  "move": 4,
+  "line": "onna_gunbaisha",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x03",
+   "x24",
+   "x39",
+   "x10"
+  ]
+ },
+ {
+  "id": "onna_dai_gunshi",
+  "name": {
+   "jp": "女大軍師",
+   "cn": "女国士"
+  },
+  "sex": "f",
+  "tier": 3,
+  "from": "onna_gunshi",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 0,
+   "mp": 147,
+   "str": 0,
+   "int": 12,
+   "agi": 0
+  },
+  "def": 88,
+  "move": 4,
+  "line": "onna_gunbaisha",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x03",
+   "x24",
+   "x39",
+   "x10",
+   "x05",
+   "x13"
+  ]
+ },
+ {
+  "id": "ama",
+  "name": {
+   "jp": "尼",
+   "cn": "女医"
+  },
+  "sex": "f",
+  "tier": 1,
+  "from": null,
+  "req": {
+   "int": 59
+  },
+  "unique": null,
+  "mod": {
+   "hp": 59,
+   "mp": 49,
+   "str": 0,
+   "int": 2,
+   "agi": 0
+  },
+  "def": 93,
+  "move": 4,
+  "line": "ama",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": [
+   "x15",
+   "x16",
+   "x28"
+  ]
+ },
+ {
+  "id": "bikuni",
+  "name": {
+   "jp": "比丘尼",
+   "cn": "医姫"
+  },
+  "sex": "f",
+  "tier": 2,
+  "from": "ama",
+  "req": {
+   "lv": 10,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 59,
+   "mp": 78,
+   "str": 2,
+   "int": 4,
+   "agi": 0
+  },
+  "def": 102,
+  "move": 4,
+  "line": "ama",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x15",
+   "x16",
+   "x28",
+   "x06",
+   "x18"
+  ]
+ },
+ {
+  "id": "ikibotoke",
+  "name": {
+   "jp": "生き仏",
+   "cn": "医聖"
+  },
+  "sex": "f",
+  "tier": 3,
+  "from": "bikuni",
+  "req": {
+   "lv": 20,
+   "mastery": 5
+  },
+  "unique": null,
+  "mod": {
+   "hp": 102,
+   "mp": 111,
+   "str": 2,
+   "int": 6,
+   "agi": 0
+  },
+  "def": 112,
+  "move": 4,
+  "line": "ama",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x15",
+   "x16",
+   "x28",
+   "x06",
+   "x18",
+   "x17",
+   "x27"
+  ]
+ },
+ {
+  "id": "wakatono",
+  "name": {
+   "jp": "若殿",
+   "cn": "公子"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": null,
+  "req": {},
+  "unique": "lord",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "wakatono",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x03",
+   "x23"
+  ]
+ },
+ {
+  "id": "tenkabito",
+  "name": {
+   "jp": "天下人",
+   "cn": "覇者"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "wakatono",
+  "req": {
+   "lv": 20
+  },
+  "unique": "lord",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "wakatono",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x03",
+   "x23",
+   "x07"
+  ]
+ },
+ {
+  "id": "onna_joshu",
+  "name": {
+   "jp": "女城主",
+   "cn": "女君"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": null,
+  "req": {},
+  "unique": "lord",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "onna_joshu",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x02",
+   "x21"
+  ]
+ },
+ {
+  "id": "onna_daimyo",
+  "name": {
+   "jp": "女大名",
+   "cn": "女王"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "onna_joshu",
+  "req": {
+   "lv": 20
+  },
+  "unique": "lord",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "onna_joshu",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x02",
+   "x21",
+   "x08"
+  ]
+ },
+ {
+  "id": "kunoichi_toryo",
+  "name": {
+   "jp": "くノ一頭領",
+   "cn": "剣姫"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": null,
+  "req": {},
+  "unique": "lord",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "kunoichi_toryo",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x16",
+   "x18",
+   "x28"
+  ]
+ },
+ {
+  "id": "aruki_miko_sosui",
+  "name": {
+   "jp": "歩き巫女総帥",
+   "cn": "越女剣聖"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "kunoichi_toryo",
+  "req": {
+   "lv": 20
+  },
+  "unique": "lord",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "kunoichi_toryo",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x16",
+   "x18",
+   "x28",
+   "x12",
+   "x17"
+  ]
+ },
+ {
+  "id": "daimyo",
+  "name": {
+   "jp": "大名",
+   "cn": "王"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": null,
+  "req": {},
+  "unique": "lord",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "daimyo",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x01",
+   "x32",
+   "x36"
+  ]
+ },
+ {
+  "id": "dai_daimyo",
+  "name": {
+   "jp": "大大名",
+   "cn": "覇王"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "daimyo",
+  "req": {
+   "lv": 20
+  },
+  "unique": "lord",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "daimyo",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x01",
+   "x32",
+   "x36",
+   "x05",
+   "x20",
+   "x29"
+  ]
+ },
+ {
+  "id": "monshu",
+  "name": {
+   "jp": "門主",
+   "cn": "祭主"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": null,
+  "req": {},
+  "unique": "lord",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "monshu",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": []
+ },
+ {
+  "id": "hoo",
+  "name": {
+   "jp": "法王",
+   "cn": "天子"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "monshu",
+  "req": {
+   "lv": 20
+  },
+  "unique": "lord",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "monshu",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": []
+ },
+ {
+  "id": "funa_taisho",
+  "name": {
+   "jp": "船大将",
+   "cn": "舟師"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": null,
+  "req": {},
+  "unique": "lord",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "funa_taisho",
+  "affinity": "water",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x22",
+   "x39"
+  ]
+ },
+ {
+  "id": "kaizoku_sosui",
+  "name": {
+   "jp": "海賊衆総帥",
+   "cn": "水軍都督"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "funa_taisho",
+  "req": {
+   "lv": 20
+  },
+  "unique": "lord",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "funa_taisho",
+  "affinity": "water",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x22",
+   "x39",
+   "x32",
+   "x36"
+  ]
+ },
+ {
+  "id": "teppo_gashira1",
+  "name": {
+   "jp": "鉄砲足軽頭",
+   "cn": "弩手"
+  },
+  "sex": "any",
+  "tier": 1,
+  "from": null,
+  "req": {},
+  "unique": "feature",
+  "mod": {
+   "hp": 59,
+   "mp": 51,
+   "str": 2,
+   "int": 2,
+   "agi": 2
+  },
+  "def": 92,
+  "move": 4,
+  "line": "teppo_gashira1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": [
+   "x04",
+   "x25",
+   "x31",
+   "x35"
+  ]
+ },
+ {
+  "id": "teppo_gashira2",
+  "name": {
+   "jp": "鉄砲頭",
+   "cn": "弩長"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": "teppo_gashira1",
+  "req": {
+   "lv": 10
+  },
+  "unique": "feature",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "teppo_gashira1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": [
+   "x04",
+   "x25",
+   "x31",
+   "x35",
+   "x38"
+  ]
+ },
+ {
+  "id": "teppo_meijin",
+  "name": {
+   "jp": "鉄砲名人",
+   "cn": "神弩手"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "teppo_gashira2",
+  "req": {
+   "lv": 20
+  },
+  "unique": "feature",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "teppo_gashira1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": [
+   "x04",
+   "x25",
+   "x31",
+   "x35",
+   "x38",
+   "x11"
+  ]
+ },
+ {
+  "id": "ozutsu1",
+  "name": {
+   "jp": "大筒足軽",
+   "cn": "抛石兵"
+  },
+  "sex": "any",
+  "tier": 1,
+  "from": null,
+  "req": {},
+  "unique": "feature",
+  "mod": {
+   "hp": 59,
+   "mp": 51,
+   "str": 2,
+   "int": 2,
+   "agi": 2
+  },
+  "def": 92,
+  "move": 4,
+  "line": "ozutsu1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": []
+ },
+ {
+  "id": "ozutsu2",
+  "name": {
+   "jp": "大筒組頭",
+   "cn": "抛石校尉"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": "ozutsu1",
+  "req": {
+   "lv": 10
+  },
+  "unique": "feature",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "ozutsu1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": []
+ },
+ {
+  "id": "ozutsu_bugyo",
+  "name": {
+   "jp": "大筒奉行",
+   "cn": "抛石将軍"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "ozutsu2",
+  "req": {
+   "lv": 20
+  },
+  "unique": "feature",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "ozutsu1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": []
+ },
+ {
+  "id": "kokujin",
+  "name": {
+   "jp": "国人",
+   "cn": "游侠"
+  },
+  "sex": "any",
+  "tier": 1,
+  "from": null,
+  "req": {},
+  "unique": "feature",
+  "mod": {
+   "hp": 59,
+   "mp": 51,
+   "str": 2,
+   "int": 2,
+   "agi": 2
+  },
+  "def": 92,
+  "move": 4,
+  "line": "kokujin",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": []
+ },
+ {
+  "id": "kunishu_yu",
+  "name": {
+   "jp": "国衆の雄",
+   "cn": "侠客の雄"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": "kokujin",
+  "req": {
+   "lv": 10
+  },
+  "unique": "feature",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "kokujin",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": []
+ },
+ {
+  "id": "furu_tsuwamono",
+  "name": {
+   "jp": "古強者",
+   "cn": "老英雄"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "kunishu_yu",
+  "req": {
+   "lv": 20
+  },
+  "unique": "feature",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "kokujin",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": []
+ },
+ {
+  "id": "karakuri1",
+  "name": {
+   "jp": "からくり試作",
+   "cn": "木鳶試作"
+  },
+  "sex": "any",
+  "tier": 1,
+  "from": null,
+  "req": {},
+  "unique": "feature",
+  "mod": {
+   "hp": 59,
+   "mp": 51,
+   "str": 2,
+   "int": 2,
+   "agi": 2
+  },
+  "def": 92,
+  "move": 4,
+  "line": "karakuri1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 85,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 5
+  },
+  "tactics": []
+ },
+ {
+  "id": "karakuri2",
+  "name": {
+   "jp": "からくり人形",
+   "cn": "機関人"
+  },
+  "sex": "any",
+  "tier": 2,
+  "from": "karakuri1",
+  "req": {
+   "lv": 10
+  },
+  "unique": "feature",
+  "mod": {
+   "hp": 75,
+   "mp": 67,
+   "str": 3,
+   "int": 4,
+   "agi": 3
+  },
+  "def": 102,
+  "move": 5,
+  "line": "karakuri1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 93,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 8
+  },
+  "tactics": []
+ },
+ {
+  "id": "karakuri3",
+  "name": {
+   "jp": "自律からくり",
+   "cn": "偃師傀儡"
+  },
+  "sex": "any",
+  "tier": 3,
+  "from": "karakuri2",
+  "req": {
+   "lv": 20
+  },
+  "unique": "feature",
+  "mod": {
+   "hp": 106,
+   "mp": 82,
+   "str": 4,
+   "int": 5,
+   "agi": 4
+  },
+  "def": 116,
+  "move": 5,
+  "line": "karakuri1",
+  "affinity": "plain",
+  "attack": {
+   "kind": "melee",
+   "power": 101,
+   "range": [
+    1,
+    1
+   ],
+   "hit": 11
+  },
+  "tactics": []
+ }
+]

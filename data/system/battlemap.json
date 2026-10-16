@@ -1,0 +1,24 @@
+{
+  "fort": { "fort": 0.35, "castle": 0.6, "siege": 0.8, "outworks": 0.5 },
+  "town": { "village": 3000, "town": 8000, "city": 30000, "villageTiles": 1, "townTiles": 3, "cityTiles": 6 },
+  "paddy": { "byIncome": [2, 8, 20], "aqueduct": 2, "unrest": 0.3 },
+  "road": { "secondIncome": 15 },
+  "unrest": { "from": 0.2, "swamp": 0.25, "forest": 0.15 },
+  "buildings": {
+    "temple": { "name": "寺", "text": "戦場のまん中あたりの高い所に砦（寺）が建つ" },
+    "monastery": { "name": "修道院", "text": "戦場のまん中あたりの高い所に砦（僧院）が建つ" },
+    "market": { "name": "市", "text": "街道ぞいのまん中に町場（街のマス）ができる。領の収入が増える", "income": 1.2 },
+    "library": { "name": "書庫", "text": "城のそばに街のマスが2つ増える" },
+    "university": { "name": "学問所", "text": "城のそばに街のマスが2つ増える" },
+    "harbor": { "name": "港", "text": "水辺に桟橋（橋のマス）と港町ができる。海沿いの領だけ", "coastal": true },
+    "walls": { "name": "城壁", "text": "城を城壁で囲む（城攻めの戦場になる）" },
+    "mine": { "name": "鉱山", "text": "戦場の端に掘り跡（段差のマス）ができる。領の収入が増える", "income": 1.15 },
+    "aqueduct": { "name": "用水", "text": "用水路（川のマス）を引き、棚田が増える" },
+    "granary": { "name": "兵糧蔵", "text": "城のそばに陣（体力が回復するマス）が2つできる" }
+  },
+  "build": {
+    "costs": { "temple": 300, "monastery": 300, "market": 350, "library": 250, "university": 400, "harbor": 400, "walls": 600, "mine": 400, "aqueduct": 350, "granary": 250 },
+    "fortStep": 0.1, "fortMax": 1, "fortCostBase": 200, "fortCostPerFort": 400,
+    "aiChance": 0.08, "aiSupplyMonths": 6
+  }
+}

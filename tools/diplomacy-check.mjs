@@ -1,0 +1,117 @@
+// 外交の操作を、実際の画面でボタンを押して確かめる。開発サーバー（5183）が要る。
+// 相手の領を選ぶところと、心証などの前提をそろえるところだけ開発用の入口（window.__campaign）を使い、操作はすべて画面のボタンで行う。
+// 使い方：node tools/diplomacy-check.mjs [画面を撮る先のフォルダ]
+import { createRequire } from 'node:module';
+import path from 'node:path';
+const require = createRequire(path.resolve('../hist-sim/package.json'));
+const { chromium } = require('playwright');
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+const errors = [];
+page.on('pageerror', (e) => errors.push(String(e)));
+let ng = 0;
+const ok = (name, v, extra = '') => { if (!v) ng++; console.log(v ? 'OK ' : 'NG ', name, extra); };
+await page.goto(process.env.HEX_URL ?? 'http://localhost:5183/');
+await page.click('[data-sample="sengoku_fid5_1575"]');
+await page.waitForSelector('#campaign');
+await page.click('#campaign');
+await page.waitForSelector('#next');
+
+/** 条件に合う勢力を1つ選び、その領を画面で選んだ状態にする。戻り値は勢力の番号と名前 */
+const pick = (kind, opinion) => page.evaluate(([kind, opinion]) => {
+  const s = window.__campaign, c = s.c, gs = c.gs, me = c.player;
+  const pair = (a, b, x, y) => (a === x && b === y) || (a === y && b === x);
+  const rel = (f) => {
+    if (gs.factions[f].overlord === me || gs.factions[me].overlord === f) return 'ally';
+    if (gs.alliances.some(([a, b]) => pair(a, b, me, f))) return 'ally';
+    if (gs.wars.some((w) => (w.attackers.includes(me) && w.defenders.includes(f)) || (w.attackers.includes(f) && w.defenders.includes(me)))) return 'war';
+    if (gs.truces.some((t) => pair(t.a, t.b, me, f) && t.until > gs.tick)) return 'truce';
+    return 'neutral';
+  };
+  window.__used ??= new Set();
+  const f = Object.values(gs.factions).find((x) => x.id !== me && rel(x.id) === kind && !window.__used.has(x.id) && !x.overlord && !gs.factions[me].overlord);
+  if (!f) return null;
+  window.__used.add(f.id);
+  if (opinion !== null) f.opinions[me] = opinion;
+  s.selected = gs.provinces.find((p) => p.owner === f.id).id;
+  s.refresh();
+  return { id: f.id, name: f.name.ja };
+}, [kind, opinion]);
+const select = (id) => page.evaluate((id) => { const s = window.__campaign; s.selected = s.c.gs.provinces.find((p) => p.owner === id).id; s.refresh(); }, id);
+const panel = () => page.textContent('#panel');
+const log = () => page.textContent('#log');
+
+// 1. 同盟の申し込み：心証が足りないと押せず、理由が出る。足りれば結べる
+const a = await pick('neutral', -30);
+ok('心証が足りないと「同盟を申し込む」は押せず、理由が出る', (await page.isDisabled('[data-dip="ally"]')) && /心証が足りません/.test(await panel()), a.name);
+await page.evaluate((id) => { const s = window.__campaign; s.c.gs.factions[id].opinions[s.c.player] = 60; s.refresh(); }, a.id);
+await page.click('[data-dip="ally"]'); await page.click('.confirm [data-a="ok"]');
+ok('心証が足りれば同盟を結べる（味方と出る）', /味方/.test(await panel()) && (await log()).includes('同盟を結んだ'));
+
+// 2. 戦を仕掛ける → 加勢を頼む（味方の領を選ぶ）
+const e = await pick('neutral', null);
+await page.click('[data-dip="war"]'); await page.click('.confirm [data-a="ok"]');
+ok('戦を仕掛けると交戦中になる', /交戦中/.test(await panel()) && (await log()).includes('戦を仕掛けた'), e.name);
+await page.evaluate((id) => { const s = window.__campaign; s.c.gs.factions[id].opinions[s.c.player] = 0; }, a.id);
+await select(a.id);
+ok('味方の心証が足りないと、加勢は頼めない', !!(await page.$('[data-call]:disabled')) && /心証が足りません/.test(await panel()));
+await page.evaluate((id) => { const s = window.__campaign; s.c.gs.factions[id].opinions[s.c.player] = 80; s.refresh(); }, a.id);
+await page.click(`[data-call="${a.id}"][data-enemy="${e.id}"]`);
+ok('加勢を頼むと、味方がその戦争に加わる', (await log()).includes('加勢し'));
+if (process.argv[2]) await page.screenshot({ path: path.join(process.argv[2], 'diplomacy_ally.png') });
+
+// 3. 同盟を破る
+await page.click('[data-dip="break"]'); await page.click('.confirm [data-a="ok"]');
+ok('同盟を破ると中立に戻る', /中立/.test(await panel()) && (await log()).includes('同盟を破った'));
+
+// 4. 停戦を申し込む：相手が大きく優勢なら断られる。そうでなければ結べる
+await select(e.id);
+const before = await page.evaluate((id) => {
+  const s = window.__campaign, gs = s.c.gs;
+  // 相手を大きく優勢にする：相手の武将のレベルを一時的に上げる
+  const gens = Object.values(gs.generals).filter((g) => g.faction === id);
+  const keep = gens.map((g) => g.level);
+  gens.forEach((g) => { g.level += 4000; });
+  s.refresh();
+  return keep;
+}, e.id);
+ok('相手が大きく優勢だと、停戦は押せず、理由が出る', (await page.isDisabled('[data-dip="truce"]')) && /優勢/.test(await panel()));
+await page.evaluate(([id, keep]) => { const s = window.__campaign, gs = s.c.gs; Object.values(gs.generals).filter((g) => g.faction === id).forEach((g, i) => { g.level = keep[i]; }); s.refresh(); }, [e.id, before]);
+if (await page.isDisabled('[data-dip="truce"]')) {
+  // 素の強さでも相手が優勢な組み合わせだった：自分の側を強くして、結べる条件にする
+  await page.evaluate(() => { const s = window.__campaign, gs = s.c.gs; Object.values(gs.generals).filter((g) => g.faction === s.c.player).forEach((g) => { g.level += 2; }); s.refresh(); });
+}
+await page.click('[data-dip="truce"]'); await page.click('.confirm [data-a="ok"]');
+ok('停戦を申し込むと、停戦中になる', /停戦中/.test(await panel()) && (await log()).includes('停戦した'));
+ok('停戦中の相手には、外交のボタンが出ない', !(await page.$('[data-dip]')));
+
+// 5. 相手からの申し込み：同盟を受ける、従属を受ける、断る
+const offer = (kind, id) => page.evaluate(([kind, id]) => { const s = window.__campaign; s.c.offers.push({ kind, from: id, until: s.c.gs.tick + 3 }); s.refresh(); }, [kind, id]);
+const b = await pick('neutral', 10);
+await offer('alliance', b.id);
+ok('同盟の申し込みが画面の上に出る', (await panel()).includes(`${b.name}から同盟の申し込み`));
+if (process.argv[2]) await page.screenshot({ path: path.join(process.argv[2], 'diplomacy_offer.png') });
+await page.click(`[data-offer="${b.id}"][data-yes]`); await page.click('.confirm [data-a="ok"]');
+await select(b.id);
+ok('受けると同盟になる', /味方/.test(await panel()) && !(await panel()).includes('申し込み'), b.name);
+const v = await pick('neutral', 10);
+await offer('vassal', v.id);
+await page.click(`[data-offer="${v.id}"][data-yes]`); await page.click('.confirm [data-a="ok"]');
+await select(v.id);
+ok('従属の申し出を受けると、味方（従属）になる', /味方/.test(await panel()) && (await log()).includes('従属した'), v.name);
+const d = await pick('neutral', 10);
+await offer('alliance', d.id);
+await page.click(`[data-offer="${d.id}"]:not([data-yes])`); await page.click('.confirm [data-a="ok"]');
+const after = await page.evaluate((id) => { const s = window.__campaign; return { offers: s.c.offers.length, op: s.c.gs.factions[id].opinions[s.c.player] }; }, d.id);
+ok('断ると申し込みが消え、相手の心証が下がる', after.offers === 0 && after.op < 10, JSON.stringify(after));
+
+// 6. そのまま月を進められる（申し込みや戦争が残っていても壊れない）
+for (let m = 0; m < 3; m++) {
+  await page.click('#next');
+  for (let i = 0; i < 40; i++) { await page.waitForTimeout(150); if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next:not(:disabled)')) break; }
+}
+ok('外交のあとも3か月進められる', !!(await page.$('#next')));
+ok('ページのエラーなし', errors.length === 0, errors.join(' / '));
+console.log(ng ? `NG ${ng}件` : 'すべて OK');
+await browser.close();
+process.exit(ng ? 1 : 0);

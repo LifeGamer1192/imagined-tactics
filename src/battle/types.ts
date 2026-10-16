@@ -1,0 +1,154 @@
+// 戦闘中の状態。画面には依存しない。
+
+import type { RNG } from '../core/rng';
+import type { Affinity, Passive, StatusId, TacticKind, Weather } from '../data/types';
+import type { DamageParts, HealParts, HitParts, StatParts, SuccessParts, TacticParts } from '../rules/combat';
+import type { Personality } from '../ai/personality';
+import type { BattleMap } from './map';
+
+export type Side = 0 | 1;
+
+export interface BStatus {
+  id: StatusId;
+  /** 残りターン（-1 = 戦闘終了まで、または条件で解除） */
+  turns: number;
+  /** 敗残兵収容：もとの陣営 */
+  origSide?: Side;
+}
+
+export interface BUnit {
+  id: number;
+  /** いま属している陣営（寝返り・敗残兵収容で一時的に変わる） */
+  side: Side;
+  /** もとの陣営 */
+  home: Side;
+  kind: 'general' | 'troop';
+  /** 武将：GGeneral.id。兵：率いている武将の GGeneral.id */
+  generalId: string;
+  /** 兵：率いている武将のユニット番号（武将なら自分） */
+  leader: number;
+  /** 兵：GGeneral.troops の中の位置 */
+  troopIndex: number;
+  /** 武将：役職の id。兵：兵種の id */
+  defId: string;
+  name: string;
+  level: number;
+  pos: number;
+  hp: number; maxHp: number;
+  mp: number; maxMp: number;
+  str: number; int: number; agi: number; def: number;
+  move: number;
+  affinity: Affinity;
+  /** 武将の采配範囲（兵は 0） */
+  commandRange: number;
+  passives: Passive[];
+  skills: string[];
+  tactics: string[];
+  critPct: number;
+  healPct: number;
+  /** 武将の性格（敵の思考で使う。兵は率いる武将の性格で動く） */
+  persona?: Personality;
+  statuses: BStatus[];
+  /** このターン、移動に使った移動力（再移動の残りの計算用） */
+  moveSpent: number;
+  moved: boolean;
+  /** 行動のあとの再移動を済ませたか */
+  postMoved: boolean;
+  /** 行動（技・軍略・待機）を済ませたか */
+  acted: boolean;
+  /** 2回行動・号令で、このターンすでに追加で動いたか */
+  extraUsed: boolean;
+  alive: boolean;
+  /** 撤退した（倒れたのではない） */
+  retreated: boolean;
+  /** この戦闘で得た経験値 */
+  expGained: number;
+}
+
+/** 状態異常が付くかどうかの判定（確率、出目、付いたか。immune は無効の特性で防がれた） */
+export interface StatusTry { status: StatusId; chance: number; roll: number; ok: boolean; immune: boolean; /** いっしょに付く状態 */ also?: StatusId }
+
+/** 技の1撃の内訳（記録のキー 'strike'）。計算で実際に使った値をそのまま入れる */
+export interface StrikeDetail {
+  type: 'strike';
+  counter: boolean;
+  hit: HitParts;
+  /** 命中の出目（0〜100）。これが命中率より小さければ当たり */
+  roll: number;
+  landed: boolean;
+  dmg?: {
+    parts: DamageParts; atk: StatParts; def: StatParts;
+    rnd: number;
+    critPct: number; critRoll: number; crit: boolean; critMult: number;
+    /** 会心のときに威力が増す技の倍率（無ければ 1） */
+    critBonus: number;
+    /** 盾で受けたか（確率、出目）。判定しなかったら無し */
+    shield?: { chance: number; roll: number; ok: boolean };
+    /** 丸める前の値と、与えたダメージ */
+    raw: number; final: number;
+  };
+  /** 相手の体力（前 → 後） */
+  hp?: [number, number];
+  tries: StatusTry[];
+  /** 吸収した体力、半分にした気力、技での回復、押し出し（それぞれ 前 → 後） */
+  steal?: [number, number]; mpHalf?: [number, number]; heal?: [number, number]; knock?: [number, number];
+}
+
+/** 軍略の、相手ひとりぶんの内訳（記録のキー 'tactic.on'） */
+export interface TacticDetail {
+  type: 'tactic';
+  kind: TacticKind;
+  /** 用心（軍略無効）で防がれた */
+  ward?: boolean;
+  /** 収容された敗残兵が、そのまま失われた */
+  purged?: boolean;
+  dmg?: { parts: TacticParts; rnd: number; raw: number; final: number };
+  hp?: [number, number];
+  heal?: { parts: HealParts; got: number };
+  /** 確率型の成否（成功率の内訳、出目） */
+  success?: { parts: SuccessParts; roll: number; ok: boolean };
+  tries: StatusTry[];
+  /** 付けようとした状態と、付いたか */
+  status?: { id: StatusId; applied: boolean };
+  /** 解けた状態 */
+  removed?: StatusId[];
+  mp?: [number, number];
+  /** 動かされたマス（前 → 後） */
+  moved?: [number, number];
+}
+
+export type LogDetail = StrikeDetail | TacticDetail;
+
+/**
+ * 戦闘の記録。key と vars から、画面で文章にする。
+ * 細かい記録（通常・詳細）用に、あとから足したキー：
+ *   act（行動の見出し。vars.n が、この行動で続けて出た記録の数）、move、strike、tactic.on。簡易の記録には出さない。
+ */
+export interface BattleLogEntry { key: string; vars: Record<string, string | number>; d?: LogDetail }
+
+export interface BattleState {
+  map: BattleMap;
+  units: BUnit[];
+  /** いま動かせる陣営 */
+  turn: Side;
+  /** 何巡目か（両陣営が1回ずつ動いて1巡） */
+  round: number;
+  maxRounds: number;
+  /** null = 続行中 */
+  winner: Side | null;
+  rng: RNG;
+  log: BattleLogEntry[];
+  /** 陣営の名前（表示用） */
+  sideNames: [string, string];
+  /** 天気（無ければ晴れ）。戦いの間は変わらない */
+  weather?: Weather;
+  /** 夜戦か */
+  night?: boolean;
+}
+
+export type Action =
+  | { type: 'move'; unit: number; to: number }
+  | { type: 'skill'; unit: number; skill: string; target: number }
+  | { type: 'tactic'; unit: number; tactic: string; target: number }
+  | { type: 'wait'; unit: number }
+  | { type: 'endTurn' };

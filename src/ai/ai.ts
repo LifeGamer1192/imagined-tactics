@@ -1,0 +1,485 @@
+// 戦闘の思考。
+// 移動できるマス × 使える技・軍略の組み合わせを、複数の軸で採点して最も良いものを選ぶ。
+//   攻める価値：与ダメージ、撃破、狙う相手（武将・軍略役・弱った相手・主君を脅かす相手）
+//   危険：反撃、次の敵ターンに受ける危険（脅威）、倒される危険
+//   位置：地形、采配範囲、部隊のまとまり、主君の護衛、役割に合った間合い
+//   支援：回復、補助、妨害、状態異常、気力の節約
+// 各軸の重みは武将の性格（personality.ts）で変わる。兵は率いる武将の性格で動く。
+// さらに部隊ごとに「構え」（前進・交戦・守備・退却）を決め、位置の採点を切り替える。
+// 狙いの優先をデータで持つ考え方は rts-mons/web/src/rules.js の chooseTarget にならう。
+
+import { apply, canAct, canMove, endTurn } from '../battle/engine';
+import type { Action, BUnit, BattleState } from '../battle/types';
+import { D } from '../data/db';
+import type { SkillDef, TacticDef } from '../data/types';
+import {
+  canCounter, canUseSkill, canUseTactic, healAmount, hitChance, skillDamage, skillTargetCells, skillVictims,
+  tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims,
+} from '../rules/combat';
+import { MinHeap } from '../core/heap';
+import { reach, stepCost } from '../rules/move';
+import { attackPower, basicSkill, disabled, has, moveOf, outOfCommand, skillOf, skillRange, terrainMod } from '../rules/stats';
+import { AI, NEUTRAL, weightsFor, type Personality } from './personality';
+
+export type Stance = 'advance' | 'engage' | 'hold' | 'retreat';
+export type Role = 'front' | 'ranged' | 'caster' | 'support';
+
+/** 採点の内訳（調整と確認のため） */
+export interface ScoreParts {
+  attack: number; support: number; counter: number; threat: number; terrain: number;
+  cohesion: number; stance: number; spacing: number; noise: number;
+}
+export interface UnitPlan {
+  actions: Action[];
+  stance: Stance;
+  role: Role;
+  score: number;
+  parts: ScoreParts;
+}
+
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+
+// ---------------------------------------------------------------- 性格・役割・構え
+
+/** ユニットを動かす性格：率いる武将のもの（武将が倒れていれば標準） */
+export function personaOf(st: BattleState, u: BUnit): Personality {
+  const l = st.units[u.leader];
+  return (l && l.alive ? l.persona : u.persona) ?? NEUTRAL;
+}
+
+/** ユニットの役割：回復役・軍略役・射撃・前衛 */
+export function roleOf(u: BUnit): Role {
+  const tacs = u.tactics.map((id) => D.byTactic[id]);
+  if (tacs.some((t) => t.kind === 'heal') && u.maxMp > 0) return 'support';
+  if (tacs.some((t) => t.kind === 'damage') && u.int >= u.str) return 'caster';
+  const b = basicSkill(u);
+  if (b && b.range[1] >= 2) return 'ranged';
+  return 'front';
+}
+
+/** 部隊の強さの目安：体力 × 攻撃力 */
+function power(st: BattleState, us: BUnit[]): number {
+  return us.reduce((s, u) => s + u.hp * attackPower(st, u) / 100, 0);
+}
+
+function nearestDist(st: BattleState, from: number, us: BUnit[]): number {
+  let d = Infinity;
+  for (const u of us) d = Math.min(d, st.map.grid.distance(from, u.pos));
+  return d;
+}
+
+/** 部隊（率いる武将とその兵）の構え */
+export function stanceOf(st: BattleState, u: BUnit): Stance {
+  const leader = st.units[u.leader];
+  const S = AI.stance;
+  const foes = st.units.filter((x) => x.alive && x.side !== u.side);
+  if (!foes.length || !leader || !leader.alive || leader.side !== u.side) return 'engage';
+  const p = leader.persona ?? NEUTRAL;
+  const near = nearestDist(st, leader.pos, foes);
+  // 退却：武将の体力が少ない。慎重な武将ほど早く、猛攻の武将ほど粘る
+  const thr = clamp(S.retreatHp + p.caution * S.retreatHpCaution + p.aggression * S.retreatHpAggression, 0.05, 0.6);
+  if (leader.hp < leader.maxHp * thr && near <= 4) return 'retreat';
+  if (near <= S.engageDistance) return 'engage';
+  if (leader.home === 0) return 'advance';
+  // 守り手：時間切れなら勝ちなので、基本は守る。猛攻の武将と、戦力が大きく上回るときは打って出る
+  const mine = power(st, st.units.filter((x) => x.alive && x.side === u.side));
+  const theirs = power(st, foes);
+  if (p.aggression >= S.sallyAggression || mine >= theirs * S.sallyStrengthRatio) return 'advance';
+  return 'hold';
+}
+
+/** 攻め手の急ぎ具合（0〜1）。時間切れが近いほど大きい */
+function urgency(st: BattleState, u: BUnit): number {
+  if (u.home !== 0) return 0;
+  const t = st.round / st.maxRounds;
+  return t <= AI.stance.urgentFrom ? 0 : clamp((t - AI.stance.urgentFrom) / (1 - AI.stance.urgentFrom), 0, 1);
+}
+
+// ---------------------------------------------------------------- 脅威
+
+interface Threat { u: BUnit; radius: number; expected: number; tm0: number }
+
+/** 敵それぞれについて、届く範囲と、このユニットに与えるダメージの期待値を先に出しておく */
+function threatsTo(st: BattleState, u: BUnit): Threat[] {
+  const out: Threat[] = [];
+  for (const e of st.units) {
+    if (!e.alive || e.side === u.side || disabled(e)) continue;
+    let best = 0, range = 1;
+    for (const id of e.skills) {
+      const s = skillOf(id);
+      if (s.noDamage || e.mp < s.mp) continue;
+      const v = skillDamage(st, e, s, u) * hitChance(st, e, s, u) / 100;
+      const r = s.shape.type === 'single' ? skillRange(st, e, s)[1] : s.shape.type === 'line' ? s.shape.n : s.shape.n;
+      if (v > best) { best = v; range = r; }
+    }
+    for (const id of e.tactics) {
+      const t = D.byTactic[id];
+      if (t.kind !== 'damage' || e.mp < t.mp) continue;
+      const v = tacticDamage(st, e, t, u);
+      if (v > best) { best = v; range = (t.range ?? 0) + t.area; }
+    }
+    if (best > 0) out.push({ u: e, radius: moveOf(e) + range, expected: best, tm0: terrainMod(st, u) });
+  }
+  return out;
+}
+
+/** いまの位置（u.pos）で、次の敵ターンに受けそうなダメージ */
+function exposure(st: BattleState, u: BUnit, threats: Threat[], margin = 0): number {
+  const g = st.map.grid;
+  const tm = terrainMod(st, u);
+  let sum = 0;
+  for (const t of threats) {
+    if (!t.u.alive) continue;
+    // margin：味方の後ろにいるユニットは、届くぎりぎりの敵までは数えない（前衛が止めてくれる見込み）
+    if (g.distance(t.u.pos, u.pos) > Math.max(1, t.radius - margin)) continue;
+    // 地形で回避が変わるぶんを、ざっくり反映する（回避+10 なら1割減る、という見積もり）
+    sum += t.expected * clamp(1 - (tm - t.tm0) / 100, 0.3, 1.5);
+  }
+  return sum;
+}
+
+// ---------------------------------------------------------------- 攻める価値
+
+function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: number, w: Record<string, number>, leader: BUnit | null): number {
+  const d = Math.min(dmg, t.hp);
+  let v = d * chance * w.damage;
+  // 倒せるなら大きく加点。攻撃力の高い相手ほど、倒す価値が高い（その相手の次の行動が無くなる）
+  if (dmg >= t.hp) v += w.kill * (1 + attackPower(st, t) / 100) * chance;
+  // 弱った相手ほど狙う
+  v += w.weakTarget * (1 - t.hp / t.maxHp) * chance;
+  if (t.kind === 'general') v *= w.generalTarget;
+  else if (roleOf(t) === 'support' || roleOf(t) === 'caster') v *= w.supportTarget;
+  // 主君のそばにいる敵を優先して叩く
+  if (leader && leader.alive && leader.id !== u.id && st.map.grid.distance(t.pos, leader.pos) <= 1) v += w.guardLeader * chance;
+  return v;
+}
+
+function scoreSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number, w: Record<string, number>, leader: BUnit | null): { value: number; counter: number } {
+  let value = 0, counter = 0;
+  const single = skill.shape.type === 'single';
+  for (const t of skillVictims(st, u, skill, target)) {
+    const chance = hitChance(st, u, skill, t) / 100;
+    const hostile = t.side !== u.side;
+    if (skill.effects.some((e) => e.type === 'heal')) { value += (hostile ? -1 : 1) * Math.min(skill.power, t.maxHp - t.hp) * w.heal; continue; }
+    let v = skill.noDamage ? 0 : valueOfHit(st, u, t, skillDamage(st, u, skill, t), chance, w, leader);
+    for (const e of skill.effects) {
+      if (e.type === 'status' && !has(t, e.status)) v += w.status * (e.chance / 100) * chance * (t.kind === 'general' && e.status === 'defect' ? 0 : 1);
+      if (e.type === 'weakenStun') v += w.status * (e.chance / 100) * chance;
+      if (e.type === 'mpHalf' && t.tactics.length) v += t.mp / 6;
+    }
+    value += hostile ? v : -v * w.friendlyFire;
+    if (single && hostile) {
+      const basic = basicSkill(t);
+      if (canCounter(st, u, skill, t, basic)) {
+        const dmg = skillDamage(st, t, basic!, u, true) * hitChance(st, t, basic!, u) / 100;
+        // 倒しきれるなら反撃は来ない（当たる確率ぶんだけ減らす）
+        const survive = skillDamage(st, u, skill, t) >= t.hp ? 1 - chance : 1;
+        counter += Math.min(u.hp, dmg) * survive;
+        if (dmg * survive >= u.hp) counter += w.deathRisk / w.counter;
+      }
+    }
+  }
+  return { value: value - skill.mp * w.mp, counter: counter * w.counter };
+}
+
+function scoreTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number, w: Record<string, number>, leader: BUnit | null): number {
+  let s = 0;
+  if (tac.kind === 'revive') return w.buff * 2;
+  if (tac.kind === 'pull') return 0;
+  for (const t of tacticVictims(st, u, tac, target)) {
+    const hostile = t.side !== u.side;
+    const big = t.kind === 'general' ? 1.4 : 1;
+    switch (tac.kind) {
+      case 'damage': {
+        let v = valueOfHit(st, u, t, tacticDamage(st, u, tac, t), 1, w, leader);
+        if (typeof tac.status === 'object' && !has(t, tac.status.status)) v += w.status * tac.status.chance / 100;
+        s += hostile ? v : -v * w.friendlyFire;
+        break;
+      }
+      case 'heal': {
+        const miss = t.maxHp - t.hp;
+        if (!hostile && miss > t.maxHp * 0.2) s += w.heal * Math.min(miss, healAmount(u, tac.power)) * big * (t.hp < t.maxHp * 0.4 ? 1.4 : 1);
+        break;
+      }
+      case 'cure': if (!hostile && (disabled(t) || has(t, 'poison') || has(t, 'silence') || has(t, 'weaken'))) s += w.buff * 1.5 * big; break;
+      case 'mpRestore': if (!hostile && t.maxMp - t.mp > 100 && t.tactics.length) s += w.buff; break;
+      case 'dispel': {
+        // 敵の補助を消す、味方の妨害を消す
+        const buffs = t.statuses.filter((x) => ['defUp', 'atkUp', 'atkNext', 'agiUp', 'resistUp', 'regen', 'ward', 'moveUp', 'extraAct', 'sureNext'].includes(x.id)).length;
+        const debuffs = t.statuses.filter((x) => ['weaken', 'atkDown', 'intDown', 'grounded'].includes(x.id)).length;
+        s += w.buff * 0.8 * (hostile ? buffs - debuffs : debuffs - buffs);
+        break;
+      }
+      case 'buff': {
+        if (hostile || typeof tac.status !== 'string' || has(t, tac.status)) break;
+        const near = nearestDist(st, t.pos, st.units.filter((x) => x.alive && x.side !== u.side));
+        let v = 0;
+        switch (tac.status) {
+          case 'atkNext': v = near <= 2 && roleOf(t) === 'front' ? 1.2 : 0.3; break;          // これから殴る前衛に
+          case 'defUp': case 'ward': v = near <= 3 ? 1 : 0.2; break;                          // 敵に近い味方に
+          case 'resistUp': v = near <= 4 ? 0.7 : 0.1; break;
+          case 'regen': v = t.hp < t.maxHp * 0.7 ? 1 : 0.1; break;
+          case 'moveUp': v = near > 5 ? 0.6 : 0.1; break;                                      // まだ遠いときだけ
+          case 'extraAct': v = (t.kind === 'general' || attackPower(st, t) > 150) && !t.extraUsed ? 1.4 : 0.6; break;
+          case 'sureNext': v = near <= 2 ? 0.8 : 0.2; break;
+          case 'mounted': v = 0; break;
+          default: v = 0.5;
+        }
+        s += w.buff * v * big;
+        break;
+      }
+      case 'debuff': {
+        if (!hostile || typeof tac.status !== 'string' || has(t, tac.status)) break;
+        let v = 1;
+        if (tac.status === 'grounded') v = t.affinity === 'rider' ? 1.5 : 0.6;                  // 騎馬を降ろす
+        if (tac.status === 'intDown') v = t.tactics.length ? 1.2 : 0.2;
+        if (tac.status === 'weaken') v = attackPower(st, t) > 150 ? 1.3 : 0.8;
+        s += w.debuff * v * big;
+        break;
+      }
+      case 'status': {
+        if (!hostile || typeof tac.status !== 'string' || has(t, tac.status)) break;
+        if (tac.status === 'defect' && t.kind === 'general') break;
+        const chance = tac.sure ? 1 : tacticSuccess(st, u, t) / 100;
+        const v = tac.status === 'silence' ? (t.tactics.length ? 1 : 0.1) : 1.2;
+        s += w.status * v * chance * big;
+        break;
+      }
+      case 'displace': if (hostile) s += w.debuff * 0.4 * tacticSuccess(st, u, t) / 100 * big; break;
+    }
+  }
+  return s - tac.mp * w.mp;
+}
+
+// ---------------------------------------------------------------- 位置
+
+/** 乱数を使わない、決まったゆらぎ（同じ盤面なら同じ値） */
+function jitter(a: number, b: number, c: number): number {
+  let h = (a * 73856093) ^ (b * 19349663) ^ (c * 83492791);
+  h = (h ^ (h >>> 13)) * 1274126177;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+interface PosCtx {
+  stance: Stance; role: Role; w: Record<string, number>; persona: Personality;
+  leader: BUnit | null; foes: BUnit[]; threats: Threat[]; origin: number; urgent: number; joins: boolean;
+  /** 城壁のある戦場だけ：各マスから一番近い敵までの道のり（歩数） */
+  travel: Float64Array | null;
+}
+
+/**
+ * 各マスから、一番近い敵までの道のり（歩数。城壁を乗り越えるマスは3歩ぶんに数える）。
+ * 城壁のある戦場では、まっすぐの距離で詰めると壁の前で止まってしまうので、門を通る道のりで測る。
+ * その兵が入れないマス（騎馬にとっての城壁、移動力が足りなくて登れない城壁）は通らない。ほかのユニットは無視する。
+ */
+function travelField(st: BattleState, u: BUnit, foes: BUnit[]): Float64Array {
+  const g = st.map.grid;
+  const dist = new Float64Array(g.n).fill(Infinity);
+  const heap = new MinHeap();
+  for (const f of foes) { dist[f.pos] = 0; heap.push(0, f.pos); }
+  const budget = moveOf(u);
+  while (heap.size) {
+    const d = heap.peekKey();
+    const i = heap.pop();
+    if (d > dist[i]) continue;
+    for (const j of g.neighbors(i)) {
+      const c = stepCost(st, u, j);
+      if (c === null || c > budget) continue;
+      const nd = d + (st.map.terrain[j] === 'wall' ? 3 : 1);
+      if (nd < dist[j]) { dist[j] = nd; heap.push(nd, j); }
+    }
+  }
+  return dist;
+}
+
+/** その位置にいるとしたときの、場所の評価（u.pos がその位置になっている前提） */
+function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts): void {
+  const g = st.map.grid, w = c.w;
+  const near = nearestDist(st, u.pos, c.foes);
+  const isGeneral = u.kind === 'general';
+
+  parts.terrain = terrainMod(st, u) * w.terrain;
+
+  // まとまり：兵は采配範囲の中に。武将は自分の兵から離れすぎない
+  let coh = 0;
+  if (c.leader && c.leader.alive && !isGeneral) {
+    if (outOfCommand(st, u)) coh -= w.outOfCommand;
+    coh -= w.cohesion * Math.max(0, g.distance(u.pos, c.leader.pos) - Math.max(1, c.leader.commandRange - 1));
+    // 前衛は主君と敵の間に立つ
+    if (c.role === 'front' && g.distance(u.pos, c.leader.pos) <= 2 && near < nearestDist(st, c.leader.pos, c.foes)) coh += w.screen;
+  } else if (isGeneral) {
+    const troops = st.units.filter((x) => x.alive && x.leader === u.id && x.id !== u.id && x.side === u.side);
+    if (troops.length) {
+      const far = troops.filter((x) => g.distance(u.pos, x.pos) > u.commandRange).length;
+      coh -= w.outOfCommand * 0.5 * far;
+    }
+    // 武将どうしの足並み：ほかの武将から離れすぎない（統率が高いほど気にする）
+    const peers = st.units.filter((x) => x.alive && x.kind === 'general' && x.side === u.side && x.id !== u.id);
+    if (peers.length) coh -= w.cohesion * Math.max(0, nearestDist(st, u.pos, peers) - AI.stance.generalSpread);
+  }
+  parts.cohesion = coh;
+
+  // 脅威：次の敵ターンに受けそうなダメージ。攻め手は時間切れが近いほど気にしない
+  const keepsBack0 = c.role !== 'front' || (isGeneral && !c.joins);
+  const attacking = c.stance === 'advance' || c.stance === 'engage';
+  const exp = exposure(st, u, c.threats, attacking && keepsBack0 ? 3 : 0);
+  // 危険の重み：退却中は重く、守備は普通。攻めているときは、前衛の兵は危険を承知で踏み込み、後衛と武将は気をつける
+  const byStance = c.stance === 'retreat' ? 1.5 : c.stance === 'hold' ? 1
+    : keepsBack0 ? 0.6 : isGeneral ? 0.3 : 0.15;
+  const brave = byStance * (1 - 0.8 * c.urgent);
+  let thr = -exp * w.threat * (isGeneral ? 1.5 : 1) * brave;
+  if (exp >= u.hp) thr -= w.deathRisk * (isGeneral ? 2 : 1) * brave;
+  parts.threat = thr;
+
+  // 間合い：射撃・軍略役・回復役は敵に隣り合わない。前に出ない武将も同じ
+  let sp = 0;
+  const keepsBack = c.role !== 'front' || (isGeneral && !c.joins);
+  if (keepsBack && near < Infinity) {
+    const adj = c.foes.filter((f) => g.distance(u.pos, f.pos) <= 1).length;
+    sp -= w.spacing * adj;
+    if (c.role === 'ranged') {
+      const want = basicSkill(u)?.range[1] ?? 2;
+      sp -= 2 * Math.abs(Math.min(near, want + 3) - want);
+    }
+  }
+  parts.spacing = sp;
+
+  // 構え
+  let s = 0;
+  if (near < Infinity) {
+    const k = w.approach * (1 + c.urgent);
+    // 城壁のある戦場では、門を通る道のりで詰める（道のりが無いマスは、まっすぐの距離のまま）
+    const path = c.travel ? c.travel[u.pos] : Infinity;
+    const far = path < Infinity ? Math.max(near, path) : near;
+    switch (c.stance) {
+      // 前に出ない武将・後衛は、敵から3マスの距離まで詰める（前衛についていく）
+      case 'advance': s -= k * (keepsBack ? Math.max(0, far - 3) : far); break;
+      case 'engage': s -= k * 0.5 * (keepsBack ? Math.max(0, far - 3) : far); break;
+      case 'hold': s -= w.hold * g.distance(u.pos, c.origin); break;
+      case 'retreat':
+        if (isGeneral) s += w.retreat * Math.min(near, 8);
+        else s -= k * 0.3 * far;     // 兵は主君を逃がすために踏みとどまる
+        break;
+    }
+  }
+  parts.stance = s;
+  parts.noise = jitter(u.id, u.pos, st.round) * w.noise;
+}
+
+// ---------------------------------------------------------------- 1ユニットの行動
+
+const zeroParts = (): ScoreParts => ({ attack: 0, support: 0, counter: 0, threat: 0, terrain: 0, cohesion: 0, stance: 0, spacing: 0, noise: 0 });
+const total = (p: ScoreParts): number => p.attack + p.support - p.counter + p.threat + p.terrain + p.cohesion + p.stance + p.spacing + p.noise;
+
+/** 1ユニットの行動を、採点の内訳つきで決める（移動 → 行動 の順） */
+export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
+  const mayMove = canMove(st, u), mayAct = canAct(st, u);
+  const persona = personaOf(st, u);
+  const w = weightsFor(persona);
+  // 攻め手は時間切れが負けなので、消極的な武将でも一定の速さでは前に出る
+  if (u.home === 0) w.approach = Math.max(w.approach, AI.weights.approach * AI.stance.attackerApproachFloor);
+  const stance = stanceOf(st, u);
+  const role = roleOf(u);
+  const empty: UnitPlan = { actions: [], stance, role, score: 0, parts: zeroParts() };
+  if (!mayMove && !mayAct) return empty;
+
+  const leaderU = st.units[u.leader];
+  const leader = leaderU && leaderU.alive && leaderU.side === u.side ? leaderU : null;
+  const urgent = urgency(st, u);
+  const foes = st.units.filter((x) => x.alive && x.side !== u.side);
+  const ctx: PosCtx = {
+    stance, role, w, persona, leader, urgent, origin: u.pos, foes,
+    travel: st.map.siege && foes.length ? travelField(st, u, foes) : null,
+    threats: threatsTo(st, u),
+    // 武将が自ら前に出るか：猛攻・武勇の武将、前衛の役割で時間が押しているとき
+    joins: u.kind !== 'general' || persona.aggression + persona.honor * 0.5 > 0.3 || urgent >= (AI.stance.generalJoinFrom - AI.stance.urgentFrom) / (1 - AI.stance.urgentFrom),
+  };
+
+  const origin = u.pos, wasMoved = u.moved;
+  const cells = mayMove ? reach(st, u, moveOf(u) - u.moveSpent).cells : [origin];
+  let best: { score: number; parts: ScoreParts; move: number | null; act: Action | null } = { score: -Infinity, parts: zeroParts(), move: null, act: null };
+  for (const c of cells) {
+    u.pos = c; u.moved = wasMoved || c !== origin;
+    const base = zeroParts();
+    scorePosition(st, u, ctx, base);
+    const consider = (parts: ScoreParts, act: Action | null) => {
+      const score = total(parts);
+      if (score > best.score) best = { score, parts, move: c !== origin ? c : null, act };
+    };
+    consider(base, null);
+    if (!mayAct) continue;
+    for (const sid of u.skills) {
+      const skill = skillOf(sid);
+      if (!canUseSkill(st, u, skill)) continue;
+      for (const t of skillTargetCells(st, u, skill)) {
+        const r = scoreSkill(st, u, skill, t, w, leader);
+        if (r.value <= 0) continue;
+        const heals = skill.effects.some((e) => e.type === 'heal');
+        consider({ ...base, attack: heals ? 0 : r.value, support: heals ? r.value : 0, counter: r.counter }, { type: 'skill', unit: u.id, skill: sid, target: t });
+      }
+    }
+    for (const tid of u.tactics) {
+      const tac = D.byTactic[tid];
+      if (!canUseTactic(u, tac)) continue;
+      for (const t of tacticTargetCells(st, u, tac)) {
+        const v = scoreTactic(st, u, tac, t, w, leader);
+        if (v <= 0) continue;
+        const isAttack = tac.kind === 'damage';
+        consider({ ...base, attack: isAttack ? v : 0, support: isAttack ? 0 : v }, { type: 'tactic', unit: u.id, tactic: tid, target: t });
+      }
+    }
+  }
+  u.pos = origin; u.moved = wasMoved;
+  const actions: Action[] = [];
+  if (best.move !== null) actions.push({ type: 'move', unit: u.id, to: best.move });
+  if (mayAct) actions.push(best.act ?? { type: 'wait', unit: u.id });
+  return { actions, stance, role, score: best.score, parts: best.parts };
+}
+
+export function planUnit(st: BattleState, u: BUnit): Action[] { return planUnitDetailed(st, u).actions; }
+
+// ---------------------------------------------------------------- 陣営の番
+
+/** 動かす順番：妨害・補助の軍略役 → 射撃 → 前衛 → 回復役 → 武将。同じ役割なら敵に近いものから */
+function orderOf(st: BattleState, u: BUnit, foes: BUnit[]): number {
+  const role = roleOf(u);
+  const rank = u.kind === 'general' ? (role === 'front' ? 4 : role === 'support' ? 3.5 : 0.5) : role === 'caster' ? 0 : role === 'ranged' ? 1 : role === 'front' ? 2 : 3;
+  return rank * 100 + Math.min(99, nearestDist(st, u.pos, foes));
+}
+
+/** いまの陣営で、次に動かすユニットの行動（もう無ければ番を終える） */
+export function nextAiActions(st: BattleState): Action[] {
+  const foes = st.units.filter((x) => x.alive && x.side !== st.turn);
+  const order = st.units.filter((u) => u.alive && u.side === st.turn && (canAct(st, u) || canMove(st, u)))
+    .sort((a, b) => orderOf(st, a, foes) - orderOf(st, b, foes) || a.id - b.id);
+  for (const u of order) {
+    const plan = planUnit(st, u);
+    if (plan.length) return plan;
+  }
+  return [{ type: 'endTurn' }];
+}
+
+/** 陣営の番を最後まで自動で進める */
+export function runAiTurn(st: BattleState): void {
+  const side = st.turn;
+  for (let guard = 0; guard < 500 && st.winner === null && st.turn === side; guard++) {
+    const acts = nextAiActions(st);
+    let progressed = false;
+    for (const a of acts) {
+      if (a.type === 'endTurn') { endTurn(st); return; }
+      if (apply(st, a)) progressed = true;
+    }
+    if (!progressed) {
+      // 念のため：進まないユニットは待機させる
+      const stuck = st.units.find((u) => u.alive && u.side === side && canAct(st, u));
+      if (stuck) apply(st, { type: 'wait', unit: stuck.id }); else { endTurn(st); return; }
+    }
+  }
+  if (st.winner === null && st.turn === side) endTurn(st);
+}
+
+/** 決着がつくまで両陣営を自動で進める（テスト・バランス調整用） */
+export function autoBattle(st: BattleState): BattleState {
+  for (let guard = 0; guard < 200 && st.winner === null; guard++) runAiTurn(st);
+  return st;
+}

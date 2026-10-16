@@ -1,0 +1,88 @@
+{
+  "_comment": "hist-sim のセーブ → ゲーム開始データ の変換ルールの係数（docs/13_実装計画 の P4）。",
+  "staleAge": { "over": 85, "from": 28, "span": 25 },
+  "minAge": 15,
+  "defaultFame": 4,
+  "stats": {
+    "str": { "base": 35, "mil": 5 },
+    "int": { "base": 35, "adminDip": 2.5 },
+    "agi": { "base": 30, "mil": 3, "cha": 2 },
+    "hp": { "base": 250, "mil": 10, "cha": 5, "healthMin": 0.7, "healthSpan": 0.3 },
+    "mpPerInt": 0.8,
+    "command": { "base": 80, "cha": 20, "fame": 10 },
+    "commandRange": { "base": 2, "cha7": 1, "cha9": 1, "max": 4 }
+  },
+  "traits": {
+    "brave": { "str": 3, "passive": "counterDamage" },
+    "craven": { "str": -3, "agi": 5, "passive": "evade" },
+    "warrior": { "str": 5, "passive": "hit" },
+    "wise": { "int": 5 },
+    "scholar": { "int": 5, "expPct": 10 },
+    "genius": { "int": 5, "expPct": 20 },
+    "foolish": { "int": -5 },
+    "charismatic": { "command": 40, "commandRange": 1 },
+    "drunkard": { "agi": -3 },
+    "pious": { "healPct": 10 },
+    "cruel": { "critPct": 5 },
+    "paranoid": {}, "cynical": {}, "sickly": {},
+    "just": { "loyalty": 1 }, "kind": { "loyalty": 1 }, "content": { "loyalty": 1 }, "generous": { "loyalty": 1 },
+    "greedy": { "loyalty": -1 }, "ambitious": { "loyalty": -1 },
+    "builder": {}, "reformer": {}, "unifier": {}
+  },
+  "growthRank": { "S": 9, "A": 7, "B": 5 },
+  "growthMult": { "S": 1.3, "A": 1.15, "B": 1.0, "C": 0.85 },
+  "level": { "base": 3, "perFame": 3, "yearsDiv": 3, "adultAge": 20, "maxYears": 15, "rulerBonus": 3, "min": 1, "max": 25 },
+  "classPick": {
+    "martial": ["ashigaru", "nobushi", "sohei", "naginata", "yumime"],
+    "tactical": ["gunbaisha", "so", "onna_gunbaisha", "ama"],
+    "roleBonus": 2,
+    "kenshiAgi": 68,
+    "gedoTraits": ["cruel", "cynical", "ambitious"]
+  },
+  "lordClass": [
+    { "when": { "government": "theocracy" }, "line": "monshu" },
+    { "when": { "economy": "maritime" }, "line": "funa_taisho" },
+    { "when": { "government": "republic", "sex": "f" }, "line": "kunoichi_toryo" },
+    { "when": { "sex": "f" }, "line": "onna_joshu" },
+    { "when": { "governmentIn": ["tribe", "chiefdom"] }, "line": "kokujin" },
+    { "when": { "maxAge": 24 }, "line": "wakatono" },
+    { "when": {}, "line": "daimyo" }
+  ],
+  "lordTopLevel": 20,
+  "lordTopProvinceShare": 0.25,
+  "lordCommandBonus": 50,
+  "lordFamePrestigeDiv": 20,
+  "troops": {
+    "maxPerGeneral": 6,
+    "fillNoArmy": 0.3,
+    "fillMin": 0.2,
+    "base": { "u01a": 3, "u06a": 2 },
+    "glyph": {
+      "foot": "u01a", "spear": "u01a", "pike": "u01a", "halberd": "u01a", "sword": "u11a", "guard": "u09a",
+      "bow": "u06a", "sling": "u06a", "gun": "u04a", "crossbow": "u04a", "javelin": "u05a",
+      "horse": "u07a", "horse_archer": "u07a", "chariot": "u13a", "elephant": "u13a",
+      "boat": "u03a", "siege": "u10a", "cannon": "u10a"
+    },
+    "armsScale": 12, "armsMinShare": 0.02, "armsOtherMult": 0.35,
+    "economy": {
+      "agrarian": { "u01a": 2, "u09a": 2, "u14a": 1 },
+      "pastoral": { "u07a": 3, "u13a": 2, "u06a": 1 },
+      "trade": { "u04a": 2, "u02a": 1, "u05a": 2 },
+      "mining": { "u10a": 2, "u11a": 2 },
+      "maritime": { "u03a": 2, "u16a": 2 }
+    },
+    "armyRole": { "raider": { "u07a": 2, "u13a": 1 }, "garrison": { "u09a": 2, "u10a": 1 }, "guard": { "u09a": 1 } },
+    "theocracy": { "u08a": 2, "u17a": 1 },
+    "rich": { "u15a": 1 },
+    "richTreasury": 1000,
+    "mountainBiome": { "u12a": 2 },
+    "forestBiome": { "u05a": 1, "u14a": 1 },
+    "levelFromTech": { "base": 1, "techOrigin": 1, "techScale": 8, "prestigeDiv": 25, "max": 10 },
+    "unlock": {
+      "jp": { "u04a": { "fromYear": 1543 }, "u10c": { "fromYear": 1570 }, "u16c": { "fromYear": 1578 } },
+      "cn": { "u04a": { "fromYear": -450 }, "u07a": { "fromYear": -307 }, "u13c": { "untilYear": -300 } }
+    }
+  },
+  "supply": { "treasuryScale": 1.0, "perPop": 0.002, "recruitCostMult": 3 },
+  "variantByScenario": { "sengoku": "jp", "shunju": "cn", "sangoku": "cn", "sokan": "cn" }
+}

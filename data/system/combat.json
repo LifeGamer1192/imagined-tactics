@@ -1,0 +1,41 @@
+{
+  "_comment": "戦闘式の係数。docs/12_戦闘ルール（仮）の「調整のつまみ」と対応する。",
+  "atkPerStr": 2,
+  "hitBase": 80,
+  "triPenalty": 15,
+  "hitMin": 5,
+  "hitMax": 100,
+  "critRate": 5,
+  "critMult": 1.5,
+  "randomMin": 0.9,
+  "randomMax": 1.1,
+  "tacticIntMult": 2,
+  "tacticDefInDenominator": true,
+  "statusBase": 50,
+  "statusMin": 5,
+  "statusMax": 95,
+  "counterMult": 1,
+  "healIntScale": 100,
+  "useExp": 20,
+  "healExp": 40,
+  "expGain": 1,
+  "escapeChance": 60,
+  "weather": {
+    "_comment": "天気の効果。晴れは補正なし。odds は季節ごとの出やすさ（重み）。",
+    "rainRangedHit": -10,
+    "rainFireMult": 0.8,
+    "fogFarHit": -15,
+    "snowMoveCost": 0.25,
+    "snowExtraRounds": 2,
+    "nightHit": -5,
+    "nightChance": 0.12,
+    "fireSkills": ["k012", "k040", "k071", "k072", "k073", "k081"],
+    "fireTactics": ["x02", "x08", "x09", "x13"],
+    "odds": {
+      "spring": { "clear": 60, "rain": 25, "fog": 15, "snow": 0 },
+      "summer": { "clear": 55, "rain": 35, "fog": 10, "snow": 0 },
+      "autumn": { "clear": 60, "rain": 20, "fog": 20, "snow": 0 },
+      "winter": { "clear": 50, "rain": 10, "fog": 10, "snow": 30 }
+    }
+  }
+}

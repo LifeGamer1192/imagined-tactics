@@ -1,0 +1,211 @@
+{
+ "affinities": [
+  "plain",
+  "forest",
+  "mountain",
+  "swamp",
+  "water",
+  "rider"
+ ],
+ "kinds": [
+  "plain",
+  "road",
+  "bridge",
+  "forest",
+  "mountain",
+  "swamp",
+  "water",
+  "castle",
+  "town",
+  "cliff",
+  "camp",
+  "fort",
+  "paddy",
+  "wall",
+  "gate",
+  "tower"
+ ],
+ "regen": {
+  "camp": 5
+ },
+ "ranged": {
+  "tower": { "hit": 10, "range": 1 }
+ },
+ "snowFree": ["road", "bridge", "castle", "town", "camp", "fort", "gate", "tower"],
+ "moveCost": {
+  "plain": {
+   "plain": 1.0,
+   "forest": 1.0,
+   "mountain": 1.0,
+   "swamp": 1.0,
+   "water": 1.0,
+   "rider": 0.75
+  },
+  "road": {
+   "plain": 0.75,
+   "forest": 0.75,
+   "mountain": 0.75,
+   "swamp": 0.75,
+   "water": 0.75,
+   "rider": 0.5
+  },
+  "bridge": {
+   "plain": 1.0,
+   "forest": 1.0,
+   "mountain": 1.0,
+   "swamp": 1.0,
+   "water": 1.0,
+   "rider": 1.0
+  },
+  "forest": {
+   "plain": 2.0,
+   "forest": 0.75,
+   "mountain": 2.0,
+   "swamp": 2.0,
+   "water": 2.0,
+   "rider": 2.0
+  },
+  "mountain": {
+   "plain": 2.0,
+   "forest": 2.0,
+   "mountain": 0.75,
+   "swamp": 2.0,
+   "water": 2.0,
+   "rider": 3.0
+  },
+  "swamp": {
+   "plain": 2.0,
+   "forest": 2.0,
+   "mountain": 2.0,
+   "swamp": 0.75,
+   "water": 1.25,
+   "rider": 2.0
+  },
+  "water": {
+   "plain": 3.0,
+   "forest": 3.0,
+   "mountain": 3.0,
+   "swamp": 1.25,
+   "water": 0.75,
+   "rider": null
+  },
+  "castle": {
+   "plain": 1.25,
+   "forest": 1.25,
+   "mountain": 1.25,
+   "swamp": 1.25,
+   "water": 1.25,
+   "rider": 1.25
+  },
+  "town": {
+   "plain": 1.25,
+   "forest": 1.25,
+   "mountain": 1.25,
+   "swamp": 1.25,
+   "water": 1.25,
+   "rider": 1.25
+  },
+  "cliff": {
+   "plain": 4.0,
+   "forest": 4.0,
+   "mountain": 4.0,
+   "swamp": 4.0,
+   "water": 4.0,
+   "rider": null
+  },
+  "camp": { "plain": 1.0, "forest": 1.0, "mountain": 1.0, "swamp": 1.0, "water": 1.0, "rider": 1.0 },
+  "fort": { "plain": 1.25, "forest": 1.25, "mountain": 1.25, "swamp": 1.25, "water": 1.25, "rider": 1.25 },
+  "paddy": { "plain": 1.5, "forest": 1.5, "mountain": 1.5, "swamp": 1.0, "water": 1.25, "rider": 2.5 },
+  "wall": { "plain": 2.5, "forest": 2.5, "mountain": 2.5, "swamp": 2.5, "water": 2.5, "rider": null },
+  "gate": { "plain": 1.0, "forest": 1.0, "mountain": 1.0, "swamp": 1.0, "water": 1.0, "rider": 1.0 },
+  "tower": { "plain": 1.5, "forest": 1.5, "mountain": 1.5, "swamp": 1.5, "water": 1.5, "rider": null }
+ },
+ "hitMod": {
+  "plain": {
+   "plain": 5,
+   "forest": 0,
+   "mountain": 0,
+   "swamp": 0,
+   "water": 0,
+   "rider": 10
+  },
+  "road": {
+   "plain": 0,
+   "forest": 0,
+   "mountain": 0,
+   "swamp": 0,
+   "water": 0,
+   "rider": 5
+  },
+  "bridge": {
+   "plain": 0,
+   "forest": 0,
+   "mountain": 0,
+   "swamp": 0,
+   "water": 0,
+   "rider": 0
+  },
+  "forest": {
+   "plain": -10,
+   "forest": 21,
+   "mountain": -10,
+   "swamp": -10,
+   "water": -10,
+   "rider": -15
+  },
+  "mountain": {
+   "plain": -10,
+   "forest": -10,
+   "mountain": 21,
+   "swamp": -10,
+   "water": -10,
+   "rider": -15
+  },
+  "swamp": {
+   "plain": -10,
+   "forest": -10,
+   "mountain": -10,
+   "swamp": 21,
+   "water": 10,
+   "rider": -15
+  },
+  "water": {
+   "plain": -21,
+   "forest": -21,
+   "mountain": -21,
+   "swamp": 10,
+   "water": 21,
+   "rider": 0
+  },
+  "castle": {
+   "plain": 31,
+   "forest": 31,
+   "mountain": 31,
+   "swamp": 31,
+   "water": 31,
+   "rider": 10
+  },
+  "town": {
+   "plain": 21,
+   "forest": 21,
+   "mountain": 21,
+   "swamp": 21,
+   "water": 21,
+   "rider": 5
+  },
+  "cliff": {
+   "plain": 0,
+   "forest": 0,
+   "mountain": 0,
+   "swamp": 0,
+   "water": 0,
+   "rider": 0
+  },
+  "camp": { "plain": 10, "forest": 10, "mountain": 10, "swamp": 10, "water": 10, "rider": 5 },
+  "fort": { "plain": 26, "forest": 26, "mountain": 26, "swamp": 26, "water": 26, "rider": 8 },
+  "paddy": { "plain": -5, "forest": -5, "mountain": -5, "swamp": 5, "water": 0, "rider": -10 },
+  "wall": { "plain": -5, "forest": -5, "mountain": -5, "swamp": -5, "water": -5, "rider": 0 },
+  "gate": { "plain": 10, "forest": 10, "mountain": 10, "swamp": 10, "water": 10, "rider": 5 },
+  "tower": { "plain": 15, "forest": 15, "mountain": 15, "swamp": 15, "water": 15, "rider": 0 }
+ }
+}

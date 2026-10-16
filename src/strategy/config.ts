@@ -1,0 +1,50 @@
+// 戦略パートの調整値と、勢力の特色。campaign.ts と events.ts の両方から使う。
+
+import strategyJson from '../../data/system/strategy.json';
+import type { GFaction } from '../convert/model';
+
+/** 戦略パートの調整値（data/system/strategy.json） */
+export const S = strategyJson as unknown as {
+  siege: { base: number; perFort: number; unownedMult: number; idleDecay: number };
+  move: { range: number };
+  officer: { minTroopLevel: number; nameMax: number; unit: string; raiseCostBase: number; raiseCostPerLevel: number; lowerRefund: number; leaderTraits: string[] };
+  reserve: { max: number };
+  garrison: {
+    levelBase: number; levelPerFort: number; levelTown: number; levelCity: number; levelCapital: number; levelMax: number;
+    troopsBase: number; troopsPerFort: number; troopsTown: number; troopsMax: number; townPop: number; cityPop: number;
+    units: string[]; skipLines: number[];
+  };
+  quest: { months: number; item: number; ronin: number; exp: number; expAmount: number };
+  people: {
+    oldAge: number; deathPerYearOver: number; comingOfAge: number;
+    wound: { months: number; short: number; shortTraits: string[]; long: number; longTraits: string[] }; defectLoyalty: number; defectChance: number;
+    surrenderChance: number; tieJoinChance: number; roninJoinChance: number; joinTies: string[];
+    strongTies: string[]; oldLordTies: string[]; rivalExp: number; rivalLoserExp: number; avengeKillChance: number; avengeExp: number;
+    mentorExp: number; bondLoyalty: number; grudgeLoyalty: number;
+  };
+  diplomacy: {
+    allianceOpinion: number; truceMonths: number; truceStrengthRatio: number; aiTruceAfter: number; aiTruceChance: number;
+    opinionOnWar: number; opinionOnBreak: number; opinionOnAlliance: number;
+    opinionAllyOfVictim: number; opinionSharedEnemy: number; opinionDrift: number; opinionOnRefuse: number; opinionOnTruce: number;
+    offerChance: number; offerMonths: number; vassalStrengthRatio: number; vassalOpinion: number; callToArmsOpinion: number;
+  };
+  ai: {
+    attackRatio: number; attackChance: number; neutralMult: number; aggressionRatio: number; cautionRatio: number; aggressionChance: number;
+    cunningEmptyBonus: number; honorNeutralPenalty: number; warBonus: number; emptyDefenseShare: number; reserveSupply: number;
+  };
+  difficulty: Record<Difficulty, { name: string; playerIncome: number; playerSiege: number; aiVsPlayer: number; aiTroopLevel: number; aiEmptyChance: number }>;
+  supply: { capMonths: number; capMin: number };
+  tactical: { lines: number[]; capPerGeneral: number };
+  traits: { economy: Record<string, FactionTrait>; government: Record<string, FactionTrait> };
+};
+
+export type Difficulty = 'easy' | 'normal' | 'hard';
+
+/** 勢力の特色（経済と政体から決まる） */
+export interface FactionTrait {
+  name: string; text: string;
+  incomeMult?: number; troopLevel?: number; siegeMult?: number; defectMult?: number;
+  cost?: { lines: number[]; mult: number }; level?: { lines: number[]; add: number };
+}
+export const traitsOf = (f: GFaction): FactionTrait[] =>
+  [S.traits.economy[f.economy], S.traits.government[f.government]].filter((t): t is FactionTrait => !!t);

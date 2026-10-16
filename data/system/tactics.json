@@ -1,0 +1,552 @@
+[
+ {
+  "id": "x01",
+  "name": {
+   "jp": "毒矢",
+   "cn": "毒箭"
+  },
+  "mp": 46,
+  "power": 68,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "damage",
+  "status": {
+   "status": "poison",
+   "chance": 21
+  }
+ },
+ {
+  "id": "x02",
+  "name": {
+   "jp": "火矢",
+   "cn": "火箭"
+  },
+  "mp": 66,
+  "power": 117,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x03",
+  "name": {
+   "jp": "水攻め",
+   "cn": "水攻"
+  },
+  "mp": 66,
+  "power": 117,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x04",
+  "name": {
+   "jp": "奇襲",
+   "cn": "突襲"
+  },
+  "mp": 90,
+  "power": 147,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x05",
+  "name": {
+   "jp": "夜討ち",
+   "cn": "夜襲"
+  },
+  "mp": 111,
+  "power": 164,
+  "range": 2,
+  "area": 0,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x06",
+  "name": {
+   "jp": "一番槍",
+   "cn": "先登"
+  },
+  "mp": 109,
+  "power": 166,
+  "range": 2,
+  "area": 0,
+  "sure": true,
+  "kind": "damage",
+  "purge": true
+ },
+ {
+  "id": "x07",
+  "name": {
+   "jp": "落石",
+   "cn": "滾石"
+  },
+  "mp": 132,
+  "power": 194,
+  "range": 2,
+  "area": 0,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x08",
+  "name": {
+   "jp": "火計",
+   "cn": "火攻"
+  },
+  "mp": 149,
+  "power": 198,
+  "range": 2,
+  "area": 0,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x09",
+  "name": {
+   "jp": "焼き討ち",
+   "cn": "焚営"
+  },
+  "mp": 189,
+  "power": 78,
+  "range": 0,
+  "area": 3,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x10",
+  "name": {
+   "jp": "堤切り",
+   "cn": "決水"
+  },
+  "mp": 189,
+  "power": 78,
+  "range": 0,
+  "area": 3,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x11",
+  "name": {
+   "jp": "釣り野伏",
+   "cn": "十面埋伏"
+  },
+  "mp": 189,
+  "power": 111,
+  "range": 4,
+  "area": 1,
+  "sure": true,
+  "kind": "damage"
+ },
+ {
+  "id": "x12",
+  "name": {
+   "jp": "鬨の声",
+   "cn": "鼓噪"
+  },
+  "mp": 195,
+  "power": 59,
+  "range": 0,
+  "area": 4,
+  "sure": true,
+  "kind": "damage",
+  "purge": true
+ },
+ {
+  "id": "x13",
+  "name": {
+   "jp": "野火",
+   "cn": "燎原"
+  },
+  "mp": 305,
+  "power": 112,
+  "range": 3,
+  "area": 2,
+  "sure": true,
+  "kind": "damage",
+  "friendlyFire": true
+ },
+ {
+  "id": "x14",
+  "name": {
+   "jp": "兵站",
+   "cn": "饋糧"
+  },
+  "mp": 39,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "regen",
+  "turns": 4,
+  "pct": 10
+ },
+ {
+  "id": "x15",
+  "name": {
+   "jp": "立て直し",
+   "cn": "整軍"
+  },
+  "mp": 53,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "cure"
+ },
+ {
+  "id": "x16",
+  "name": {
+   "jp": "手当て",
+   "cn": "療傷"
+  },
+  "mp": 64,
+  "power": 177,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "heal"
+ },
+ {
+  "id": "x17",
+  "name": {
+   "jp": "総立て直し",
+   "cn": "大整軍"
+  },
+  "mp": 115,
+  "power": 0,
+  "range": 0,
+  "area": 4,
+  "sure": true,
+  "kind": "cure"
+ },
+ {
+  "id": "x18",
+  "name": {
+   "jp": "炊き出し",
+   "cn": "犒軍"
+  },
+  "mp": 150,
+  "power": 117,
+  "range": 0,
+  "area": 2,
+  "sure": true,
+  "kind": "heal"
+ },
+ {
+  "id": "x19",
+  "name": {
+   "jp": "檄文",
+   "cn": "檄"
+  },
+  "mp": 198,
+  "power": 0,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "mpRestore",
+  "amount": 102
+ },
+ {
+  "id": "x20",
+  "name": {
+   "jp": "呼び戻し",
+   "cn": "召還"
+  },
+  "mp": 21,
+  "power": 0,
+  "range": null,
+  "area": 0,
+  "sure": true,
+  "kind": "pull"
+ },
+ {
+  "id": "x21",
+  "name": {
+   "jp": "強行軍",
+   "cn": "疾行"
+  },
+  "mp": 41,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "moveUp",
+  "turns": 3,
+  "value": 2
+ },
+ {
+  "id": "x22",
+  "name": {
+   "jp": "看破",
+   "cn": "識破"
+  },
+  "mp": 46,
+  "power": 0,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "dispel",
+  "anyTarget": true
+ },
+ {
+  "id": "x23",
+  "name": {
+   "jp": "軍律",
+   "cn": "軍紀"
+  },
+  "mp": 48,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "resistUp",
+  "turns": 3,
+  "pct": 34
+ },
+ {
+  "id": "x24",
+  "name": {
+   "jp": "騎乗",
+   "cn": "乗騎"
+  },
+  "mp": 53,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "mounted",
+  "anyTarget": true
+ },
+ {
+  "id": "x25",
+  "name": {
+   "jp": "堅陣",
+   "cn": "固陣"
+  },
+  "mp": 63,
+  "power": 0,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "defUp",
+  "turns": 3,
+  "value": 31
+ },
+ {
+  "id": "x26",
+  "name": {
+   "jp": "鼓舞",
+   "cn": "激励"
+  },
+  "mp": 61,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "atkNext",
+  "value": 49
+ },
+ {
+  "id": "x27",
+  "name": {
+   "jp": "用心",
+   "cn": "戒備"
+  },
+  "mp": 84,
+  "power": 0,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "ward"
+ },
+ {
+  "id": "x28",
+  "name": {
+   "jp": "必勝祈願",
+   "cn": "誓師"
+  },
+  "mp": 89,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "sureNext"
+ },
+ {
+  "id": "x29",
+  "name": {
+   "jp": "敗残兵収容",
+   "cn": "収残兵"
+  },
+  "mp": 95,
+  "power": 0,
+  "range": null,
+  "area": 0,
+  "sure": true,
+  "kind": "revive"
+ },
+ {
+  "id": "x30",
+  "name": {
+   "jp": "号令",
+   "cn": "軍令"
+  },
+  "mp": 138,
+  "power": 0,
+  "range": 2,
+  "area": 0,
+  "sure": true,
+  "kind": "buff",
+  "status": "extraAct"
+ },
+ {
+  "id": "x31",
+  "name": {
+   "jp": "攪乱の計",
+   "cn": "擾乱"
+  },
+  "mp": 39,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": false,
+  "kind": "status",
+  "status": "silence"
+ },
+ {
+  "id": "x32",
+  "name": {
+   "jp": "足止め",
+   "cn": "絆馬"
+  },
+  "mp": 55,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "debuff",
+  "status": "grounded",
+  "turns": 3,
+  "value": 21
+ },
+ {
+  "id": "x33",
+  "name": {
+   "jp": "偽報",
+   "cn": "偽書"
+  },
+  "mp": 57,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": true,
+  "kind": "debuff",
+  "status": "intDown",
+  "turns": 3,
+  "value": 49
+ },
+ {
+  "id": "x34",
+  "name": {
+   "jp": "兵糧攻め",
+   "cn": "断糧"
+  },
+  "mp": 59,
+  "power": 0,
+  "range": 3,
+  "area": 0,
+  "sure": true,
+  "kind": "debuff",
+  "status": "weaken",
+  "turns": 3,
+  "atk": 49,
+  "def": 31
+ },
+ {
+  "id": "x35",
+  "name": {
+   "jp": "威嚇",
+   "cn": "恫喝"
+  },
+  "mp": 66,
+  "power": 0,
+  "range": 3,
+  "area": 0,
+  "sure": false,
+  "kind": "status",
+  "status": "daze"
+ },
+ {
+  "id": "x36",
+  "name": {
+   "jp": "誘引",
+   "cn": "誘敵"
+  },
+  "mp": 82,
+  "power": 0,
+  "range": 4,
+  "area": 0,
+  "sure": false,
+  "kind": "displace"
+ },
+ {
+  "id": "x37",
+  "name": {
+   "jp": "混乱の計",
+   "cn": "乱敵"
+  },
+  "mp": 84,
+  "power": 0,
+  "range": 3,
+  "area": 0,
+  "sure": false,
+  "kind": "status",
+  "status": "confuse"
+ },
+ {
+  "id": "x38",
+  "name": {
+   "jp": "轟音",
+   "cn": "雷鼓"
+  },
+  "mp": 102,
+  "power": 0,
+  "range": 0,
+  "area": 3,
+  "sure": false,
+  "kind": "status",
+  "status": "silence"
+ },
+ {
+  "id": "x39",
+  "name": {
+   "jp": "調略",
+   "cn": "反間"
+  },
+  "mp": 111,
+  "power": 0,
+  "range": 3,
+  "area": 0,
+  "sure": false,
+  "kind": "status",
+  "status": "defect"
+ }
+]

@@ -1,0 +1,2455 @@
+[
+ {
+  "id": "k001",
+  "name": {
+   "jp": "槍突き",
+   "cn": "戈撃"
+  },
+  "mp": 0,
+  "power": 93,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k002",
+  "name": {
+   "jp": "槍衾",
+   "cn": "戈陣"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "lifesteal",
+    "rate": 0.21
+   }
+  ]
+ },
+ {
+  "id": "k003",
+  "name": {
+   "jp": "長柄叩き",
+   "cn": "戟撃"
+  },
+  "mp": 0,
+  "power": 143,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "lifesteal",
+    "rate": 0.21
+   }
+  ]
+ },
+ {
+  "id": "k004",
+  "name": {
+   "jp": "投げ槍",
+   "cn": "擲戟"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   2
+  ],
+  "hit": -3,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k005",
+  "name": {
+   "jp": "撥打ち",
+   "cn": "桴撃"
+  },
+  "mp": 0,
+  "power": 84,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 3,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k006",
+  "name": {
+   "jp": "法螺打ち",
+   "cn": "鉦撃"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k007",
+  "name": {
+   "jp": "大法螺",
+   "cn": "震鼓"
+  },
+  "mp": 31,
+  "power": 88,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k008",
+  "name": {
+   "jp": "櫂打ち",
+   "cn": "櫂撃"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k009",
+  "name": {
+   "jp": "舟唄",
+   "cn": "楚歌"
+  },
+  "mp": 102,
+  "power": 0,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 3
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "defect",
+    "chance": 100
+   }
+  ],
+  "noDamage": true,
+  "needsWater": true
+ },
+ {
+  "id": "k010",
+  "name": {
+   "jp": "舳先突き",
+   "cn": "衝角"
+  },
+  "mp": 0,
+  "power": 112,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k011",
+  "name": {
+   "jp": "惑わしの舟唄",
+   "cn": "四面楚歌"
+  },
+  "mp": 102,
+  "power": 0,
+  "range": [
+   1,
+   4
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 4
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "defect",
+    "chance": 100
+   }
+  ],
+  "noDamage": true,
+  "needsWater": true
+ },
+ {
+  "id": "k012",
+  "name": {
+   "jp": "火矢船",
+   "cn": "火船"
+  },
+  "mp": 46,
+  "power": 204,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 26
+   }
+  ],
+  "needsWater": true
+ },
+ {
+  "id": "k013",
+  "name": {
+   "jp": "銃床打ち",
+   "cn": "弩臂撃"
+  },
+  "mp": 0,
+  "power": 93,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 5,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k014",
+  "name": {
+   "jp": "一斉射撃",
+   "cn": "斉射"
+  },
+  "mp": 39,
+  "power": 127,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": true,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k015",
+  "name": {
+   "jp": "台尻打ち",
+   "cn": "弩托撃"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 8,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k016",
+  "name": {
+   "jp": "三段撃ち",
+   "cn": "連弩斉射"
+  },
+  "mp": 39,
+  "power": 147,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": true,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 3
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k017",
+  "name": {
+   "jp": "毒刃",
+   "cn": "淬毒刃"
+  },
+  "mp": 0,
+  "power": 88,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 8,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "poison",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k018",
+  "name": {
+   "jp": "痺れ吹き矢",
+   "cn": "麻吹箭"
+  },
+  "mp": 0,
+  "power": 84,
+  "range": [
+   1,
+   2
+  ],
+  "hit": -2,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k019",
+  "name": {
+   "jp": "猛毒刃",
+   "cn": "劇毒刃"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 11,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "poison",
+    "chance": 31
+   }
+  ]
+ },
+ {
+  "id": "k020",
+  "name": {
+   "jp": "毒吹き矢",
+   "cn": "毒吹箭"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 1,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 26
+   }
+  ]
+ },
+ {
+  "id": "k021",
+  "name": {
+   "jp": "闇討ち",
+   "cn": "暗殺"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 11,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "poison",
+    "chance": 49
+   }
+  ]
+ },
+ {
+  "id": "k022",
+  "name": {
+   "jp": "手裏剣",
+   "cn": "飛刀"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 1,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 26
+   }
+  ]
+ },
+ {
+  "id": "k023",
+  "name": {
+   "jp": "十字手裏剣",
+   "cn": "連飛刀"
+  },
+  "mp": 16,
+  "power": 111,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 34
+   }
+  ]
+ },
+ {
+  "id": "k024",
+  "name": {
+   "jp": "弓射ち",
+   "cn": "射箭"
+  },
+  "mp": 0,
+  "power": 88,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 3,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k025",
+  "name": {
+   "jp": "遠矢",
+   "cn": "強射"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k026",
+  "name": {
+   "jp": "馬上槍",
+   "cn": "騎刺"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k027",
+  "name": {
+   "jp": "騎馬突き",
+   "cn": "騎突"
+  },
+  "mp": 0,
+  "power": 112,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k028",
+  "name": {
+   "jp": "乗り崩し",
+   "cn": "馳突"
+  },
+  "mp": 49,
+  "power": 88,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k029",
+  "name": {
+   "jp": "朱槍",
+   "cn": "胡刀"
+  },
+  "mp": 0,
+  "power": 127,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k030",
+  "name": {
+   "jp": "騎馬突撃",
+   "cn": "騎射突"
+  },
+  "mp": 59,
+  "power": 102,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 3
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k031",
+  "name": {
+   "jp": "総掛かり",
+   "cn": "踏陣"
+  },
+  "mp": 59,
+  "power": 111,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 3
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k032",
+  "name": {
+   "jp": "小太刀",
+   "cn": "短剣"
+  },
+  "mp": 0,
+  "power": 84,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k033",
+  "name": {
+   "jp": "護身太刀",
+   "cn": "護身剣"
+  },
+  "mp": 0,
+  "power": 93,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k034",
+  "name": {
+   "jp": "錫杖打ち",
+   "cn": "杖撃"
+  },
+  "mp": 0,
+  "power": 117,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "knockback"
+   }
+  ],
+  "noCounter": true
+ },
+ {
+  "id": "k035",
+  "name": {
+   "jp": "盾押し",
+   "cn": "盾撃"
+  },
+  "mp": 0,
+  "power": 88,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k036",
+  "name": {
+   "jp": "盾打ち",
+   "cn": "甲撃"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k037",
+  "name": {
+   "jp": "鉄盾押し",
+   "cn": "虎賁撃"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 15,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k038",
+  "name": {
+   "jp": "鍬打ち",
+   "cn": "轅撃"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k039",
+  "name": {
+   "jp": "槌打ち",
+   "cn": "槌撃"
+  },
+  "mp": 0,
+  "power": 126,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k040",
+  "name": {
+   "jp": "石火矢",
+   "cn": "投石"
+  },
+  "mp": 0,
+  "power": 117,
+  "range": [
+   1,
+   2
+  ],
+  "hit": -12,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k041",
+  "name": {
+   "jp": "大槌打ち",
+   "cn": "大槌撃"
+  },
+  "mp": 0,
+  "power": 132,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k042",
+  "name": {
+   "jp": "大筒撃ち",
+   "cn": "飛石"
+  },
+  "mp": 0,
+  "power": 127,
+  "range": [
+   1,
+   3
+  ],
+  "hit": -9,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k043",
+  "name": {
+   "jp": "抱え大筒",
+   "cn": "衝車撃"
+  },
+  "mp": 0,
+  "power": 166,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k044",
+  "name": {
+   "jp": "大太刀振り",
+   "cn": "重撃"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 3,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 26
+   }
+  ]
+ },
+ {
+  "id": "k045",
+  "name": {
+   "jp": "野太刀薙ぎ",
+   "cn": "斧劈"
+  },
+  "mp": 0,
+  "power": 112,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 34
+   }
+  ]
+ },
+ {
+  "id": "k046",
+  "name": {
+   "jp": "兜割り",
+   "cn": "破甲"
+  },
+  "mp": 39,
+  "power": 132,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 15,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "weakenStun",
+    "chance": 34
+   }
+  ],
+  "noCounter": true
+ },
+ {
+  "id": "k047",
+  "name": {
+   "jp": "斬馬",
+   "cn": "鉞斬"
+  },
+  "mp": 0,
+  "power": 126,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 34
+   }
+  ]
+ },
+ {
+  "id": "k048",
+  "name": {
+   "jp": "一刀両断",
+   "cn": "断鉞"
+  },
+  "mp": 39,
+  "power": 164,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 15,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "weakenStun",
+    "chance": 49
+   }
+  ],
+  "noCounter": true
+ },
+ {
+  "id": "k049",
+  "name": {
+   "jp": "薙ぎ払い",
+   "cn": "横掃"
+  },
+  "mp": 59,
+  "power": 147,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 34
+   }
+  ]
+ },
+ {
+  "id": "k050",
+  "name": {
+   "jp": "山刀",
+   "cn": "柴刀"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 5,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k051",
+  "name": {
+   "jp": "山彦の鬨",
+   "cn": "山呼"
+  },
+  "mp": 49,
+  "power": 59,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k052",
+  "name": {
+   "jp": "薬師の鉈",
+   "cn": "薬鋤"
+  },
+  "mp": 0,
+  "power": 112,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 8,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "critBonus"
+   }
+  ]
+ },
+ {
+  "id": "k053",
+  "name": {
+   "jp": "薬湯配り",
+   "cn": "施薬"
+  },
+  "mp": 68,
+  "power": 198,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "heal"
+   }
+  ],
+  "noDamage": true
+ },
+ {
+  "id": "k054",
+  "name": {
+   "jp": "逆落とし",
+   "cn": "俯衝"
+  },
+  "mp": 0,
+  "power": 147,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 8,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k055",
+  "name": {
+   "jp": "岩雪崩",
+   "cn": "滾木"
+  },
+  "mp": 49,
+  "power": 78,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 34
+   }
+  ]
+ },
+ {
+  "id": "k056",
+  "name": {
+   "jp": "馬上太刀",
+   "cn": "車戈"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 5,
+  "vsGround": "tri",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k057",
+  "name": {
+   "jp": "馬上連撃",
+   "cn": "車戟連撃"
+  },
+  "mp": 0,
+  "power": 112,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 8,
+  "vsGround": "tri",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k058",
+  "name": {
+   "jp": "蹂躙",
+   "cn": "轢陣"
+  },
+  "mp": 26,
+  "power": 0,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 1
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "mpHalf"
+   }
+  ],
+  "noDamage": true
+ },
+ {
+  "id": "k059",
+  "name": {
+   "jp": "旗本突撃",
+   "cn": "駟馬衝"
+  },
+  "mp": 0,
+  "power": 127,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 11,
+  "vsGround": "tri",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k060",
+  "name": {
+   "jp": "騎馬雪崩",
+   "cn": "車陣突破"
+  },
+  "mp": 56,
+  "power": 78,
+  "range": [
+   1,
+   4
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 4
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k061",
+  "name": {
+   "jp": "蹂躙",
+   "cn": "轢陣"
+  },
+  "mp": 26,
+  "power": 0,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 1
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "mpHalf"
+   }
+  ],
+  "noDamage": true
+ },
+ {
+  "id": "k062",
+  "name": {
+   "jp": "不意打ち",
+   "cn": "偸襲"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 11,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k063",
+  "name": {
+   "jp": "撒き菱",
+   "cn": "鉄蒺藜"
+  },
+  "mp": 0,
+  "power": 78,
+  "range": [
+   1,
+   2
+  ],
+  "hit": -4,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k064",
+  "name": {
+   "jp": "待ち伏せ",
+   "cn": "伏撃"
+  },
+  "mp": 0,
+  "power": 112,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 14,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 26
+   }
+  ]
+ },
+ {
+  "id": "k065",
+  "name": {
+   "jp": "毒撒き菱",
+   "cn": "毒蒺藜"
+  },
+  "mp": 0,
+  "power": 88,
+  "range": [
+   1,
+   3
+  ],
+  "hit": -1,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k066",
+  "name": {
+   "jp": "虚仮威し",
+   "cn": "虚声"
+  },
+  "mp": 49,
+  "power": 147,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 10,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "confuse",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k067",
+  "name": {
+   "jp": "闇夜の一撃",
+   "cn": "夜伏撃"
+  },
+  "mp": 0,
+  "power": 127,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 17,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "confuse",
+    "chance": 21
+   }
+  ]
+ },
+ {
+  "id": "k068",
+  "name": {
+   "jp": "撒き菱の雨",
+   "cn": "蒺藜陣"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   4
+  ],
+  "hit": 2,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "daze",
+    "chance": 26
+   }
+  ]
+ },
+ {
+  "id": "k069",
+  "name": {
+   "jp": "流言",
+   "cn": "訛言"
+  },
+  "mp": 111,
+  "power": 164,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 21,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "confuse",
+    "chance": 39
+   }
+  ]
+ },
+ {
+  "id": "k070",
+  "name": {
+   "jp": "焙烙玉",
+   "cn": "火把"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 16,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k071",
+  "name": {
+   "jp": "焙烙投げ",
+   "cn": "擲火"
+  },
+  "mp": 49,
+  "power": 78,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 3
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k072",
+  "name": {
+   "jp": "火箭射ち",
+   "cn": "火牛角"
+  },
+  "mp": 0,
+  "power": 117,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 19,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k073",
+  "name": {
+   "jp": "火矢の雨",
+   "cn": "火牛突進"
+  },
+  "mp": 74,
+  "power": 88,
+  "range": [
+   1,
+   4
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 4
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k074",
+  "name": {
+   "jp": "砲身打ち",
+   "cn": "牛角陣"
+  },
+  "mp": 0,
+  "power": 117,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 21,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k075",
+  "name": {
+   "jp": "国崩し砲撃",
+   "cn": "火牛総攻"
+  },
+  "mp": 117,
+  "power": 177,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 30,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k076",
+  "name": {
+   "jp": "大砲斉射",
+   "cn": "火牛奔流"
+  },
+  "mp": 78,
+  "power": 102,
+  "range": [
+   1,
+   5
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 5
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k077",
+  "name": {
+   "jp": "船縁斬り",
+   "cn": "舷戦"
+  },
+  "mp": 0,
+  "power": 102,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 18,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k078",
+  "name": {
+   "jp": "船鉄砲",
+   "cn": "舷弩"
+  },
+  "mp": 39,
+  "power": 74,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 3
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k079",
+  "name": {
+   "jp": "接舷斬り",
+   "cn": "接舷"
+  },
+  "mp": 0,
+  "power": 117,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 25,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k080",
+  "name": {
+   "jp": "大鉄砲",
+   "cn": "大弩"
+  },
+  "mp": 49,
+  "power": 78,
+  "range": [
+   1,
+   4
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 4
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k081",
+  "name": {
+   "jp": "焙烙火矢",
+   "cn": "火船攻"
+  },
+  "mp": 68,
+  "power": 166,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 21
+   }
+  ],
+  "needsWater": true
+ },
+ {
+  "id": "k082",
+  "name": {
+   "jp": "鉄甲体当たり",
+   "cn": "衝撞"
+  },
+  "mp": 0,
+  "power": 132,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 26,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k083",
+  "name": {
+   "jp": "大筒斉射",
+   "cn": "連弩斉発"
+  },
+  "mp": 49,
+  "power": 88,
+  "range": [
+   1,
+   5
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 5
+  },
+  "targets": "all",
+  "effects": []
+ },
+ {
+  "id": "k084",
+  "name": {
+   "jp": "艦砲総射",
+   "cn": "楼船総攻"
+  },
+  "mp": 68,
+  "power": 194,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 0,
+  "vsGround": "sure",
+  "vsRider": "sure",
+  "afterMove": false,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 2
+  },
+  "targets": "all",
+  "effects": [
+   {
+    "type": "status",
+    "status": "stun",
+    "chance": 21
+   }
+  ],
+  "needsWater": true
+ },
+ {
+  "id": "k085",
+  "name": {
+   "jp": "指揮刀",
+   "cn": "令剣"
+  },
+  "mp": 0,
+  "power": 93,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k086",
+  "name": {
+   "jp": "軍配打ち",
+   "cn": "節杖撃"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k087",
+  "name": {
+   "jp": "采配打ち",
+   "cn": "斧鉞"
+  },
+  "mp": 0,
+  "power": 126,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k088",
+  "name": {
+   "jp": "叱咤",
+   "cn": "厳令"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   3
+  ],
+  "hit": -8,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k089",
+  "name": {
+   "jp": "隠し刃",
+   "cn": "袖剣"
+  },
+  "mp": 0,
+  "power": 93,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k090",
+  "name": {
+   "jp": "仕込み杖",
+   "cn": "匕首"
+  },
+  "mp": 0,
+  "power": 111,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 9,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k091",
+  "name": {
+   "jp": "懐剣",
+   "cn": "魚腸剣"
+  },
+  "mp": 0,
+  "power": 126,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k092",
+  "name": {
+   "jp": "甘言",
+   "cn": "巧言"
+  },
+  "mp": 0,
+  "power": 143,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": false,
+  "counter": true,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "status",
+    "status": "defect",
+    "chance": 26
+   }
+  ]
+ }
+]
