@@ -93,6 +93,20 @@ if (nBoxes >= 4) {
 await page.selectOption('#control', 'attack');
 await page.click('#start');
 await page.waitForSelector('canvas');
+// 自分で動かす戦いは、まず配置の段階から始まる（ターン終了は無く、配置完了のボタンがある）
+await page.waitForSelector('#deployDone');
+await page.waitForTimeout(300);
+check('自分で戦うと配置の段階から始まる', (await page.textContent('#panel')).includes('配置') && !(await page.$('#end')));
+await shot(page, '04a_battle_deploy');
+{
+  const dpu = await battle(() => { const st = window.__app.st; const u = st.units.find((x) => x.side === 0 && x.kind === 'troop'); return { id: u.id, pos: u.pos }; });
+  await clickCell(dpu.pos);
+  const to = await battle(() => { const a = window.__app; return [...(a.view.hl.move ?? [])].find((c) => !a.st.units.some((u) => u.pos === c)) ?? [...(a.view.hl.move ?? [])][0] ?? -1; });
+  if (to >= 0) await clickCell(to);
+  check('配置の段階で、自分の駒を押して青いマスを押すと動く', to >= 0 && await battle(([id, d]) => window.__app.st.units[id].pos === d, [dpu.id, to]), `マス${dpu.pos}→${to}`);
+}
+await page.click('#deployDone');
+await page.waitForSelector('#end');
 await page.waitForTimeout(300);
 await shot(page, '04_battle_start');
 const s0 = await battle(() => {
@@ -287,6 +301,8 @@ if (atk === 'ok') {
   await page.waitForSelector('.result [data-a="play"]');
   await shot(page, '10_campaign_attack');
   await page.click('.result [data-a="play"]');
+  await page.waitForSelector('#deployDone');
+  await page.click('#deployDone');
   await page.waitForSelector('#auto');
   check('戦略から戦闘に入れる（途中でやめるボタンは無く、おまかせで決着がある）', !(await page.isVisible('#quit')));
   await page.click('#auto'); await page.click('.confirm [data-a="ok"]');

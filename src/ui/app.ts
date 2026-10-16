@@ -32,7 +32,7 @@ import {
   canUseSkill, canUseTactic, forecastSkill, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
   tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
-import { unitAt } from '../rules/move';
+import { stepCost, unitAt } from '../rules/move';
 import { affinityOf, agility, attackPower, basicSkill, defense, FIELD, intellect, moveOf, outOfCommand, skillOf, supplyMultOf, terrainMod } from '../rules/stats';
 import { AFFINITY_NAME, kindName, STATUS_NAME, T, TRAIT_NAME } from './text';
 import { BattleLogView, loadLogLevel, LOG_LEVEL_NAME, saveLogLevel } from './battleLog';
@@ -79,6 +79,8 @@ export class App {
   private selected: number | null = null;
   private inspect: number | null = null;
   private mode: Mode = { type: 'idle' };
+  /** 戦いの始めの、配置を直している段階 */
+  private deploying = false;
   private human = new Set<Side>([0]);
   private undo: { unit: number; pos: number; moveSpent: number } | null = null;
   private aiTimer = 0;
@@ -487,9 +489,27 @@ export class App {
     canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); this.cancel(); });
     window.onkeydown = (e) => { if (e.key === 'Escape') this.cancel(); };
     this.pushTurnLog();
+    // 自分で動かす陣営があれば、始める前に配置を少し直せる（観戦のときは、すぐ始める）
+    this.deploying = human.size > 0 && st.round === 1 && st.winner === null && !st.log.some((l) => l.key === 'act');
+    this.refresh();
+    if (this.deploying) return;
+    this.startFighting();
+  }
+
+  /** 配置を終えて戦いを始める：開戦の帯を出し、おまかせの陣営の番なら動かす */
+  private startFighting(): void {
+    this.deploying = false;
+    this.selected = null;
     this.refresh();
     this.splash('開戦');
     this.maybeAi();
+  }
+
+  /** 配置の段階で、その駒を置けるマス：自分の陣営の配置場所の、入れるマス（自分の駒がいるマスは入れ替え） */
+  private deployCells(u: BUnit): number[] {
+    const st = this.st!;
+    return st.map.spawn[u.side].filter((i) => i !== u.pos && stepCost(st, u, i) !== null && st.map.terrain[i] !== 'water' && st.map.terrain[i] !== 'wall'
+      && (!unitAt(st, i) || (unitAt(st, i)!.side === u.side && stepCost(st, unitAt(st, i)!, u.pos) !== null)));
   }
 
   /** 方位の印：戦場は北が上。攻め手は攻めてきた方角の辺から入る */
@@ -545,6 +565,17 @@ export class App {
     const st = this.st!;
     const cell = this.view!.pick(sx, sy);
     if (cell < 0 || st.winner !== null) return;
+    if (this.deploying) {
+      // 配置：自分の駒を選び、配置場所のマスを押すと動く（自分の駒がいれば入れ替える）
+      const t = unitAt(st, cell), u0 = this.sel();
+      if (u0 && this.deployCells(u0).includes(cell)) {
+        if (t) t.pos = u0.pos;
+        u0.pos = cell;
+      } else if (t && this.human.has(t.side)) this.selected = t.id;
+      else { this.inspect = t ? t.id : null; this.selected = null; }
+      this.refresh();
+      return;
+    }
     const u = this.sel();
     // 指で触る画面には「重ねる」が無いので、触ったマスを「重ねたマス」として扱う（地形や見込みが出る）
     const armed = touch && this.hoverCell === cell;
@@ -921,7 +952,7 @@ export class App {
     view.hl = {
       selected: this.selected ?? undefined,
       hover: this.hoverCell,
-      move: u && human && this.mode.type === 'idle' ? new Set(moveCells(st, u)) : undefined,
+      move: this.deploying ? (u ? new Set(this.deployCells(u)) : undefined) : u && human && this.mode.type === 'idle' ? new Set(moveCells(st, u)) : undefined,
       target: u && human && this.mode.type !== 'idle'
         ? new Set(this.modeTargets(u))
         : undefined,
@@ -934,6 +965,17 @@ export class App {
 
     const shown = u ?? (this.inspect !== null ? st.units[this.inspect] : null);
     let actions = '';
+    if (this.deploying) {
+      this.root.querySelector('#panel')!.innerHTML = `<div class="turn" style="background:${SIDE_COLOR[[...this.human][0] ?? 0]}">配置 <small>始める前に、並びを直せます</small></div>
+        ${this.skyLine()}
+        <div class="card">自分の駒を押してから、青いマス（自分の配置場所）を押すと動きます。自分の駒がいるマスなら入れ替わります。並べ終えたら「配置完了」を押すと、戦いが始まります。</div>
+        ${shown ? this.unitCard(shown) : ''}
+        <div class="foot"><button id="deployDone" class="primary">配置完了（戦闘開始）</button></div>`;
+      const dd = this.root.querySelector<HTMLButtonElement>('#deployDone');
+      if (dd) dd.onclick = () => this.startFighting();
+      this.renderLog();
+      return;
+    }
     if (u && human) {
       const act = canAct(st, u);
       const btn = (kind: 'skill' | 'tactic', id: string, label: string, ok: boolean) =>

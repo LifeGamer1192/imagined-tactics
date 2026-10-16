@@ -26,6 +26,12 @@ for (const sample of ['sengoku_fid5_1575', 'shunju_fid5_259bc']) {
   await page.waitForSelector('#start');
   await page.screenshot({ path: path.join(out, `${sample}_setup.png`) });
   await page.click('#start');
+  // 自分で戦う戦いは配置の段階から始まる：配置の画面も撮ってから、配置完了を押す
+  await page.waitForSelector('#deployDone');
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(out, `${sample}_deploy.png`) });
+  await page.click('#deployDone');
+  await page.waitForSelector('#end');
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(out, `${sample}_battle.png`) });
   // 城攻めの戦場と天気：同じ編成のまま、戦場と天気だけを替えて撮る
@@ -46,6 +52,9 @@ for (const sample of ['sengoku_fid5_1575', 'shunju_fid5_259bc']) {
       const st = createBattle(gs, map, a.setup.picks, 'shot', [atk.name.ja, def.name.ja], undefined, sky);
       a.openBattle(st, new Set([0]), () => null, { label: '編成に戻る', fn: () => a.setupScreen() }, true);
     }, [mapOpts, sky]);
+    await page.waitForSelector('#deployDone');
+    await page.click('#deployDone');
+    await page.waitForSelector('#end');
     await page.waitForTimeout(900);
     await page.screenshot({ path: path.join(out, `${sample}_${name}.png`) });
   }

@@ -13,6 +13,10 @@ await page.waitForSelector('#modeLocal');
 await page.click('#modeLocal');
 await page.waitForSelector('#start');
 await page.click('#start');
+// 手動の戦いは配置の段階から始まるので、配置完了を押してから
+await page.waitForSelector('#deployDone');
+await page.click('#deployDone');
+await page.waitForSelector('#end');
 await page.waitForSelector('#watch');
 const log = async () => (await page.$$('#log > div')).length;
 const ok = (name, v, extra = '') => console.log(v ? 'OK ' : 'NG ', name, extra);

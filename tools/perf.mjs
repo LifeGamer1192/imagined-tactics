@@ -19,6 +19,9 @@ await page.click('#modeLocal');
 await page.waitForSelector('#start');
 await idle();
 await page.click('#start');
+// 手動の戦いは配置の段階から始まるので、配置完了を押してから
+await page.waitForSelector('#deployDone');
+await page.click('#deployDone');
 await page.waitForSelector('#end');
 await idle();
 console.log('戦闘の画面（1回あたり ms）', JSON.stringify(await page.evaluate(() => {

@@ -63,6 +63,11 @@ try {
 
   await page.click('#start');
   await page.waitForSelector('.battle canvas');
+  // 自分で戦う戦いは配置の段階から始まる
+  await page.waitForSelector('#deployDone');
+  check('配置の段階から始まる', (await page.textContent('.turn')).includes('配置'));
+  await page.click('#deployDone');
+  await page.waitForSelector('#end');
   await page.waitForTimeout(1500);
   check('戦闘が始まる', (await page.textContent('.turn')).includes('巡'));
   const images = await page.evaluate(() => performance.getEntriesByType('resource').filter((e) => /\.webp$/.test(e.name)).length);

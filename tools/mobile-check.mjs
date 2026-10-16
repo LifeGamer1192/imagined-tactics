@@ -52,6 +52,14 @@ for (const [tag, name] of LIST) {
   if (DEV) {
     // ---- 戦い
     await page.tap('#start');
+    // 自分で戦う戦いは、配置の段階から始まる
+    await page.waitForSelector('#deployDone', { timeout: 60000 });
+    await idle();
+    await page.waitForTimeout(200);
+    await fits('配置の画面');
+    ok('配置の画面：見出し「配置」と、画面内に「配置完了」のボタン', /配置/.test(await page.textContent('#panel .turn')) && await page.evaluate(() => { const r = document.querySelector('#deployDone').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && r.width > 0; }));
+    await shot('1c_deploy');
+    await page.tap('#deployDone');
     await page.waitForSelector('#end', { timeout: 60000 });
     await idle();
     await fits('戦いの画面');

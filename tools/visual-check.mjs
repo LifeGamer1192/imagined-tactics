@@ -71,8 +71,33 @@ async function run(tag, ctxOpts) {
     await shot(`setup_${v}`);
     if (v === 'cn') break;
 
-    // ---- 戦闘
+    // ---- 戦闘：まず配置の段階
     await press('#start');
+    await page.waitForSelector('#deployDone'); await idle();
+    await page.waitForTimeout(300);
+    ok(`[${tag}] 自分で戦うと配置の段階から始まる（見出し「配置」と配置完了のボタン、ターン終了は無い）`,
+      /配置/.test(await page.textContent('#panel .turn')) && (await page.isVisible('#deployDone')) && !(await page.$('#end')) && !(await page.$('#waitAll')) && !(await page.$('#quit')));
+    await shot('battle_deploy');
+    // 配置：自分の駒を押してから青いマスを押すと動く（画面の上で本当に押す）
+    const dp = await page.evaluate(() => {
+      const a = window.__app, v = a.view, st = a.st, g = st.map.grid, r = v.canvas.getBoundingClientRect();
+      const xy = (c) => { const [wx, wy] = g.center(c, 34); const [sx, sy] = v.cam.toScreen(wx, wy); return [r.left + sx, r.top + sy]; };
+      const vis = (c) => { const [x, y] = xy(c); return x > r.left + 8 && x < r.right - 8 && y > r.top + 8 && y < r.bottom - 8 && document.elementFromPoint(x, y) === v.canvas; };
+      for (const u of st.units.filter((x) => x.side === 0 && x.alive && vis(x.pos))) {
+        const to = a.deployCells(u).find((c) => vis(c) && !st.units.some((x) => x.pos === c));
+        if (to !== undefined) return { id: u.id, from: xy(u.pos), to: xy(to), cell: to };
+      }
+      return null;
+    });
+    const tapAt = async ([x, y]) => { if (touch) await page.touchscreen.tap(x, y); else await page.mouse.click(x, y); await page.waitForTimeout(120); };
+    if (dp) {
+      await tapAt(dp.from);
+      ok(`[${tag}] 配置で自分の駒を押すと選ばれ、青いマスが出る`, await page.evaluate((id) => window.__app.selected === id && (window.__app.view.hl.move?.size ?? 0) > 0, dp.id));
+      await shot('battle_deploy_selected');
+      await tapAt(dp.to);
+    }
+    ok(`[${tag}] 配置で駒を選ぶと青いマスが出て、押すとそこへ動く`, !!dp && await page.evaluate(([id, c]) => window.__app.st.units[id].pos === c && window.__app.deploying, [dp.id, dp.cell]), dp ? '' : '押せる駒と空きマスが見つからない');
+    await press('#deployDone');
     await page.waitForSelector('#end'); await idle();
     await page.waitForTimeout(250);
     ok(`[${tag}] 開戦の筆の帯が出る`, !!(await page.$('.splash')) && (await bgOk('.splash')));
@@ -173,6 +198,9 @@ async function run(tag, ctxOpts) {
       return { edge: map.edgeName, atkEast: atkUnits.reduce((s, u) => s + g.center(u.pos, 1)[0], 0) / atkUnits.length > mid, castleWest: cx < mid };
     });
     if (flipInfo) {
+      await page.waitForSelector('#deployDone');
+      await press('#deployDone');
+      await page.waitForSelector('#end');
       await page.waitForTimeout(1900);
       ok(`[${tag}] 東寄りから攻めると攻め手が東の辺・城が西`, /東/.test(flipInfo.edge) && flipInfo.atkEast && flipInfo.castleWest, flipInfo.edge);
       await shot('battle_flipped');
@@ -191,10 +219,16 @@ async function run(tag, ctxOpts) {
       const spot = g.neighbors(gate).find((j) => map.terrain[j] !== 'palisade' && map.terrain[j] !== 'fort' && map.terrain[j] !== 'void' && map.depth[j] < map.depth[gate]);
       for (const u of st.units) if (u.pos === spot) u.pos = st.map.spawn[u.side].find((i) => !st.units.some((x) => x.pos === i));
       const t = st.units.find((u) => u.side === 0 && u.kind === 'troop' && u.alive);
-      t.pos = spot; a.selected = t.id; a.mode = { type: 'idle' }; a.refresh();
-      return { kinds: ['palisade', 'fortgate', 'lookout'].map((k) => map.terrain.includes(k)) };
+      t.pos = spot; a.refresh();
+      return { kinds: ['palisade', 'fortgate', 'lookout'].map((k) => map.terrain.includes(k)), id: t.id };
     });
+    if (!fortInfo && await page.$('#deployDone')) await press('#deployDone');
     if (fortInfo) {
+      // 配置を終えてから、門の隣の攻め手を選ぶ
+      await page.waitForSelector('#deployDone');
+      await press('#deployDone');
+      await page.waitForSelector('#end');
+      await page.evaluate((id) => { const a = window.__app; a.selected = id; a.mode = { type: 'idle' }; a.refresh(); }, fortInfo.id);
       await page.waitForTimeout(1900);
       ok(`[${tag}] 砦の戦場に柵・砦の門・物見櫓`, fortInfo.kinds.every(Boolean), JSON.stringify(fortInfo.kinds));
       ok(`[${tag}] 砦の門の隣の攻め手に「壊す」ボタン`, !!(await page.$('[data-breach]')));
@@ -218,6 +252,8 @@ async function run(tag, ctxOpts) {
     await page.waitForSelector('#start'); await idle();
     // 負けの結果：手動で守り手が勝つ
     await press('#start');
+    await page.waitForSelector('#deployDone'); await idle();
+    await press('#deployDone');
     await page.waitForSelector('#end'); await idle();
     await page.evaluate(() => { const a = window.__app; a.st.winner = 1; a.finish(); });
     await page.waitForSelector('.result h2.brushed', { timeout: 10000 });

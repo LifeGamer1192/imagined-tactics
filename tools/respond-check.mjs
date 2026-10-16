@@ -60,6 +60,8 @@ await page.waitForSelector('#start');
 await act('名前の版を戻す', async () => { const v = await page.$eval('#variant', (el) => el.value); await page.selectOption('#variant', v === 'jp' ? 'cn' : 'jp'); });
 await page.waitForSelector('#start');
 await act('戦闘開始', () => page.click('#start'));
+await page.waitForSelector('#deployDone');
+await act('配置完了', () => page.click('#deployDone'));
 await page.waitForSelector('#end');
 const [cx, cy] = await center('.battle canvas');
 await act('戦場をクリック', () => page.mouse.click(cx - 300, cy));
@@ -111,6 +113,8 @@ if (pick) {
       await act('攻める領をクリック', () => page.mouse.click(spot[0], spot[1]));
       if (await page.$('.result [data-a="play"]')) {
         await act('自分で戦う', () => page.click('.result [data-a="play"]'));
+        await page.waitForSelector('#deployDone');
+        await act('配置完了（戦略の戦い）', () => page.click('#deployDone'));
         await page.waitForSelector('#auto');
         await act('おまかせで決着', () => page.click('#auto').then(() => page.click('.confirm [data-a="ok"]')));
         await page.waitForSelector('.result button');

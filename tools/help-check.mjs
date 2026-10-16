@@ -80,6 +80,16 @@ for (const [label, viewport] of [['pc', { width: 1280, height: 800 }], ['sp', { 
   // 戦闘：開くと戦闘のタブ。Esc は案内だけを閉じ、選んだユニットはそのまま
   await page.click('#start');
   await page.waitForSelector('.battle canvas');
+  // 自分で戦う戦いは配置の段階から始まる。配置完了のボタンが「？」に隠れないこと
+  await page.waitForSelector('#deployDone');
+  await page.waitForTimeout(400);
+  check(`${label} 配置完了のボタンが「？」と重ならない`, await page.evaluate(() => {
+    const h = document.querySelector('.help-btn').getBoundingClientRect(), r = document.querySelector('#deployDone').getBoundingClientRect();
+    return r.right <= h.left || r.left >= h.right || r.bottom <= h.top || r.top >= h.bottom;
+  }));
+  await shot('battle_deploy');
+  await page.click('#deployDone');
+  await page.waitForSelector('#end');
   await page.waitForTimeout(800);
   await shot('battle');
   await page.click('.help-btn');

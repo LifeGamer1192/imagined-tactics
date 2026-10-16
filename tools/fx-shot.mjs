@@ -23,6 +23,10 @@ await page.waitForSelector('#modeLocal');
 await page.click('#modeLocal');
 await page.waitForSelector('#start');
 await page.click('#start');
+// 自分で戦う戦いは配置の段階から始まるので、配置完了を押してから
+await page.waitForSelector('#deployDone');
+await page.click('#deployDone');
+await page.waitForSelector('#end');
 await page.waitForSelector('#watch');
 
 // ---- 記録の3段階：観戦でしばらく進めてから、同じ記録を3通りに出して撮る
@@ -81,6 +85,8 @@ for (let s0 = 0; s0 < scenes.length; s0 += ROWS) {
       const map = mapFromProvince(a.save.world, def.capital, { capital: false, fort: 0 });
       const st = createBattle(gs, map, a.setup.picks, 'fx', [atk.name.ja, def.name.ja], undefined, { weather: 'clear', night: false });
       a.openBattle(st, new Set([0, 1]), () => null, { label: '編成に戻る', fn: () => a.setupScreen() }, true);
+      // 配置の段階を終える（配置完了のボタンを押す）
+      document.querySelector('#deployDone')?.click();
       const g = st.map.grid;
       const A = st.units.find((u) => u.side === 0 && u.kind === 'troop');
       const foes = st.units.filter((u) => (sc.ally ? u.side === 0 && u.id !== A.id : u.side === 1) && u.kind === 'troop');
