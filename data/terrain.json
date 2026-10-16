@@ -23,7 +23,8 @@
   "paddy",
   "wall",
   "gate",
-  "tower"
+  "tower",
+  "void"
  ],
  "regen": {
   "camp": 5
@@ -118,7 +119,8 @@
   "paddy": { "plain": 1.5, "forest": 1.5, "mountain": 1.5, "swamp": 1.0, "water": 1.25, "rider": 2.5 },
   "wall": { "plain": 2.5, "forest": 2.5, "mountain": 2.5, "swamp": 2.5, "water": 2.5, "rider": null },
   "gate": { "plain": 1.0, "forest": 1.0, "mountain": 1.0, "swamp": 1.0, "water": 1.0, "rider": 1.0 },
-  "tower": { "plain": 1.5, "forest": 1.5, "mountain": 1.5, "swamp": 1.5, "water": 1.5, "rider": null }
+  "tower": { "plain": 1.5, "forest": 1.5, "mountain": 1.5, "swamp": 1.5, "water": 1.5, "rider": null },
+  "void": { "plain": null, "forest": null, "mountain": null, "swamp": null, "water": null, "rider": null }
  },
  "hitMod": {
   "plain": {
@@ -206,6 +208,7 @@
   "paddy": { "plain": -5, "forest": -5, "mountain": -5, "swamp": 5, "water": 0, "rider": -10 },
   "wall": { "plain": -5, "forest": -5, "mountain": -5, "swamp": -5, "water": -5, "rider": 0 },
   "gate": { "plain": 10, "forest": 10, "mountain": 10, "swamp": 10, "water": 10, "rider": 5 },
-  "tower": { "plain": 15, "forest": 15, "mountain": 15, "swamp": 15, "water": 15, "rider": 0 }
+  "tower": { "plain": 15, "forest": 15, "mountain": 15, "swamp": 15, "water": 15, "rider": 0 },
+  "void": { "plain": 0, "forest": 0, "mountain": 0, "swamp": 0, "water": 0, "rider": 0 }
  }
 }
