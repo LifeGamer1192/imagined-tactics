@@ -14,7 +14,8 @@ import { D } from '../data/db';
 import { NEUTRAL, personalityOf, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
-import { afterBattle, autoPromote, monthlyEvents, onEliminated } from './events';
+import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated } from './events';
+import { historyMonth } from './history';
 
 const SUPPLY = (cfgJson as unknown as { supply: { recruitCostMult: number } }).supply;
 const MAX_TROOPS = (cfgJson as unknown as { troops: { maxPerGeneral: number } }).troops.maxPerGeneral;
@@ -63,12 +64,14 @@ export interface Campaign {
   built: Record<number, number>;
   /** 本拠を移している最中の勢力（勢力 → 移す先・終わる月・払った兵糧） */
   relocations: Record<number, { to: number; until: number; cost: number }>;
+  /** 史実の出来事：起きた（または、もう起きようがない）出来事の id */
+  history: { done: string[]; from?: number };
 }
 
 export interface Offer { kind: 'alliance' | 'truce' | 'vassal'; from: number; until: number }
 
 export function newCampaign(gs: GameStart, world: HWorld, player: number, difficulty: Difficulty = 'normal'): Campaign {
-  const c: Campaign = { gs, world, player, rng: new RNG(codeToSeed(`${gs.seed}:${gs.tick}:campaign`)), moved: new Set(), log: [], over: null, months: 0, items: {}, sieges: {}, away: {}, wounded: {}, difficulty, offers: [], reserve: {}, built: {}, relocations: {} };
+  const c: Campaign = { gs, world, player, rng: new RNG(codeToSeed(`${gs.seed}:${gs.tick}:campaign`)), moved: new Set(), log: [], over: null, months: 0, items: {}, sieges: {}, away: {}, wounded: {}, difficulty, offers: [], reserve: {}, built: {}, relocations: {}, history: { done: [], from: gs.year * 12 + gs.month } };
   // hist-sim では軍が他国の領にいることがある（遠征・包囲）。戦略パートでは、武将は必ず自分の勢力の領にいることにする
   for (const g of Object.values(gs.generals)) if (g.faction && gs.provinces[g.prov]?.owner !== g.faction) g.prov = homeFor(c, g.faction, g.prov);
   // 開始時の兵糧も、蔵に入るぶんまで（hist-sim の国庫が大きい勢力は、上限の何倍にもなるため）
@@ -804,6 +807,8 @@ export function finishMonth(c: Campaign): void {
   finishRelocations(c);
   autoPromote(c);
   monthlyEvents(c);
+  historyMonth(c, { dies: (g) => generalDies(c, g), note: (key, vars) => note(c, key, vars) });
+  refreshIncome(c);
   checkOver(c);
 }
 

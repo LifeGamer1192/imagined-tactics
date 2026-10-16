@@ -285,6 +285,13 @@ function succeed(c: Campaign, fid: number, late: string): void {
   note(c, late ? 'succeed' : 'newLord', { faction: f.name.ja, late, name: next.name.ja });
 }
 
+/** 武将が世を去る：兵は領の予備兵に、当主なら代替わり（史実の出来事から使う） */
+export function generalDies(c: Campaign, g: GGeneral): void {
+  const fid = g.faction, lord = g.isLord;
+  removeGeneral(c, g);
+  if (lord) succeed(c, fid, g.name.ja);
+}
+
 function removeGeneral(c: Campaign, g: GGeneral): void {
   const gs = c.gs;
   // 率いる者のいなくなった兵は、その領の予備兵になる（どの勢力でも。その領を奪えば手に入る）

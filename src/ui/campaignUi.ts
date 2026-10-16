@@ -83,7 +83,11 @@ const LOG_TEXT: Record<string, string> = {
   capitalMoved: '{faction}は本拠を{prov}へ移した',
   capitalMoveFailed: '{faction}は{prov}を失い、本拠を移すのを取りやめた',
 };
-const logLine = (e: CampaignLog): string => (LOG_TEXT[e.key] ?? e.key).replace(/\{(\w+)\}/g, (_m, k) => String(e.vars[k] ?? ''));
+const logLine = (e: CampaignLog): string => {
+  // 史実の出来事：本文と、起きた効果。自分の勢力への効果は、いまは起こさない（知らせだけ）
+  if (e.key === 'history') return `【史実】${e.vars.text}${e.vars.effects ? `（${e.vars.effects}）` : ''}${e.vars.spared ? '（あなたの家には効果なし）' : ''}${e.vars.later ? '（領や外交の動きは、まだ起こしません）' : ''}`;
+  return (LOG_TEXT[e.key] ?? e.key).replace(/\{(\w+)\}/g, (_m, k) => String(e.vars[k] ?? ''));
+};
 
 export class CampaignScreen {
   private view!: StrategyView;
@@ -305,15 +309,17 @@ export class CampaignScreen {
     if (!me || c.over) return;
     const KIND: Record<string, string> = {
       death: 'death', succeed: 'succession', newLord: 'succession', defect: 'defect', alliance: 'envoy', truce: 'envoy', vassal: 'envoy', breakAlliance: 'envoy', joinWar: 'envoy',
-      questItem: 'travel', questRonin: 'travel', questExp: 'travel', questNothing: 'travel', roninJoin: 'promote', tieJoin: 'promote', comeOfAge: 'promote',
+      questItem: 'travel', questRonin: 'travel', questExp: 'travel', questNothing: 'travel', roninJoin: 'promote', tieJoin: 'promote', comeOfAge: 'promote', history: 'history',
     };
-    const ORDER = ['death', 'defect', 'succession', 'envoy', 'travel', 'promote'];
-    const items = c.log.slice(from).filter((e) => KIND[e.key] && (e.key.startsWith('quest') || Object.values(e.vars).some((v) => v === me.name.ja)));
+    const ORDER = ['death', 'defect', 'succession', 'history', 'envoy', 'travel', 'promote'];
+    // 史実の出来事は、大きなもの（imp 2 以上）か、自分の勢力の名前が出るものを知らせる
+    const items = c.log.slice(from).filter((e) => KIND[e.key] && (e.key.startsWith('quest') || Object.values(e.vars).some((v) => v === me.name.ja)
+      || (e.key === 'history' && (Number(e.vars.imp) >= 2 || String(e.vars.text).includes(me.name.ja)))));
     if (!items.length) return;
     const kind = ORDER.find((k) => items.some((e) => KIND[e.key] === k))!;
-    const TITLE: Record<string, string> = { death: '訃報', defect: '寝返り', succession: '代替わり', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ' };
+    const TITLE: Record<string, string> = { death: '訃報', defect: '寝返り', succession: '代替わり', history: '史実の出来事', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ' };
     void confirmBox(this.frame(), {
-      title: `今月の知らせ：${TITLE[kind]}`, banner: sceneUrl(kind, c.gs.variant),
+      title: `今月の知らせ：${TITLE[kind]}`, banner: sceneUrl(kind === 'history' ? 'envoy' : kind, c.gs.variant),
       body: `<ul class="news">${items.slice(0, 8).map((e) => `<li>${esc(logLine(e))}</li>`).join('')}</ul>`,
       ok: '閉じる', single: true,
     });

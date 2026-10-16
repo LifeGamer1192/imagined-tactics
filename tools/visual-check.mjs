@@ -413,6 +413,27 @@ async function run(tag, ctxOpts) {
   ok(`[${tag}] 今月の知らせに訃報の絵`, await page.$eval('.confirm .banner', (el) => el.style.backgroundImage.includes('death')));
   await shot('news');
   await press('.confirm [data-a="ok"]');
+  // 史実の出来事：その月が来ると起き、今月の知らせに【史実】として出る
+  const histN = await page.evaluate(async () => {
+    const h = await import('/src/strategy/history.ts');
+    const ev = await import('/src/strategy/events.ts');
+    const s = window.__campaign, c = s.c, mark = c.log.length;
+    const first = h.pendingEvents(c.world).find((e) => !c.history.done.includes(e.id));
+    if (!first) return -1;
+    const keep = [c.gs.year, c.gs.month];
+    c.gs.year = first.y; c.gs.month = first.m;
+    h.historyMonth(c, { dies: (g) => ev.generalDies(c, g), note: (key, vars) => c.log.push({ key, vars }) });
+    [c.gs.year, c.gs.month] = keep;
+    for (const e of c.log.slice(mark)) if (e.key === 'history') e.vars.imp = 3;
+    s.showNews(mark);
+    return c.log.slice(mark).filter((e) => e.key === 'history').length;
+  });
+  if (histN > 0) {
+    await page.waitForSelector('.confirm');
+    ok(`[${tag}] 史実の出来事が今月の知らせに【史実】で出る`, /【史実】/.test(await page.textContent('.confirm')), String(histN));
+    await shot('news_history');
+    await press('.confirm [data-a="ok"]');
+  }
   // 1か月オート・ずっとオート
   await press('#autoMonth');
   await page.waitForTimeout(700); await idle();
