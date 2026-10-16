@@ -78,6 +78,7 @@ const LOG_TEXT: Record<string, string> = {
   questNothing: '{name}が諸国巡りから戻った（得るものは無かった）',
   build: '{faction}が{prov}に{what}を建てた',
   buildFort: '{faction}が{prov}の城を固めた（城{fort}%）',
+  retreated: '{faction}は{prov}の戦いから退いた（兵{troops}隊と兵糧{supply}を失った）',
 };
 const logLine = (e: CampaignLog): string => (LOG_TEXT[e.key] ?? e.key).replace(/\{(\w+)\}/g, (_m, k) => String(e.vars[k] ?? ''));
 

@@ -508,12 +508,47 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
     c.wounded[id] = c.gs.tick + months;
     note(c, 'wounded', { names: c.gs.generals[id].name.ja, months });
   }
+  retreatPenalty(c, pb, battle, sum);
   afterBattle(c, pb, sum);
   dropGarrison(c, pb);
   if (sum.winner === 0 && c.gs.factions[pb.attacker]) capture(c, pb);
   refreshIncome(c);
   checkOver(c);
   return sum;
+}
+
+/**
+ * 退いた陣営の罰（重い）：体力が半分を切った兵と、ほかの兵も一定の見込みで失う。兵糧を失う。武将は深手を負う。
+ * 守り手が退いたときは、領も失う（勝敗で、ふつうに取られる）
+ */
+function retreatPenalty(c: Campaign, pb: PendingBattle, st: BattleState, sum: BattleSummary): void {
+  const side = st.retreat;
+  if (side === undefined) return;
+  const R = S.retreat, gs = c.gs;
+  const fid = side === 0 ? pb.attacker : pb.defender, f = gs.factions[fid];
+  const rng = new RNG(codeToSeed(`${gs.seed}:${gs.tick}:retreat:${pb.prov}:${fid}`));
+  const remove = new Map<string, Set<number>>();
+  for (const u of st.units) {
+    if (u.home !== side || u.kind !== 'troop' || !u.alive) continue;
+    const g = gs.generals[u.generalId];
+    if (!g || !g.troops[u.troopIndex]) continue;
+    if (u.hp / u.maxHp < R.troopLossBelowHp || rng.chance(R.troopLossChance)) {
+      if (!remove.has(g.id)) remove.set(g.id, new Set());
+      remove.get(g.id)!.add(u.troopIndex);
+      sum.lost.push({ general: g.name.ja, unit: `${u.name}（退くときに失った）`, side });
+    }
+  }
+  for (const [gid, idxs] of remove) gs.generals[gid].troops = gs.generals[gid].troops.filter((_t, i) => !idxs.has(i));
+  if (f) {
+    const lose = Math.round(f.supply * R.supplyLossPct / 100);
+    f.supply = Math.max(0, f.supply - lose);
+    note(c, 'retreated', { faction: f.name.ja, prov: gs.provinces[pb.prov].name.ja, troops: [...remove.values()].reduce((s, x) => s + x.size, 0), supply: lose });
+  }
+  for (const u of st.units) {
+    if (u.home !== side || u.kind !== 'general' || !u.alive) continue;
+    const g = gs.generals[u.generalId];
+    if (g && !(g.id in c.wounded)) c.wounded[g.id] = gs.tick + R.woundMonths;
+  }
 }
 
 // ---------------------------------------------------------------- 勢力の思考

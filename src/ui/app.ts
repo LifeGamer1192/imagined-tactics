@@ -1000,7 +1000,7 @@ export class App {
       ${cell}
       <div class="foot">
         ${human ? `<button id="end" class="primary">ターン終了</button><button id="waitAll" ${st.units.some((x) => x.alive && x.side === st.turn && canAct(st, x)) ? '' : 'disabled'} data-tip="まだ動いていない自分の兵を、すべて待機にします（そのあと「ターン終了」を押します）">全員待機</button>` : st.winner === null ? '<span class="dim">相手が行動中…</span>' : ''}
-        ${st.winner !== null ? '' : this.allowQuit ? `<button id="quit">${esc(this.battleBack.label)}</button>` : '<button id="auto">おまかせで決着</button>'}
+        ${st.winner !== null ? '' : this.allowQuit ? `<button id="quit">${esc(this.battleBack.label)}</button>` : `<button id="auto">おまかせで決着</button>${this.human.size === 1 ? '<button id="retreat" data-tip="この戦いから退きます。負けになり、重い罰があります（押すと説明が出ます）">退く</button>' : ''}`}
       </div>`;
     this.root.querySelectorAll<HTMLButtonElement>('[data-skill]').forEach((b) => { b.onclick = () => { this.mode = { type: 'skill', id: b.dataset.skill! }; this.autoTarget(); this.showInfo(); }; });
     this.root.querySelectorAll<HTMLButtonElement>('[data-tactic]').forEach((b) => { b.onclick = () => { this.mode = { type: 'tactic', id: b.dataset.tactic! }; this.autoTarget(); this.showInfo(); }; });
@@ -1031,6 +1031,22 @@ export class App {
     on('#quit', async () => {
       if (!(await confirmBox(frame, { title: `${esc(this.battleBack.label)}`, body: '<p>この戦いをやめて戻ります。戦いの結果は残りません。</p>', ok: 'やめて戻る', cancel: '戦いを続ける', danger: true })) || this.st !== st) return;
       void busy(`${this.battleBack.label}…`, () => { clearTimeout(this.aiTimer); window.onkeydown = null; this.st = null; this.battleBack.fn(); });
+    });
+    on('#retreat', async () => {
+      const side = [...this.human][0] as Side, R = S.retreat;
+      const lose = side === 1 ? '<li>守っている領は、相手に取られる</li>' : '';
+      const ok = await confirmBox(frame, {
+        title: '戦いから退く', danger: true,
+        body: `<p>この戦いから退きます。<b>${esc(st.sideNames[side])}の負け</b>になり、次の重い罰があります。</p>
+          <ul class="small">${lose}<li>体力が${Math.round(R.troopLossBelowHp * 100)}%を切った兵は失う</li><li>ほかの兵も、${Math.round(R.troopLossChance * 100)}%の見込みで失う</li><li>兵糧の${R.supplyLossPct}%を失う</li><li>武将は${R.woundMonths}か月の深手を負う（戦えない）</li></ul>
+          <p class="dim small">倒されずに残った兵の多くは連れて帰れます。全滅しそうなときの手です。</p>`,
+        ok: '退く', cancel: '戦いを続ける',
+      });
+      if (!ok || this.st !== st || st.winner !== null) return;
+      clearTimeout(this.aiTimer);
+      st.retreat = side; st.winner = (1 - side) as Side;
+      st.log.push({ key: 'retreatAll', vars: { side: st.sideNames[side], winner: st.sideNames[1 - side] } });
+      this.selected = null; this.finish();
     });
     on('#auto', async () => {
       if (!(await confirmBox(frame, { title: 'おまかせで決着', body: '<p>ここから先は、両方の陣営をおまかせで動かして、すぐに決着をつけます。途中の動きは見られず、自分で動かすこともできなくなります。</p>', ok: 'おまかせで決着', cancel: '戦いを続ける' })) || this.st !== st) return;

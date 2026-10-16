@@ -305,6 +305,13 @@ if (atk === 'ok') {
   await page.click('#deployDone');
   await page.waitForSelector('#auto');
   check('戦略から戦闘に入れる（途中でやめるボタンは無く、おまかせで決着がある）', !(await page.isVisible('#quit')));
+  // 退く：ボタンがあり、押すと罰の説明の窓が出る（ここでは退かずに続ける）
+  check('戦略の戦いに「退く」ボタンがある', await page.isVisible('#retreat'));
+  await page.click('#retreat');
+  await page.waitForSelector('.confirm');
+  check('退くを押すと、罰の説明の窓が出る', /兵糧の\d+%を失う/.test(await page.textContent('.confirm')));
+  await page.screenshot({ path: path.join(out, '10b_retreat_confirm.png') }).catch(() => {});
+  await page.click('.confirm [data-a="no"]');
   await page.click('#auto'); await page.click('.confirm [data-a="ok"]');
   await page.waitForSelector('.result button');
   check('戦闘の結果が戦略に戻る', (await page.textContent('.result')).includes('の勝ち'));

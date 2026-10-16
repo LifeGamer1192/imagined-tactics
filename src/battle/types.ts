@@ -161,6 +161,8 @@ export interface BattleState {
   structures?: Record<number, { kind: TerrainKind; hp: number; max: number; def: number; closed: boolean; rubble: TerrainKind }>;
   /** 戦場の地形が変わった回数（造りが壊れると増える。描き直しの合図） */
   mapVersion?: number;
+  /** 退いた陣営（国モードの「退く」）。退いた陣営の負けで、戦略で重い罰を受ける */
+  retreat?: Side;
 }
 
 export type Action =
