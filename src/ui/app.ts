@@ -100,6 +100,8 @@ export class App {
   private setup = { attacker: 0, defender: 0, picks: [[], []] as [string[], string[]], control: 'attack' as Control };
   /** 国モードで選んでいる国 */
   private nation = 0;
+  /** 局地戦の、相手の強さ（思考の賢さ） */
+  private localLevel: 'easy' | 'normal' | 'hard' = 'normal';
   private battleDone: ((st: BattleState) => BattleSummary | null) | null = null;
   private battleBack: { label: string; fn: () => void } = { label: '戻る', fn: () => this.setupScreen() };
   private allowQuit = true;
@@ -388,6 +390,7 @@ export class App {
           操作：<select id="control">
             ${[['attack', '攻め手を操作'], ['defend', '守り手を操作'], ['both', '両方を操作'], ['watch', '観戦（両方おまかせ）']].map(([v, n]) => `<option value="${v}" ${this.setup.control === v ? 'selected' : ''}>${n}</option>`).join('')}
           </select>
+          <select id="localLevel" title="相手の強さ：数値は変わらず、相手の考え方の賢さが変わる（やさしいは、あまり考えずに動き、守り手は打って出やすい）">${(['easy', 'normal', 'hard'] as const).map((d) => `<option value="${d}" ${this.localLevel === d ? 'selected' : ''}>相手：${S.difficulty[d].name}</option>`).join('')}</select>
           <button id="start" class="primary">戦闘開始</button>
         </footer>
       </div>`;
@@ -412,6 +415,7 @@ export class App {
         this.setup.picks[side] = list;
       };
     });
+    q<HTMLSelectElement>('#localLevel').onchange = (e) => { this.localLevel = (e.target as HTMLSelectElement).value as 'easy' | 'normal' | 'hard'; };
     q<HTMLButtonElement>('#start').onclick = () => {
       if (this.setup.attacker === this.setup.defender) { toast('攻め手と守り手に同じ勢力は選べません'); return; }
       if (!this.setup.picks[0].length || !this.setup.picks[1].length) { toast('武将を1人以上選んでください'); return; }
@@ -448,6 +452,8 @@ export class App {
     // 攻め手の本拠から攻めてくる向きで、戦場の左右が決まる
     const map = mapFromProvince(w, def.capital, prov ? { capital: true, fort: prov.fort, buildings: prov.buildings, pop: prov.pop, income: prov.income, unrest: prov.unrest, coastal: prov.coastal, river: prov.river, from: atk.capital } : { capital: true, from: atk.capital });
     const st = createBattle(gs, map, this.setup.picks, `ui:${Date.now()}`, [atk.name.ja, def.name.ja]);
+    // 相手の強さ：自分が片方だけを動かすとき、相手の陣営の思考の賢さを変える
+    if (this.setup.control === 'attack' || this.setup.control === 'defend') st.aiLevel = { side: this.setup.control === 'attack' ? 1 : 0, level: this.localLevel };
     const human = new Set<Side>(this.setup.control === 'attack' ? [0] : this.setup.control === 'defend' ? [1] : this.setup.control === 'both' ? [0, 1] : []);
     this.openBattle(st, human, (s) => applyBattleResult(gs, s), { label: '編成に戻る', fn: () => { this.autoPick(); this.setupScreen(); } }, true);
   }

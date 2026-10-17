@@ -163,6 +163,8 @@ export interface BattleState {
   mapVersion?: number;
   /** 退いた陣営（国モードの「退く」）。退いた陣営の負けで、戦略で重い罰を受ける */
   retreat?: Side;
+  /** 戦闘の難しさ：自分と戦う相手の陣営（side）の、思考の賢さ（やさしい・ふつう・むずかしい）。数値は変えない */
+  aiLevel?: { side: Side; level: 'easy' | 'normal' | 'hard' };
 }
 
 export type Action =

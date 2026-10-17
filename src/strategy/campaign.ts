@@ -395,6 +395,8 @@ export function battleFor(c: Campaign, pb: PendingBattle): BattleState {
   const st = createBattle(gs, battleMapFor(c, pb), [pb.atk, pb.def], `c:${gs.tick}:${pb.prov}:${pb.attacker}`, names);
   const cut = battleSupply(c, pb);
   if (cut[0] !== 1 || cut[1] !== 1) st.supplyMult = cut;
+  // 戦闘の難しさ：自分の勢力と戦う相手の陣営だけ、思考の賢さが変わる（相手どうしの戦いは、ふつう）
+  if (c.player && (pb.attacker === c.player || pb.defender === c.player)) st.aiLevel = { side: pb.attacker === c.player ? 1 : 0, level: c.difficulty };
   return st;
 }
 

@@ -69,9 +69,15 @@ function nearestDist(st: BattleState, from: number, us: BUnit[]): number {
 }
 
 /** 部隊（率いる武将とその兵）の構え */
+/** 戦闘の難しさの設定（自分と戦う相手の陣営の駒だけ。ほかは undefined＝ふつう） */
+function levelOf(st: BattleState, u: BUnit) {
+  return st.aiLevel && st.aiLevel.side === u.side ? AI.levels[st.aiLevel.level] : undefined;
+}
+
 export function stanceOf(st: BattleState, u: BUnit): Stance {
   const leader = st.units[u.leader];
-  const S = AI.stance;
+  const lv = levelOf(st, u);
+  const S = { ...AI.stance, ...(lv?.sallyAggression !== undefined ? { sallyAggression: lv.sallyAggression } : {}), ...(lv?.sallyStrengthRatio !== undefined ? { sallyStrengthRatio: lv.sallyStrengthRatio } : {}), ...(lv?.retreatHp !== undefined ? { retreatHp: lv.retreatHp } : {}), ...(lv?.engageDistance !== undefined ? { engageDistance: lv.engageDistance } : {}) };
   const foes = st.units.filter((x) => x.alive && x.side !== u.side);
   if (!foes.length || !leader || !leader.alive || leader.side !== u.side) return 'engage';
   const p = leader.persona ?? NEUTRAL;
@@ -267,6 +273,8 @@ interface PosCtx {
   travel: Float64Array | null;
   /** 城の戦場の攻め手だけ：各マスから天守までの道のり（歩数） */
   seatPath: Float64Array | null;
+  /** 難しさによる、天守を守る重みの倍率 */
+  guardMult: number;
 }
 
 /**
@@ -371,7 +379,7 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
     if (u.side === 0) {
       if (u.pos === h.cell) s += W.hold * (1 + c.urgent);
       else if (c.seatPath && c.seatPath[u.pos] < Infinity) s -= W.approach * (1 + 2 * c.urgent) * Math.min(c.seatPath[u.pos], 30);
-    } else if (u.pos === h.cell && c.foes.some((f) => g.distance(f.pos, h.cell) <= W.guardRange)) s += W.guard;
+    } else if (u.pos === h.cell && c.foes.some((f) => g.distance(f.pos, h.cell) <= W.guardRange)) s += W.guard * c.guardMult;
   }
   parts.stance = s;
   parts.noise = jitter(u.id, u.pos, st.round) * w.noise;
@@ -387,6 +395,9 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   const mayMove = canMove(st, u), mayAct = canAct(st, u);
   const persona = personaOf(st, u);
   const w = weightsFor(persona);
+  // 戦闘の難しさ：自分と戦う相手の駒は、思考の重みを変える（やさしいは、ばらつきが大きく危険や地形を気にしない。むずかしいは、その逆）
+  const lv = levelOf(st, u);
+  if (lv) for (const [k, m] of Object.entries(lv.weights)) if (k in w) w[k] *= m;
   // 攻め手は時間切れが負けなので、消極的な武将でも一定の速さでは前に出る
   if (u.home === 0) w.approach = Math.max(w.approach, AI.weights.approach * AI.stance.attackerApproachFloor);
   const stance = stanceOf(st, u);
@@ -402,6 +413,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     stance, role, w, persona, leader, urgent, origin: u.pos, foes,
     travel: st.map.siege && foes.length ? travelField(st, u, foes) : null,
     seatPath: st.hold && u.side === 0 ? travelField(st, u, [{ pos: st.hold.cell } as BUnit]) : null,
+    guardMult: lv?.weights.guard ?? 1,
     threats: threatsTo(st, u),
     // 武将が自ら前に出るか：猛攻・武勇の武将、前衛の役割で時間が押しているとき
     joins: u.kind !== 'general' || persona.aggression + persona.honor * 0.5 > 0.3 || urgent >= (AI.stance.generalJoinFrom - AI.stance.urgentFrom) / (1 - AI.stance.urgentFrom),
