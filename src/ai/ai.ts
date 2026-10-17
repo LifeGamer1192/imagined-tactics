@@ -19,7 +19,7 @@ import {
 import { MinHeap } from '../core/heap';
 import { reach, stepCost } from '../rules/move';
 import { attackPower, basicSkill, disabled, has, moveOf, outOfCommand, skillOf, skillRange, terrainMod } from '../rules/stats';
-import { AI, NEUTRAL, weightsFor, type Personality } from './personality';
+import { AI, NEUTRAL, weightsFor, type Personality, type SmartConfig } from './personality';
 
 export type Stance = 'advance' | 'engage' | 'hold' | 'retreat';
 export type Role = 'front' | 'ranged' | 'caster' | 'support';
@@ -30,6 +30,8 @@ export interface ScoreParts {
   cohesion: number; stance: number; spacing: number; noise: number;
 }
 export interface UnitPlan {
+  /** 動かずに何もしないときの点（よい順に動くとき、行動で増える点を比べる） */
+  stay?: number;
   actions: Action[];
   stance: Stance;
   role: Role;
@@ -275,6 +277,8 @@ interface PosCtx {
   seatPath: Float64Array | null;
   /** 難しさによる、天守を守る重みの倍率 */
   guardMult: number;
+  /** むずかしいだけの考え方 */
+  smart?: SmartConfig;
 }
 
 /**
@@ -332,7 +336,8 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
   // 脅威：次の敵ターンに受けそうなダメージ。攻め手は時間切れが近いほど気にしない
   const keepsBack0 = c.role !== 'front' || (isGeneral && !c.joins);
   const attacking = c.stance === 'advance' || c.stance === 'engage';
-  const exp = exposure(st, u, c.threats, attacking && keepsBack0 ? 3 : 0);
+  // 地形を見て受ける（むずかしい）：受けるダメージの見込みを、このマスに立ったときの地形と天気で計算し直す
+  const exp = exposure(st, u, c.smart?.terrainAware ? threatsTo(st, u) : c.threats, attacking && keepsBack0 ? 3 : 0);
   // 危険の重み：退却中は重く、守備は普通。攻めているときは、前衛の兵は危険を承知で踏み込み、後衛と武将は気をつける
   const byStance = c.stance === 'retreat' ? 1.5 : c.stance === 'hold' ? 1
     : keepsBack0 ? 0.6 : isGeneral ? 0.3 : 0.15;
@@ -350,6 +355,26 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
     if (c.role === 'ranged') {
       const want = basicSkill(u)?.range[1] ?? 2;
       sp -= 2 * Math.abs(Math.min(near, want + 3) - want);
+    }
+  }
+  // むずかしいだけの考え方：傷んだ兵を下げる・包囲する・囲まれない
+  const sm = c.smart;
+  if (sm) {
+    if (sm.withdrawHp && sm.withdraw && u.kind === 'troop' && u.hp < u.maxHp * sm.withdrawHp && c.stance !== 'retreat' && !(sm.attackerPush && u.home === 0 && c.urgent > 0.3)) {
+      // 敵から離れ、回復できる地形（陣など）へ。受けそうなダメージをさらに重く見る
+      const regen = D.terrain.regen[st.map.terrain[u.pos]] ?? 0;
+      sp += sm.withdraw * Math.min(near, 6) / 6 + (regen ? sm.withdraw * 0.6 : 0) - exp * w.threat;
+    }
+    if (sm.surround) {
+      for (const f of c.foes) {
+        if (g.distance(f.pos, u.pos) !== 1) continue;
+        const mates = st.units.filter((x) => x.alive && x.side === u.side && x.id !== u.id && g.distance(x.pos, f.pos) === 1).length;
+        sp += sm.surround * Math.min(mates, 3) * (1.3 - f.hp / f.maxHp);
+      }
+    }
+    if (sm.surrounded) {
+      const around = c.foes.filter((f) => g.distance(f.pos, u.pos) === 1).length;
+      if (around >= 2) sp -= sm.surrounded * (around - 1);
     }
   }
   parts.spacing = sp;
@@ -378,7 +403,7 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
     const W = AI.castle;
     if (u.side === 0) {
       if (u.pos === h.cell) s += W.hold * (1 + c.urgent);
-      else if (c.seatPath && c.seatPath[u.pos] < Infinity) s -= W.approach * (1 + 2 * c.urgent) * Math.min(c.seatPath[u.pos], 30);
+      else if (c.seatPath && c.seatPath[u.pos] < Infinity) s -= W.approach * (1 + 2 * c.urgent) * (c.smart?.keepPush ?? 1) * Math.min(c.seatPath[u.pos], 30);
     } else if (u.pos === h.cell && c.foes.some((f) => g.distance(f.pos, h.cell) <= W.guardRange)) s += W.guard * c.guardMult;
   }
   parts.stance = s;
@@ -398,6 +423,15 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   // 戦闘の難しさ：自分と戦う相手の駒は、思考の重みを変える（やさしいは、ばらつきが大きく危険や地形を気にしない。むずかしいは、その逆）
   const lv = levelOf(st, u);
   if (lv) for (const [k, m] of Object.entries(lv.weights)) if (k in w) w[k] *= m;
+  // 技の時機（むずかしい）：気力を使う技・軍略は、効き目が大きいときに取っておく
+  if (lv?.smart?.mpThrift) w.mp *= lv.smart.mpThrift;
+  // 大将狙い（むずかしい）：武将を全員倒せば勝ち。武将への攻撃を、さらに重く見る
+  if (lv?.smart?.decapitate) w.generalTarget *= lv.smart.decapitate;
+  // 攻め手は押す（むずかしい）：時間が経つほど、危険と倒される危うさを軽く見る
+  if (lv?.smart?.attackerPush && u.home === 0) {
+    const k = 1 - lv.smart.attackerPush * Math.min(1, st.round / st.maxRounds * 1.5);
+    w.threat *= k; w.deathRisk *= k;
+  }
   // 攻め手は時間切れが負けなので、消極的な武将でも一定の速さでは前に出る
   if (u.home === 0) w.approach = Math.max(w.approach, AI.weights.approach * AI.stance.attackerApproachFloor);
   const stance = stanceOf(st, u);
@@ -414,6 +448,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     travel: st.map.siege && foes.length ? travelField(st, u, foes) : null,
     seatPath: st.hold && u.side === 0 ? travelField(st, u, [{ pos: st.hold.cell } as BUnit]) : null,
     guardMult: lv?.weights.guard ?? 1,
+    smart: lv?.smart,
     threats: threatsTo(st, u),
     // 武将が自ら前に出るか：猛攻・武勇の武将、前衛の役割で時間が押しているとき
     joins: u.kind !== 'general' || persona.aggression + persona.honor * 0.5 > 0.3 || urgent >= (AI.stance.generalJoinFrom - AI.stance.urgentFrom) / (1 - AI.stance.urgentFrom),
@@ -422,6 +457,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   const origin = u.pos, wasMoved = u.moved;
   const cells = mayMove ? reach(st, u, moveOf(u) - u.moveSpent).cells : [origin];
   let best: { score: number; parts: ScoreParts; move: number | null; act: Action | null } = { score: -Infinity, parts: zeroParts(), move: null, act: null };
+  let stay = -Infinity;
   for (const c of cells) {
     u.pos = c; u.moved = wasMoved || c !== origin;
     const base = zeroParts();
@@ -431,6 +467,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
       if (score > best.score) best = { score, parts, move: c !== origin ? c : null, act };
     };
     consider(base, null);
+    if (c === origin) stay = total(base);
     if (!mayAct) continue;
     for (const sid of u.skills) {
       const skill = skillOf(sid);
@@ -463,7 +500,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   const actions: Action[] = [];
   if (best.move !== null) actions.push({ type: 'move', unit: u.id, to: best.move });
   if (mayAct) actions.push(best.act ?? { type: 'wait', unit: u.id });
-  return { actions, stance, role, score: best.score, parts: best.parts };
+  return { actions, stance, role, score: best.score, parts: best.parts, stay };
 }
 
 export function planUnit(st: BattleState, u: BUnit): Action[] { return planUnitDetailed(st, u).actions; }
@@ -482,6 +519,17 @@ export function nextAiActions(st: BattleState): Action[] {
   const foes = st.units.filter((x) => x.alive && x.side !== st.turn);
   const order = st.units.filter((u) => u.alive && u.side === st.turn && (canAct(st, u) || canMove(st, u)))
     .sort((a, b) => orderOf(st, a, foes) - orderOf(st, b, foes) || a.id - b.id);
+  // よい順に動く（むずかしい）：決まった順番でなく、行動で増える点がいちばん大きい駒から動く。とどめを刺せる駒が先に動き、ほかの駒は残りを見て動く
+  const smart = st.aiLevel && st.aiLevel.side === st.turn ? AI.levels[st.aiLevel.level].smart : undefined;
+  if (smart?.bestFirst) {
+    let pick: UnitPlan | null = null;
+    for (const u of order) {
+      const p = planUnitDetailed(st, u);
+      if (!p.actions.length) continue;
+      if (!pick || p.score - (p.stay ?? p.score) > pick.score - (pick.stay ?? pick.score)) pick = p;
+    }
+    return pick ? pick.actions : [{ type: 'endTurn' }];
+  }
   for (const u of order) {
     const plan = planUnit(st, u);
     if (plan.length) return plan;

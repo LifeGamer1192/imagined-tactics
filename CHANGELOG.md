@@ -6,6 +6,9 @@
 
 ## 0.6.0（2026-10-17）
 
+- `ai.json`（共有していない。hex-sim の戦闘AIだけ）：`levels.hard` に `smart`（よい順に動く・傷んだ兵を下げる・地形を読む・囲む／囲まれない・技を惜しむ・攻め手の押し込み・天守へ押す）を足し、`levels.hard.weights` を見直した。計算式・共有データは変えていない。
+  - ima-rpg 側の対応：要らない。
+
 - `terrain.json`：地形の種類に `palisade`（柵）・`lookout`（物見櫓）・`fortgate`（砦の門）を足した。`moveCost`・`hitMod` も足した（柵は騎馬が入れず歩兵2.5、物見櫓は騎馬が入れず1.5、砦の門は1）。`ranged` に `lookout`（命中+15・射程+1）、`snowFree` に `lookout`・`fortgate` を足した。ほかの値は変えていない。
 - 計算式：「造りを壊す」を足した（`docs/COMBAT.md` の 3-3。hex-sim の戦場だけ）。
   - ima-rpg 側の対応：要らない（1対1では使わない）。`kinds` を並べて使っているなら、新しい3つを知らない地形として飛ばす。

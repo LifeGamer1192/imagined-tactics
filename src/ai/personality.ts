@@ -19,10 +19,22 @@ export interface AiConfig {
   };
   /** 天守の取り合い：攻め手が天守にいる値・天守へ近づく重み、守り手が天守を守る値と、その気になる敵の近さ */
   /** 戦闘の難しさ：相手の思考の重みに掛ける数と、構えの決め方（数値の効き目は変えず、考え方の賢さだけを変える） */
-  levels: Record<AiLevel, { weights: Record<string, number>; sallyAggression?: number; sallyStrengthRatio?: number; retreatHp?: number; engageDistance?: number }>;
+  levels: Record<AiLevel, { weights: Record<string, number>; sallyAggression?: number; sallyStrengthRatio?: number; retreatHp?: number; engageDistance?: number; smart?: SmartConfig }>;
   castle: { hold: number; approach: number; guard: number; guardRange: number; breach: number; breachKill: number; breachClosed: number };
 }
 export type AiLevel = 'easy' | 'normal' | 'hard';
+/**
+ * むずかしいだけの考え方（どれも切り替えられる。値が 0 か false なら使わない）
+ * bestFirst：決まった順番でなく、いちばん点の高い行動ができる駒から動く（とどめを刺せる駒が先に動く）
+ * withdrawHp・withdraw：体力がこの割合を切った兵は、前線から下がる（回復できる地形・敵から遠い所を好む）
+ * terrainAware：受けるダメージの見込みを、立つマスの地形と天気で計算し直す
+ * surround・surrounded：味方が隣にいる敵をさらに囲む位置を好み、自分が囲まれる位置を避ける
+ * mpThrift：気力を使う技・軍略は、効き目が大きいときに取っておく（気力の重みに掛ける）
+ * attackerPush：攻め手は、時間が経つほど危険を恐れず押す（危険の重みを最大でこの割合まで下げる。終盤は傷んだ兵も下げない）
+ * keepPush：攻め手は、天守を早めに強く目指す（天守へ近づく重みに掛ける）
+ * decapitate：武将を全員倒せば勝ちなので、武将への攻撃と、武将を倒すことを、さらに重く見る（倍率）
+ */
+export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number }
 export const AI = aiJson as unknown as AiConfig;
 
 export const NEUTRAL: Personality = { aggression: 0, caution: 0, discipline: 0, cunning: 0, cruelty: 0, care: 0, honor: 0 };

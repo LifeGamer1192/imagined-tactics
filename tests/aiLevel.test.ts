@@ -1,6 +1,6 @@
 // 戦闘の難しさ：数値は変えず、自分と戦う相手の陣営の思考の賢さだけを変える。
 import { describe, expect, it } from 'vitest';
-import { stanceOf } from '../src/ai/ai';
+import { nextAiActions, planUnitDetailed, stanceOf } from '../src/ai/ai';
 import { mapFromProvince } from '../src/battle/map';
 import { createBattle } from '../src/battle/setup';
 import { convert, generalsOf } from '../src/convert/convert';
@@ -37,6 +37,31 @@ describe('battle difficulty changes how the computer thinks, not the numbers', (
       st.aiLevel = { side: 1, level };
       expect([attackPower(st, u), defense(st, u)]).toEqual(base);
     }
+  });
+
+  it('hard: a badly hurt troop pulls back from the front, and the unit with the most to gain moves first', async () => {
+    const st = await castleBattle();
+    st.aiLevel = { side: 1, level: 'hard' };
+    // 守り手の兵の1隊を、攻め手のそばで深く傷める
+    const foe = st.units.find((u) => u.side === 0 && u.kind === 'troop')!;
+    const t = st.units.find((u) => u.side === 1 && u.kind === 'troop')!;
+    const near = st.map.grid.neighbors(foe.pos).find((i) => st.map.terrain[i] !== 'void' && st.map.terrain[i] !== 'water' && !st.units.some((x) => x.alive && x.pos === i));
+    if (near === undefined) return;
+    t.pos = near; t.hp = Math.floor(t.maxHp * 0.25);
+    st.turn = 1;
+    const dist = (p: number) => Math.min(...st.units.filter((x) => x.alive && x.side === 0).map((x) => st.map.grid.distance(x.pos, p)));
+    const hardPlan = planUnitDetailed(st, t);
+    const moveTo = hardPlan.actions.find((a) => a.type === 'move') as { to: number } | undefined;
+    const attacks = hardPlan.actions.some((a) => a.type === 'skill' || a.type === 'tactic');
+    // 倒せる相手がいて攻めるのでなければ、敵から離れる
+    if (!attacks) expect(moveTo ? dist(moveTo.to) : dist(t.pos)).toBeGreaterThanOrEqual(dist(near));
+    // よい順に動く：選ばれた行動は、どの駒の行動よりも点が増える
+    const order = st.units.filter((u) => u.alive && u.side === 1);
+    const gains = order.map((u) => { const p = planUnitDetailed(st, u); return p.actions.length ? p.score - (p.stay ?? p.score) : -Infinity; });
+    const next = nextAiActions(st);
+    const who = st.units[(next[0] as { unit: number }).unit];
+    const p = planUnitDetailed(st, who);
+    expect(p.score - (p.stay ?? p.score)).toBeCloseTo(Math.max(...gains), 6);
   });
 
   it("campaign battles against the player use the campaign's difficulty for the other side only", async () => {
