@@ -4,7 +4,7 @@
 import cfgJson from '../../data/system/convert.json';
 import {
   ageOf, aliveNations, buildingsOf, monthOf, yearOf,
-  type HNation, type HPerson, type HPersonRec, type HSave, type HWorld, type NotableRole, offstageCells,
+  type HNation, type HPerson, type HPersonRec, type HSave, type HWorld, type Name, type NotableRole, offstageCells,
 } from '../bridge/histsim';
 import { RNG, codeToSeed } from '../core/rng';
 import { D } from '../data/db';
@@ -520,13 +520,14 @@ export function makeGarrison(gs: GameStart, id: string, faction: number, prov: n
 /**
  * 兵から取り立てた武将。記録に残る人物ではないので、能力は並、特性も縁も持たない。レベルは、もとの兵のレベルを引き継ぐ。
  */
-export function makeOfficer(gs: GameStart, id: string, name: string, faction: number, prov: number, level: number, traits: string[] = []): GGeneral {
-  const ab: [number, number, number, number] = [4, 5, 3, 4];
-  const cs = convertStats(ab, 1, traits, 1);
-  const cls = advanceClass(pickBaseClass('m', ab, 'general', traits, cs.stats).cls, level, cs.stats, []);
+export function makeOfficer(gs: GameStart, id: string, name: string | Name, faction: number, prov: number, level: number, traits: string[] = [],
+  rec: { ab?: [number, number, number, number]; age?: number; fame?: number; house?: Name } = {}): GGeneral {
+  const ab: [number, number, number, number] = rec.ab ?? [4, 5, 3, 4], fame = rec.fame ?? 1;
+  const cs = convertStats(ab, 1, traits, fame);
+  const cls = advanceClass(pickBaseClass('m', ab, 'general', traits, cs.stats).cls, level, cs.stats, rec.ab ? traits : []);
   const g: GGeneral = {
-    id, name: { ja: name, en: name }, house: { ja: '', en: '' },
-    faction, sex: 'm', age: 25, role: 'general', isLord: false, fame: 1, traits: [...traits], ab,
+    id, name: typeof name === 'string' ? { ja: name, en: name } : name, house: rec.house ?? { ja: '', en: '' },
+    faction, sex: 'm', age: rec.age ?? 25, role: 'general', isLord: false, fame, traits: [...traits], ab,
     classId: cls.id, level, exp: 0, learned: [], mastery: { [cls.id]: 0 },
     stats: cs.stats, command: cs.command, commandRange: cs.commandRange, growth: cs.growth,
     passives: cs.passives, expPct: cs.expPct, healPct: cs.healPct, critPct: cs.critPct, loyalty: cs.loyalty,

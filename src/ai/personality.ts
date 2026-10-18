@@ -33,8 +33,9 @@ export type AiLevel = 'easy' | 'normal' | 'hard';
  * attackerPush：攻め手は、時間が経つほど危険を恐れず押す（危険の重みを最大でこの割合まで下げる。終盤は傷んだ兵も下げない）
  * keepPush：攻め手は、天守を早めに強く目指す（天守へ近づく重みに掛ける）
  * decapitate：武将を全員倒せば勝ちなので、武将への攻撃と、武将を倒すことを、さらに重く見る（倍率）
+ * leaderKill：将を倒すと配下の兵がみな退くので、配下の兵の価値を、将を倒す（削る）価値に足す（割合）
  */
-export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number }
+export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number; leaderKill?: number }
 export const AI = aiJson as unknown as AiConfig;
 
 export const NEUTRAL: Personality = { aggression: 0, caution: 0, discipline: 0, cunning: 0, cruelty: 0, care: 0, honor: 0 };

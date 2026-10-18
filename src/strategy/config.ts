@@ -12,6 +12,11 @@ export const S = strategyJson as unknown as {
   /** 戦いから退いたときの罰：体力がこの割合を切った兵は失う・ほかの兵も見込みで失う・兵糧を失う（%）・武将の深手（月） */
   retreat: { troopLossBelowHp: number; troopLossChance: number; supplyLossPct: number; woundMonths: number };
   /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段・戦うときの攻撃と防御（%） */
+  /**
+   * 史実の領の動き（P28）：自分の家にかかわるときに選べる月数・断ったときの相手の心証と領の不満・
+   * 新しく起きる家の兵糧・当主の兵（領1つあたり・最少・最多）・当主の名声
+   */
+  history: { choiceMonths: number; refuseOpinion: number; refuseUnrest: number; newRealmSupply: number; newRealmTroopsPerProv: number; newRealmTroopsMin: number; newRealmTroopsMax: number; newRealmFame: number };
   exclave: { incomeMult: number; garrisonLevel: number; garrisonTroops: number; recruitCostMult: number; battleAtkDefPct: number };
   officer: { minTroopLevel: number; nameMax: number; unit: string; raiseCostBase: number; raiseCostPerLevel: number; lowerRefund: number; leaderTraits: string[] };
   reserve: { max: number };

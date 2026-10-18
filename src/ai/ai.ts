@@ -155,8 +155,15 @@ function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: nu
   if (dmg >= t.hp) v += w.kill * (1 + attackPower(st, t) / 100) * chance;
   // 弱った相手ほど狙う
   v += w.weakTarget * (1 - t.hp / t.maxHp) * chance;
-  if (t.kind === 'general') v *= w.generalTarget;
-  else if (roleOf(t) === 'support' || roleOf(t) === 'caster') v *= w.supportTarget;
+  if (t.kind === 'general') {
+    v *= w.generalTarget;
+    // 将を狙い撃つ（むずかしい）：将を倒すと配下の兵がみな退く。その兵を倒したのと同じだけの価値を、倒せるなら全部、削るだけなら削った割合の一部を足す
+    if (w.leaderKill) {
+      let worth = 0;
+      for (const f of st.units) if (f.alive && f.leader === t.id && f.id !== t.id) worth += f.hp * w.damage + w.kill * (1 + attackPower(st, f) / 100);
+      v += w.leaderKill * worth * chance * (dmg >= t.hp ? 1 : 0.25 * d / t.hp);
+    }
+  } else if (roleOf(t) === 'support' || roleOf(t) === 'caster') v *= w.supportTarget;
   // 主君のそばにいる敵を優先して叩く
   if (leader && leader.alive && leader.id !== u.id && st.map.grid.distance(t.pos, leader.pos) <= 1) v += w.guardLeader * chance;
   return v;
@@ -427,6 +434,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   if (lv?.smart?.mpThrift) w.mp *= lv.smart.mpThrift;
   // 大将狙い（むずかしい）：武将を全員倒せば勝ち。武将への攻撃を、さらに重く見る
   if (lv?.smart?.decapitate) w.generalTarget *= lv.smart.decapitate;
+  w.leaderKill = lv?.smart?.leaderKill ?? 0;
   // 攻め手は押す（むずかしい）：時間が経つほど、危険と倒される危うさを軽く見る
   if (lv?.smart?.attackerPush && u.home === 0) {
     const k = 1 - lv.smart.attackerPush * Math.min(1, st.round / st.maxRounds * 1.5);

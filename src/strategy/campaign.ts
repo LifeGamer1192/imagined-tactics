@@ -65,10 +65,30 @@ export interface Campaign {
   /** 本拠を移している最中の勢力（勢力 → 移す先・終わる月・払った兵糧） */
   relocations: Record<number, { to: number; until: number; cost: number }>;
   /** 史実の出来事：起きた（または、もう起きようがない）出来事の id */
-  history: { done: string[]; from?: number };
+  history: {
+    done: string[]; from?: number;
+    /** 出来事で新しく起きた家（シナリオの家の名 → 勢力の番号） */
+    nations?: Record<string, number>;
+    /** 自分の家にかかわる領の動き。受けるか断るかを選ぶ（until の月を過ぎると、断ったことになる） */
+    choices?: HistoryChoice[];
+  };
 }
 
-export interface Offer { kind: 'alliance' | 'truce' | 'vassal'; from: number; until: number }
+/**
+ * 史実の領の動きのうち、自分の家にかかわるもの。
+ * give：自分の家が領を得る（受ければ得る、断れば何も起きない）
+ * cede：自分の家が他家（to）へ領を渡す（断ると to と戦になる）
+ * rise：自分の家の領から新しい家（key）が起きる（断ると、その領の不満が上がる）
+ * annex：自分の家が他家（to）に併せられる（受けると、併せられる代わりに to に従う。断ると to と戦になる）
+ * absorb：自分の家が他家（from）を併せる（受ければ併せる）
+ */
+export interface HistoryChoice {
+  id: string; kind: 'give' | 'cede' | 'rise' | 'annex' | 'absorb';
+  text: string; provs: number[]; to?: number; from?: number; key?: string; parent?: number; until: number;
+}
+
+/** months：停戦の長さ（無ければ決まりの長さ）。hist：史実の出来事から来た申し込み */
+export interface Offer { kind: 'alliance' | 'truce' | 'vassal'; from: number; until: number; months?: number; hist?: 1 }
 
 export function newCampaign(gs: GameStart, world: HWorld, player: number, difficulty: Difficulty = 'normal'): Campaign {
   const c: Campaign = { gs, world, player, rng: new RNG(codeToSeed(`${gs.seed}:${gs.tick}:campaign`)), moved: new Set(), log: [], over: null, months: 0, items: {}, sieges: {}, away: {}, wounded: {}, difficulty, offers: [], reserve: {}, built: {}, relocations: {}, history: { done: [], from: gs.year * 12 + gs.month } };
@@ -81,7 +101,7 @@ export function newCampaign(gs: GameStart, world: HWorld, player: number, diffic
 }
 
 /** from に一番近い、勢力 f の領（無ければ本拠） */
-function homeFor(c: Campaign, f: number, from: number): number {
+export function homeFor(c: Campaign, f: number, from: number): number {
   const gs = c.gs;
   if (from >= 0 && gs.provinces[from]) {
     const seen = new Set<number>([from]);
@@ -423,6 +443,53 @@ function eliminate(c: Campaign, f: GFaction, by: number): void {
   delete gs.factions[f.id];
   if (f.id === c.player) c.over = 'lose';
   onEliminated(c, freed, by);
+}
+
+/**
+ * 領を別の勢力へ渡す（史実の割譲など。戦いは無い）。領にいたほかの家の武将は自分の領へ帰る。
+ * 渡した側の領が無くなれば、その家は滅ぶ（武将は浪人になる）
+ */
+export function handOver(c: Campaign, provs: number[], to: number): number[] {
+  const gs = c.gs, moved: number[] = [], losers = new Set<number>();
+  if (!gs.factions[to]) return moved;
+  for (const id of provs) {
+    const p = gs.provinces[id];
+    if (!p || p.out || p.owner === to) continue;
+    if (p.owner) losers.add(p.owner);
+    p.owner = to; p.controller = to;
+    delete c.sieges[id];
+    moved.push(id);
+  }
+  if (!moved.length) return moved;
+  for (const g of Object.values(gs.generals)) {
+    if (g.faction && g.faction !== to && moved.includes(g.prov) && !losers.has(g.faction)) g.prov = homeFor(c, g.faction, g.prov);
+  }
+  for (const fid of losers) {
+    const f = gs.factions[fid];
+    if (!f) continue;
+    const left = provincesOf(c, fid);
+    if (!left.length) { eliminate(c, f, to); continue; }
+    if (moved.includes(f.capital)) f.capital = left.sort((a, b) => b.pop - a.pop || a.id - b.id)[0].id;
+    if (c.relocations[fid] && moved.includes(c.relocations[fid].to)) delete c.relocations[fid];
+    for (const g of Object.values(gs.generals)) if (g.faction === fid && moved.includes(g.prov)) g.prov = homeFor(c, fid, g.prov);
+  }
+  return moved;
+}
+
+/** a が b を丸ごと併せる：b の領と武将は a のものになり、b の家は無くなる */
+export function absorb(c: Campaign, a: number, b: number): boolean {
+  const gs = c.gs, fa = gs.factions[a], fb = gs.factions[b];
+  if (!fa || !fb || a === b) return false;
+  for (const g of Object.values(gs.generals)) {
+    if (g.faction !== b) continue;
+    g.faction = a;
+    if (g.isLord || g.role === 'ruler' || g.role === 'heir') { g.isLord = false; g.role = 'general'; }
+    delete c.away[g.id];
+  }
+  fb.lordId = '';
+  handOver(c, provincesOf(c, b).map((p) => p.id), a);
+  if (gs.factions[b]) eliminate(c, fb, a);
+  return true;
 }
 
 function capture(c: Campaign, pb: PendingBattle): void {

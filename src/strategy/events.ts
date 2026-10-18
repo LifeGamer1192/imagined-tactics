@@ -247,7 +247,16 @@ export function truceProblem(c: Campaign, a: number, b: number): string | null {
   if (factionStrength(c, b) > factionStrength(c, a) * DIP.truceStrengthRatio) return '相手が優勢なので、受けてもらえません';
   return null;
 }
-export function makeTruce(c: Campaign, a: number, b: number): boolean {
+export function makeTruce(c: Campaign, a: number, b: number, months: number = DIP.truceMonths): boolean {
+  const gs = c.gs;
+  if (!leaveWar(c, a, b)) return false;
+  gs.truces.push({ a, b, until: gs.tick + months });
+  note(c, 'truce', { a: gs.factions[a].name.ja, b: gs.factions[b].name.ja, months });
+  return true;
+}
+
+/** 2勢力の戦をやめる（停戦は結ばない）。包囲も解く。戦っていなければ false */
+export function leaveWar(c: Campaign, a: number, b: number): boolean {
   const gs = c.gs, i = warBetween(c, a, b);
   if (i < 0) return false;
   const w = gs.wars[i];
@@ -257,12 +266,10 @@ export function makeTruce(c: Campaign, a: number, b: number): boolean {
   if (sb.length > 1) sb.splice(sb.indexOf(b), 1);
   else if (sa.length > 1) sa.splice(sa.indexOf(a), 1);
   else gs.wars.splice(i, 1);
-  gs.truces.push({ a, b, until: gs.tick + DIP.truceMonths });
   for (const k of Object.keys(c.sieges)) {
     const sg = c.sieges[Number(k)], owner = gs.provinces[Number(k)].owner;
     if ((sg.by === a && owner === b) || (sg.by === b && owner === a)) delete c.sieges[Number(k)];
   }
-  note(c, 'truce', { a: gs.factions[a].name.ja, b: gs.factions[b].name.ja, months: DIP.truceMonths });
   return true;
 }
 export function proposeTruce(c: Campaign, a: number, b: number): boolean {
@@ -474,7 +481,9 @@ export function acceptOffer(c: Campaign, from: number): boolean {
   const gs = c.gs, o = c.offers.find((x) => x.from === from), f = gs.factions[from], me = gs.factions[c.player];
   if (!o || !f || !me) return false;
   c.offers = c.offers.filter((x) => x !== o);
-  if (o.kind === 'truce') { bump(c, from, me.id, DIP.opinionOnTruce); return makeTruce(c, from, me.id); }
+  if (o.kind === 'truce') { bump(c, from, me.id, DIP.opinionOnTruce); return makeTruce(c, from, me.id, o.months); }
+  // 史実の従属は、戦のあとに来ることがある（降って従う）。戦と停戦をやめてから従える
+  if (o.kind === 'vassal' && o.hist) { leaveWar(c, me.id, from); gs.truces = gs.truces.filter((t) => !((t.a === me.id && t.b === from) || (t.a === from && t.b === me.id))); }
   if (relation(c, me.id, from) !== 'neutral') return false;
   if (o.kind === 'alliance') {
     gs.alliances.push([me.id, from]);

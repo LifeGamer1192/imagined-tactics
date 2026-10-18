@@ -85,7 +85,7 @@ const LOG_TEXT: Record<string, string> = {
 };
 const logLine = (e: CampaignLog): string => {
   // 史実の出来事：本文と、起きた効果。自分の勢力への効果は、いまは起こさない（知らせだけ）
-  if (e.key === 'history') return `【史実】${e.vars.text}${e.vars.effects ? `（${e.vars.effects}）` : ''}${e.vars.spared ? '（あなたの家には効果なし）' : ''}${e.vars.later ? '（領や外交の動きは、まだ起こしません）' : ''}`;
+  if (e.key === 'history') return `【史実】${e.vars.text}${e.vars.effects ? `（${e.vars.effects}）` : ''}${e.vars.spared ? '（あなたの家には効果なし）' : ''}${e.vars.later ? '（領の動きは、まだ起こしません）' : ''}`;
   return (LOG_TEXT[e.key] ?? e.key).replace(/\{(\w+)\}/g, (_m, k) => String(e.vars[k] ?? ''));
 };
 
@@ -597,7 +597,7 @@ export class CampaignScreen {
     const envoy = sceneUrl('envoy', c.gs.variant);
     return c.offers.filter((o) => c.gs.factions[o.from]).map((o) => `<div class="card status">
         ${envoy ? `<div class="vignette" style="background-image:url('${envoy}')"></div>` : ''}
-        <div>${esc(c.gs.factions[o.from].name.ja)}から${KIND[o.kind]}の申し込み <span class="dim small">あと${o.until - c.gs.tick}か月</span></div>
+        <div>${esc(c.gs.factions[o.from].name.ja)}から${KIND[o.kind]}の申し込み${o.months ? `（${o.months}か月）` : ''} <span class="dim small">${o.hist ? '史実の出来事から・' : ''}あと${o.until - c.gs.tick}か月</span></div>
         <div class="dip"><button data-offer="${o.from}" data-yes="1">受ける</button><button data-offer="${o.from}">断る</button></div>
       </div>`).join('');
   }
@@ -852,7 +852,7 @@ export class CampaignScreen {
         const from = Number(b.dataset.offer), o = c.offers.find((x) => x.from === from), f = gs.factions[from];
         if (!o || !f) return;
         const KIND = { truce: '停戦', alliance: '同盟', vassal: '従属' } as const;
-        const what = o.kind === 'alliance' ? '同盟を結ぶと、互いに攻め合えなくなり、相手が攻められたときに加勢を頼まれることがあります。' : o.kind === 'truce' ? '停戦すると、しばらくのあいだ互いに攻め合えなくなります。' : '従属を受けると、相手はこちらの下につき、攻め合えなくなります。';
+        const what = o.kind === 'alliance' ? '同盟を結ぶと、互いに攻め合えなくなり、相手が攻められたときに加勢を頼まれることがあります。' : o.kind === 'truce' ? `停戦すると、${o.months ? `${o.months}か月` : 'しばらく'}のあいだ互いに攻め合えなくなります。` : '従属を受けると、相手はこちらの下につき、攻め合えなくなります。';
         const ok = await confirmBox(this.frame(), {
           title: `${esc(f.name.ja)}からの${KIND[o.kind]}の申し込みを${b.dataset.yes ? '受ける' : '断る'}`, banner: sceneUrl('envoy', gs.variant),
           body: `<p>${what}</p><p class="dim small">${b.dataset.yes ? '受けると、すぐに結ばれます。' : '断ると、相手の心証が少し下がります。'}</p>`,
