@@ -412,6 +412,29 @@ export class StrategyView {
       ctx.stroke();
       ctx.restore();
     }
+    // 海路：海の向こうの領どうしのつながり（隣の領と同じく、移ることも攻めることもできる）。選んだ領の海路は濃く
+    ctx.save();
+    for (const p of gs.provinces) {
+      if (p.out) continue;
+      for (const q of p.sea) {
+        const b = gs.provinces[q];
+        if (q < p.id || !b || b.out) continue;
+        const sel = this.hl.selected === p.id || this.hl.selected === q;
+        const dx = b.cx - p.cx, dy = b.cy - p.cy, len = Math.hypot(dx, dy) || 1;
+        // 海の側へふくらませた弧：2つの領の陸の隣の領（内陸の側）とは反対へ
+        const land = [...p.nb, ...b.nb].map((n) => gs.provinces[n]).filter((x) => x && x.id !== p.id && x.id !== b.id);
+        const ox = (p.cx + b.cx) / 2, oy = (p.cy + b.cy) / 2;
+        const lx = land.length ? land.reduce((s, x) => s + x.cx, 0) / land.length : ox, ly = land.length ? land.reduce((s, x) => s + x.cy, 0) / land.length : oy;
+        const nx = -dy / len, ny = dx / len, side = (lx - ox) * nx + (ly - oy) * ny > 0 ? -1 : 1;
+        const mx = ox + nx * side * len * 0.38, my = oy + ny * side * len * 0.38;
+        ctx.beginPath(); ctx.moveTo(p.cx, p.cy); ctx.quadraticCurveTo(mx, my, b.cx, b.cy);
+        ctx.setLineDash([5 / zoom, 4 / zoom]);
+        ctx.lineWidth = (sel ? 2.6 : 1.4) / zoom;
+        ctx.strokeStyle = sel ? 'rgba(25,55,120,0.92)' : 'rgba(35,65,110,0.42)';
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
     // 戦線：赤いにじみの上に、赤黒い破線
     ctx.strokeStyle = 'rgba(190,40,25,0.28)'; ctx.lineWidth = 7 / zoom; ctx.stroke(this.front);
     ctx.strokeStyle = 'rgba(140,22,14,0.95)'; ctx.lineWidth = 2.2 / zoom;

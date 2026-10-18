@@ -57,6 +57,9 @@ function reelOn(): boolean {
 }
 function setReel(on: boolean): void { try { localStorage.setItem(REEL_KEY, on ? 'on' : 'off'); } catch { /* 覚えられなくても続ける */ } }
 
+/** 海路の攻めか（陸で隣り合っていない、海の向こうの領から） */
+const bySea = (gs: Campaign['gs'], from: number, to: number): boolean => !!gs.provinces[from] && !gs.provinces[from].nb.includes(to) && gs.provinces[from].sea.includes(to);
+
 /** 国名の札：地図と同じ国の色を地にする（字は地の明るさで白か黒） */
 const factionBadge = (name: string, [r, g, b]: [number, number, number]): string =>
   `<span class="fac" style="background:rgb(${r},${g},${b});color:${0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#1a1612' : '#fff'}">${esc(name)}</span>`;
@@ -527,7 +530,7 @@ export class CampaignScreen {
     box.className = 'result low';
     const fromName = gs.provinces[pb.from]?.name.ja ?? '';
     box.innerHTML = `${bannerHtml(sceneUrl('setup', gs.variant))}<h2>${esc(who)}</h2>
-      <p class="where"><span class="from">${esc(fromName)}</span> から <span class="to">${esc(p.name.ja)}</span> へ <span class="dim small">（地図に朱と金で示しています）</span></p>
+      <p class="where"><span class="from">${esc(fromName)}</span> から <span class="to">${esc(p.name.ja)}</span> へ${bySea(gs, pb.from, pb.prov) ? '<b>（海路）</b>' : ''} <span class="dim small">（地図に朱と金で示しています）</span></p>
       <p>攻め手：${esc(names(pb.atk))}</p>
       <p>守り手：${garrison ? `守備兵（Lv${g.level}・${g.troops}隊）<span class="dim">　守る武将はいません</span>` : esc(names(pb.def))}</p>
       ${garrison
@@ -616,7 +619,7 @@ export class CampaignScreen {
       try { map = mapPreviewUrl(provinceMap(c, b.prov, b.from)); } catch { map = ''; }
       box.innerHTML = `<div class="reel-head"><span class="dim small">ほかの国の戦い ${i + 1}／${list.length}</span></div>
         <h2>${esc(facName(b.attacker))}が${esc(p.name.ja)}へ攻め込んだ</h2>
-        <p class="where"><span class="from">${esc(from?.name.ja ?? '')}</span> から <span class="to">${esc(p.name.ja)}</span> へ</p>
+        <p class="where"><span class="from">${esc(from?.name.ja ?? '')}</span> から <span class="to">${esc(p.name.ja)}</span> へ${bySea(gs, b.from, b.prov) ? '<b>（海路）</b>' : ''}</p>
         <p class="reel-result dim">戦っています…</p>
         <div class="reel-body">${map ? `<img class="reel-map" src="${map}" alt="この戦いの戦場" draggable="false">` : ''}
           <div class="reel-sides"><p>${badge(b.attacker)} 攻め手：${people(b.atk)}</p><p>${badge(b.defender)} 守り手：${people(b.def)}</p>
