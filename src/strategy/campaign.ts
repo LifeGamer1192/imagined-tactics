@@ -66,6 +66,8 @@ export interface Campaign {
   /** 本拠を移している最中の勢力（勢力 → 移す先・終わる月・払った兵糧） */
   relocations: Record<number, { to: number; until: number; cost: number }>;
   /** 史実の出来事：起きた（または、もう起きようがない）出来事の id */
+  /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */
+  reel?: ReelBattle[];
   /** 訓練（P30）：武将 → 1か月訓練かずっと訓練か */
   training?: Record<string, 'once' | 'always'>;
   /** 今月「1か月訓練」を命じた武将 */
@@ -79,6 +81,13 @@ export interface Campaign {
     /** 自分の家にかかわる領の動き。受けるか断るかを選ぶ（until の月を過ぎると、断ったことになる） */
     choices?: HistoryChoice[];
   };
+}
+
+/** 月送りの演出で見せる、ほかの勢力どうしの戦い（攻めた領・守る領・勢力・顔ぶれ・勝った側・領が移ったか） */
+export interface ReelBattle {
+  from: number; prov: number; attacker: number; defender: number;
+  atk: { name: string; lv: number; troops: number }[]; def: { name: string; lv: number; troops: number }[];
+  winner: 0 | 1; captured: boolean;
 }
 
 /**
@@ -585,9 +594,16 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
   if (pb.defender) declareWar(c, pb.attacker, pb.defender);
   // 守る武将がいない領は、守備兵が守る（弱いが、戦わずには落ちない）
   if (!pb.def.length) raiseGarrison(c, pb);
+  // 月送りの演出（P31）：自分の勢力のかかわらない戦いを、あとで見せるために書き留める
+  const side = (ids: string[]): ReelBattle['atk'] => ids.map((id) => c.gs.generals[id]).filter(Boolean)
+    .map((g) => ({ name: isGarrison(g.id) ? '守備兵' : g.name.ja, lv: g.level, troops: g.troops.length }));
+  const reel: ReelBattle | null = c.player && pb.attacker !== c.player && pb.defender !== c.player
+    ? { from: pb.from, prov: pb.prov, attacker: pb.attacker, defender: pb.defender, atk: side(pb.atk), def: side(pb.def), winner: 0, captured: false }
+    : null;
   const battle = st ?? autoBattle(battleFor(c, pb));
   if (battle.winner === null) throw new Error('戦闘がまだ終わっていません');
   const sum = applyBattleResult(c.gs, battle);
+  if (reel) { reel.winner = sum.winner; (c.reel ??= []).push(reel); }
   note(c, 'battle', {
     attacker: c.gs.factions[pb.attacker].name.ja, defender: c.gs.factions[pb.defender]?.name.ja ?? '在地の兵',
     prov: c.gs.provinces[pb.prov].name.ja, winner: battle.sideNames[sum.winner],
@@ -603,6 +619,7 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
   afterBattle(c, pb, sum);
   dropGarrison(c, pb);
   if (sum.winner === 0 && c.gs.factions[pb.attacker]) capture(c, pb);
+  if (reel) reel.captured = c.gs.provinces[pb.prov].owner === pb.attacker;
   refreshIncome(c);
   checkOver(c);
   return sum;

@@ -42,7 +42,16 @@
     .where .from { color: #ff9c80; font-weight: bold; } .where .to { color: #f0cf7a; font-weight: bold; }
     /* 地図を見せたい窓（攻め込む・攻められる）は、下のほうに出す */
     body .result.low { top: auto; bottom: 12px; transform: translateX(-50%); max-height: 56vh; }
-    body .result.low .banner { height: clamp(60px, 10vh, 110px); }
+    .reel-cover { position: fixed; inset: 0; z-index: 39; background: transparent; }
+body .result.reel { z-index: 40; width: min(620px, 94vw); overflow-y: auto; }
+.result.reel h2 { margin: 2px 0 4px; font-size: 20px; }
+.reel-head { text-align: center; }
+.reel-body { display: flex; gap: 10px; align-items: flex-start; text-align: left; }
+.reel-map { width: 150px; height: auto; border-radius: 4px; flex: none; image-rendering: pixelated; }
+.reel-sides p { margin: 3px 0; font-size: 13px; }
+.reel-result { font-size: 15px; margin: 4px 0 6px; text-align: center; }
+@media (max-width: 600px) { .reel-body { flex-direction: column; align-items: center; } .reel-map { width: 96px; } }
+body .result.low .banner { height: clamp(60px, 10vh, 110px); }
     /* 天気の欄：天気の帯の絵を敷く。開戦のときと天気が変わったときは、しばらく金の縁で光らせる */
     body .sky { position: relative; background: linear-gradient(90deg, rgba(24,21,18,0.92) 0%, rgba(24,21,18,0.72) 55%, rgba(24,21,18,0.35) 100%), var(--sky-bg, none) center / cover, var(--card); min-height: 44px; transition: box-shadow 0.4s, border-color 0.4s; }
     body .sky.night { background: linear-gradient(90deg, rgba(14,16,30,0.94) 0%, rgba(14,16,30,0.78) 55%, rgba(14,16,30,0.5) 100%), var(--sky-bg, none) center / cover, var(--card); }

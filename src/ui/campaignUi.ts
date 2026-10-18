@@ -8,7 +8,7 @@ import { StrategyView } from '../render/strategyView';
 import {
   autoMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
   declareWar, dismissTroop, garrisonOf, recruit, recruitCost, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
-  S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
+  S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, type ReelBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
 import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
 import { profileHtml } from './profile';
@@ -41,6 +41,18 @@ export interface Host {
 }
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+
+/**
+ * 月送りの演出（他国の戦い）を見せるか。足もとのボタンで切り替え、ブラウザに覚える。
+ * 自動で操作されているブラウザ（確認の道具）では、はじめは見せない（道具が演出で止まらないように。visual-check は 'on' にして確かめる）
+ */
+const REEL_KEY = 'hexsim.reel';
+function reelOn(): boolean {
+  let v: string | null = null;
+  try { v = localStorage.getItem(REEL_KEY); } catch { /* 覚えられないときは既定 */ }
+  return v ? v === 'on' : !navigator.webdriver;
+}
+function setReel(on: boolean): void { try { localStorage.setItem(REEL_KEY, on ? 'on' : 'off'); } catch { /* 覚えられなくても続ける */ } }
 
 /** 国名の札：地図と同じ国の色を地にする（字は地の明るさで白か黒） */
 const factionBadge = (name: string, [r, g, b]: [number, number, number]): string =>
@@ -120,6 +132,8 @@ export class CampaignScreen {
   private logMark = 0;
   /** 攻め込む・攻められる窓を出している間、地図で目立たせる二つの領 */
   private alarm: { from: number; to: number } | null = null;
+  /** 月送りの演出で、持ち主が変わったのを見せている領 */
+  private flash: number | null = null;
   private tappedAt = -1e9;
   /** 戦場の下見の絵（領のようす → 絵と、目立つもの）と、開いているか */
   private previews = new Map<string, { url: string; features: string; edge: string }>();
@@ -277,6 +291,7 @@ export class CampaignScreen {
     this.order = 'none'; this.picked.clear();
     const mark = c.log.length;
     autoMonth(c);
+    c.reel = [];
     c.log.push({ key: 'month', vars: { date: this.date() } });
     this.autosave();
     this.mount();
@@ -495,7 +510,77 @@ export class CampaignScreen {
     this.c.log.push({ key: 'month', vars: { date: this.date() } });
     this.autosave();
     this.mount();
-    this.showNews(this.logMark);
+    // ほかの勢力どうしの戦いを見せてから、今月の知らせを出す
+    const reel = this.c.reel ?? [];
+    this.c.reel = [];
+    if (reel.length && reelOn()) this.playReel(reel, () => this.showNews(this.logMark));
+    else this.showNews(this.logMark);
+  }
+
+  /**
+   * 月送りの演出（P31）：ほかの勢力どうしの戦いを1つずつ見せる。地図はいったん月の初めの持ち主に戻し、
+   * 戦いごとに、攻めた領から守る領へ矢印・攻め手と守り手・小さな戦場の図・結果を出し、領が移ったらその領の色を変えて光らせる。
+   * 「この戦いを飛ばす」で次へ、「この月をすべて飛ばす」で終わる。終わると、地図は月の終わりの持ち主に戻る
+   */
+  private playReel(list: ReelBattle[], done: () => void): void {
+    const c = this.c, gs = c.gs, frame = this.frame();
+    // 月の終わりの持ち主を覚えておき、移った領を月の初めの持ち主に戻す（あとの戦いから順に。滅んだ家には戻さない）
+    const finalOf = new Map<number, [number, number]>();
+    for (const b of list) if (b.captured) finalOf.set(b.prov, [gs.provinces[b.prov].owner, gs.provinces[b.prov].controller]);
+    const setOwner = (prov: number, owner: number, controller = owner): void => { gs.provinces[prov].owner = owner; gs.provinces[prov].controller = controller; };
+    for (const b of [...list].reverse()) if (b.captured && gs.factions[b.defender]) setOwner(b.prov, b.defender);
+    const cover = document.createElement('div');
+    cover.className = 'reel-cover';
+    const box = document.createElement('div');
+    box.className = 'result low reel';
+    frame.append(cover, box);
+    let i = 0, timer = 0, stopped = false;
+    const finish = (): void => {
+      if (stopped) return;
+      stopped = true; clearTimeout(timer);
+      for (const [p, [o, ctl]] of finalOf) setOwner(p, o, ctl);
+      this.alarm = null; this.flash = null;
+      box.remove(); cover.remove();
+      this.refresh();
+      done();
+    };
+    const facName = (id: number): string => gs.factions[id]?.name.ja ?? (id ? '滅んだ家' : '在地の兵');
+    const badge = (id: number): string => (gs.factions[id] ? factionBadge(gs.factions[id].name.ja, gs.factions[id].color) : `<span class="dim">${esc(facName(id))}</span>`);
+    const people = (xs: ReelBattle['atk']): string => xs.map((x) => `${esc(x.name)}<span class="dim">（Lv${x.lv}・兵${x.troops}）</span>`).join('、') || '<span class="dim">なし</span>';
+    const result = (b: ReelBattle, quick: boolean): void => {
+      clearTimeout(timer);
+      if (stopped) return;
+      if (b.captured) setOwner(b.prov, b.attacker);
+      this.flash = b.captured ? b.prov : null;
+      this.draw();
+      const winner = b.winner === 0 ? b.attacker : b.defender;
+      const out = box.querySelector('.reel-result');
+      out?.classList.remove('dim');
+      if (out) out.innerHTML = `<b>${esc(facName(winner))}の勝ち</b>${b.captured ? `　${esc(gs.provinces[b.prov].name.ja)}は${esc(facName(b.attacker))}のものになった` : '　領は守られた'}`;
+      timer = window.setTimeout(() => { this.flash = null; i++; show(); }, quick ? 0 : 1500);
+    };
+    const show = (): void => {
+      if (stopped) return;
+      if (i >= list.length) { finish(); return; }
+      const b = list[i], p = gs.provinces[b.prov], from = gs.provinces[b.from];
+      this.alarm = { from: b.from, to: b.prov };
+      this.view.focusOn(b.from, b.prov);
+      this.draw();
+      let map = '';
+      try { map = mapPreviewUrl(provinceMap(c, b.prov, b.from)); } catch { map = ''; }
+      box.innerHTML = `<div class="reel-head"><span class="dim small">ほかの国の戦い ${i + 1}／${list.length}</span></div>
+        <h2>${esc(facName(b.attacker))}が${esc(p.name.ja)}へ攻め込んだ</h2>
+        <p class="where"><span class="from">${esc(from?.name.ja ?? '')}</span> から <span class="to">${esc(p.name.ja)}</span> へ</p>
+        <p class="reel-result dim">戦っています…</p>
+        <div class="reel-body">${map ? `<img class="reel-map" src="${map}" alt="この戦いの戦場" draggable="false">` : ''}
+          <div class="reel-sides"><p>${badge(b.attacker)} 攻め手：${people(b.atk)}</p><p>${badge(b.defender)} 守り手：${people(b.def)}</p>
+</div></div>
+        <p class="cbtns"><button data-r="one">この戦いを飛ばす</button> <button data-r="all">この月をすべて飛ばす</button></p>`;
+      box.querySelector<HTMLButtonElement>('[data-r="one"]')!.onclick = () => result(b, true);
+      box.querySelector<HTMLButtonElement>('[data-r="all"]')!.onclick = finish;
+      timer = window.setTimeout(() => result(b, false), 1800);
+    };
+    show();
   }
 
   private advance(): void {
@@ -503,6 +588,7 @@ export class CampaignScreen {
     this.order = 'none'; this.picked.clear();
     if (!c.player) { autoMonth(c); c.log.push({ key: 'month', vars: { date: this.date() } }); if (!this.running) this.autosave(); this.refresh(); return; }
     this.logMark = c.log.length;
+    c.reel = [];
     this.queue = endMonth(c);
     this.nextQueued();
   }
@@ -528,6 +614,7 @@ export class CampaignScreen {
       move: this.order === 'move' ? this.targets('move') : undefined,
       attack: this.order === 'attack' ? this.targets('attack') : undefined,
       alarm: this.alarm ?? undefined,
+      flash: this.flash ?? undefined,
     };
     this.view.draw();
   }
@@ -768,6 +855,7 @@ export class CampaignScreen {
         ${c.player ? `<button id="autoMonth" class="${this.autoOn ? 'on autoing' : ''}" ${c.over ? 'disabled' : ''} data-tip="押すと、自分の勢力の動きもおまかせにして1か月進めます。2度押すと、ずっとおまかせで進みます（どこかを押すと手動に戻ります）。">${this.autoOn ? 'ずっとオート中…（押すと手動）' : '1か月オート'}</button>` : ''}
         ${c.player ? '' : '<button id="run">12か月進める</button>'}
         <span class="dim">勢力${Object.keys(gs.factions).length}・${c.months}か月・${S.difficulty[c.difficulty].name}</span>
+        ${c.player ? `<button id="reelBtn" title="月を進めたあと、ほかの国どうしの戦いを1つずつ見せるか">他国の戦い：${reelOn() ? '見る' : '見ない'}</button>` : ''}
         <button id="saves">セーブ</button>
         <button id="bgmBtn" title="曲の音量（押すたびに切・小・中・大）">曲：${BGM_LEVEL_NAME[bgmLevel()]}</button>
         <button id="exit">やめる</button>
@@ -957,6 +1045,7 @@ export class CampaignScreen {
       })();
     });
     on('#bgmBtn', () => { setBgmLevel((bgmLevel() + 1) % BGM_LEVEL_NAME.length); this.refresh(); });
+    on('#reelBtn', () => { setReel(!reelOn()); this.refresh(); });
     on('#saves', () => { void openSaveMenu(root.querySelector<HTMLElement>('.battle')!, { current: () => snapshot(this.c), onLoad: (s) => { clearTimeout(this.watchTimer); this.runToken++; void busy('読み込んでいます…', () => this.host.loadHexSave(s)); } }); });
     on('#exit', async () => {
       const ok = await confirmBox(this.frame(), { title: '戦略をやめる', body: '<p>題の画面に戻ります。</p><p class="dim small">月が変わるたびに自動の枠へ保存しているので、「つづきから」で今月の初めから続けられます。今月に動かした分は残りません。残したいときは、先に「セーブ」で保存してください。</p>', ok: 'やめる', cancel: '続ける', danger: true });

@@ -36,6 +36,8 @@ export interface StrategyHighlight {
   sieges?: Map<number, number>;
   /** 攻めてきた領（from）と攻められた領（to）。両方を目立たせ、矢印でつなぐ */
   alarm?: { from: number; to: number };
+  /** 持ち主が変わったところを見せる領（月送りの演出） */
+  flash?: number;
 }
 
 /** 国名を書く曲線（始点・制御点・終点） */
@@ -440,6 +442,13 @@ export class StrategyView {
       ctx.lineTo(b.cx - Math.cos(ang - 0.45) * hd, b.cy - Math.sin(ang - 0.45) * hd);
       ctx.lineTo(b.cx - Math.cos(ang + 0.45) * hd, b.cy - Math.sin(ang + 0.45) * hd);
       ctx.closePath(); ctx.fill(); ctx.lineCap = 'butt';
+    }
+
+    // 持ち主が変わった領：金で塗って太く縁取る
+    const fl = this.hl.flash;
+    if (fl !== undefined && this.provPath[fl]) {
+      ctx.fillStyle = 'rgba(255,220,120,0.55)'; ctx.fill(this.provPath[fl]);
+      ctx.strokeStyle = 'rgba(255,240,190,0.95)'; ctx.lineWidth = 5 / zoom; ctx.stroke(this.provPath[fl]);
     }
 
     this.drawTowns();
