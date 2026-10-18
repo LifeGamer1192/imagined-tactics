@@ -42,7 +42,12 @@
     .where .from { color: #ff9c80; font-weight: bold; } .where .to { color: #f0cf7a; font-weight: bold; }
     /* 地図を見せたい窓（攻め込む・攻められる）は、下のほうに出す */
     body .result.low { top: auto; bottom: 12px; transform: translateX(-50%); max-height: 56vh; }
-    .reel-cover { position: fixed; inset: 0; z-index: 39; background: transparent; }
+    .actions button.flash { animation: actflash 0.55s ease-in-out 2; }
+@keyframes actflash { 0%, 100% { box-shadow: none; } 50% { box-shadow: 0 0 0 3px rgba(255,214,120,0.9), 0 0 14px rgba(255,214,120,0.8); background: rgba(201,162,39,0.35); } }
+.actions button small.why { display: block; font-size: 10.5px; color: #d9a08a; opacity: 1; }
+.actions button:disabled { filter: grayscale(1); }
+.cellinfo { font-size: 12.5px; line-height: 1.5; background: rgba(255,255,255,0.05); border-left: 3px solid rgba(201,162,39,0.6); padding: 3px 6px; margin-top: 4px; }
+.reel-cover { position: fixed; inset: 0; z-index: 39; background: transparent; }
 body .result.reel { z-index: 40; width: min(620px, 94vw); overflow-y: auto; }
 .result.reel h2 { margin: 2px 0 4px; font-size: 20px; }
 .reel-head { text-align: center; }

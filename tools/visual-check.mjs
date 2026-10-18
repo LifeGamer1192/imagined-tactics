@@ -148,6 +148,26 @@ async function run(tag, ctxOpts) {
       if (tb) { await tb.click(); await page.waitForTimeout(200); ok(`[${tag}] 軍略を選ぶと説明`, !!(await page.$('.minfo'))); await shot('battle_tactic_info'); }
     }
     await page.evaluate(() => { const a = window.__app; a.mode = { type: 'idle' }; a.selected = null; a.refresh(); });
+    // P32：駒を選んでマスに乗せると、そのマスで起きることの説明。待機した駒は「済」（行動済み）
+    const p32 = await page.evaluate(async () => {
+      const { apply } = await import('/src/battle/engine.ts');
+      const a = window.__app, st = a.st, g = st.map.grid;
+      const mine = st.units.filter((x) => x.alive && x.side === st.turn && !x.acted);
+      if (mine.length < 2) return null;
+      const u = mine[0];
+      const cell = g.neighbors(u.pos).find((c) => st.map.terrain[c] !== 'void' && !st.units.some((x) => x.alive && x.pos === c));
+      a.selected = u.id; a.hoverCell = cell ?? u.pos; a.refresh();
+      const info = document.querySelector('#cellinfo')?.textContent ?? '';
+      const w = mine[1];
+      apply(st, { type: 'wait', unit: w.id });
+      a.selected = null; a.refresh();
+      return { info, done: a.view.hl.done?.has(w.id) ?? false, readyOthers: !a.view.hl.done?.has(u.id) };
+    });
+    if (p32) {
+      ok(`[${tag}] 駒を選んでマスに乗せると、そのマスで起きることが出る`, /命中・回避/.test(p32.info) && /(移動できる|いまいるマス|入れない|届かない|いる)/.test(p32.info), p32.info.slice(0, 60));
+      ok(`[${tag}] 待機した駒は行動済み（済）、まだの駒は違う見た目`, p32.done && p32.readyOthers);
+      await shot('battle_done_mark');
+    }
     // 全員待機の窓
     await press('#waitAll');
     await page.waitForSelector('.confirm');
@@ -176,8 +196,17 @@ async function run(tag, ctxOpts) {
     ok(`[${tag}] 飛び地の戦いは天気の欄に出て、攻撃が下がる`, /飛び地で戦う/.test(await page.textContent('#sky')) && cutInfo.after < cutInfo.before, `${Math.round(cutInfo.before)}→${Math.round(cutInfo.after)}`);
     await shot('battle_exclave');
     await page.evaluate(() => { const a = window.__app; a.st.supplyMult = undefined; a.inspect = null; a.refresh(); });
-    await page.evaluate(() => { const a = window.__app; a.human = new Set([0, 1]); a.endTurn(); });
-    await page.waitForTimeout(250);
+    // P32：自分の陣営の全員が行動済みになると、自動でターンが終わる
+    await page.evaluate(async () => {
+      const { apply } = await import('/src/battle/engine.ts');
+      const a = window.__app, st = a.st;
+      a.human = new Set([0, 1]); window.__turn0 = st.turn;
+      for (const x of st.units) if (x.alive && x.side === st.turn && !x.acted) apply(st, { type: 'wait', unit: x.id });
+      a.refresh(); a.checkAutoEnd();
+    });
+    const autoEnded = await page.waitForFunction(() => window.__app.st.turn !== window.__turn0, null, { timeout: 5000 }).then(() => true).catch(() => false);
+    ok(`[${tag}] 全員の行動が終わると、自動でターンが終わる`, autoEnded);
+    await page.waitForTimeout(150);
     const turnText = await page.$eval('.splash', (el) => el.textContent).catch(() => '');
     ok(`[${tag}] 番が替わると「◯◯の番」（開戦ではない）`, /の番$/.test(turnText ?? '') && !(turnText ?? '').includes('開戦'), turnText ?? '');
     await shot('battle_turn_splash');

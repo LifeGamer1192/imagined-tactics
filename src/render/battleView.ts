@@ -78,6 +78,8 @@ export interface Highlight {
   selected?: number;
   hover?: number;
   commandOf?: BUnit;
+  /** 行動済みとして扱う駒（無ければ、行動した駒だけ） */
+  done?: Set<number>;
 }
 
 export class BattleView {
@@ -340,9 +342,12 @@ export class BattleView {
     const general = u.kind === 'general';
     const r = general ? HEX * 0.6 : HEX * 0.5;
     const side = SIDE_RGB[u.side];
-    const done = u.alive && u.side === st.turn && u.acted;
+    const done = u.alive && u.side === st.turn && (this.hl.done ? this.hl.done.has(u.id) : u.acted);
+    // まだ動ける自分の番の駒：外に明るい輪（行動済みとはっきり分ける）
+    const ready = u.alive && u.side === st.turn && !done && st.winner === null;
     ctx.save();
-    ctx.globalAlpha = (done ? 0.55 : 1) * fade;
+    ctx.globalAlpha = (done ? 0.42 : 1) * fade;
+    if (ready) { ctx.beginPath(); ctx.arc(x, y, r + 2.5, 0, Math.PI * 2); ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(255,248,220,0.95)'; ctx.stroke(); }
     // 影
     ctx.beginPath(); ctx.ellipse(x + 1.5, y + r * 0.86, r * 0.9, r * 0.3, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(30,24,16,0.22)'; ctx.fill();
@@ -377,10 +382,20 @@ export class BattleView {
     }
     // 体力
     const bw = HEX * 1.1, bx = x - bw / 2, by = y + r + 2;
-    ctx.fillStyle = 'rgba(30,24,16,0.35)'; ctx.fillRect(bx, by, bw, 4);
+    // 体力のバー（縦8）
+    ctx.fillStyle = 'rgba(30,24,16,0.45)'; ctx.fillRect(bx, by, bw, 8);
     const ratio = Math.max(0, Math.min(1, hp / u.maxHp));
     ctx.fillStyle = css(ratio > 0.5 ? VERDIGRIS : ratio > 0.25 ? OCHRE : VERMILION);
-    ctx.fillRect(bx, by, bw * ratio, 4);
+    ctx.fillRect(bx, by, bw * ratio, 8);
+    // 行動済み：灰色をかぶせ、「済」の字
+    if (done) {
+      ctx.globalAlpha = 0.5 * fade;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(70,66,60,0.85)'; ctx.fill();
+      ctx.globalAlpha = fade;
+      ctx.font = `700 ${HEX * 0.38}px ${MINCHO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(30,24,16,0.9)'; ctx.fillStyle = 'rgba(250,246,236,0.98)';
+      ctx.strokeText('済', x, y + 1); ctx.fillText('済', x, y + 1);
+    }
     ctx.restore();
     if (!u.alive) return;
     // 状態の印

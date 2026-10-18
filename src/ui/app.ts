@@ -34,7 +34,7 @@ import {
   tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { stepCost, unitAt } from '../rules/move';
-import { affinityOf, agility, attackPower, basicSkill, defense, FIELD, intellect, moveOf, outOfCommand, skillOf, supplyMultOf, terrainMod } from '../rules/stats';
+import { affinityOf, agility, attackPower, basicSkill, defense, FIELD, has, intellect, moveOf, outOfCommand, skillOf, supplyMultOf, terrainMod } from '../rules/stats';
 import { AFFINITY_NAME, kindName, STATUS_NAME, T, TRAIT_NAME } from './text';
 import { BattleLogView, loadLogLevel, LOG_LEVEL_NAME, saveLogLevel } from './battleLog';
 import { SEASON_NAME, seasonOf, skyEffects, skyLabel } from '../battle/weather';
@@ -84,6 +84,10 @@ export class App {
   private deploying = false;
   private human = new Set<Side>([0]);
   private undo: { unit: number; pos: number; moveSpent: number } | null = null;
+  /** 全員の行動が終わったときの、自動のターン終了 */
+  private autoEndTimer = 0;
+  /** 移動の直後：使える行動のボタンを一瞬光らせる */
+  private flashActions = false;
   private aiTimer = 0;
   /** 手動のときに操作する陣営（観戦に切り替えても覚えておく） */
   private manual = new Set<Side>([0]);
@@ -607,8 +611,12 @@ export class App {
     } else if (u && this.isHumanTurn() && moveCells(st, u).includes(cell)) {
       if (!u.acted) this.undo = { unit: u.id, pos: u.pos, moveSpent: u.moveSpent };
       this.perform([{ type: 'move', unit: u.id, to: cell }]);
+      // 移動の直後は、使える行動のボタンを一瞬光らせる
+      this.flashActions = true;
+      window.setTimeout(() => { this.flashActions = false; this.root.querySelectorAll('.actions .flash').forEach((b) => b.classList.remove('flash')); }, 1200);
     } else { this.selected = null; this.inspect = null; }
     this.refresh();
+    this.checkAutoEnd();
   }
 
   /**
@@ -648,11 +656,44 @@ export class App {
     this.mode = { type: 'idle' };
     const u = this.sel();
     if (u && (!u.alive || (!canAct(st, u) && !canMove(st, u)))) this.selected = null;
-    if (st.winner !== null) this.finish();
+    if (st.winner !== null) { this.finish(); return; }
+    this.checkAutoEnd();
+  }
+
+  /** 使える行動（技・軍略・造りを壊す）があるか（待機は数えない） */
+  private hasAction(u: BUnit): boolean {
+    const st = this.st!;
+    if (!canAct(st, u)) return false;
+    if (u.skills.some((id) => { const s = skillOf(id); return canUseSkill(st, u, s) && skillTargetCells(st, u, s).length > 0; })) return true;
+    if (u.tactics.some((id) => { const t = D.byTactic[id]; return canUseTactic(u, t) && tacticTargetCells(st, u, t).length > 0; })) return true;
+    return breachTargets(st, u).length > 0;
+  }
+
+  /** 行動済みとして扱うか：行動した、動けない、または移動したあとで使える行動が無い */
+  private unitDone(u: BUnit): boolean {
+    const st = this.st!;
+    if (!u.alive) return true;
+    if (u.acted || (!canAct(st, u) && !canMove(st, u))) return true;
+    return u.moved && !this.hasAction(u);
+  }
+
+  /** 自分の陣営の全員が行動済みになったら、少し置いて自動でターンを終える */
+  private checkAutoEnd(): void {
+    const st = this.st;
+    if (!st || st.winner !== null || this.deploying || !this.isHumanTurn()) return;
+    const mine = st.units.filter((x) => x.alive && x.side === st.turn);
+    if (!mine.length || !mine.every((x) => this.unitDone(x))) return;
+    clearTimeout(this.autoEndTimer);
+    const turn = st.turn, round = st.round;
+    toast('全員の行動が終わったので、ターンを終えます');
+    this.autoEndTimer = window.setTimeout(() => {
+      if (this.st === st && st.turn === turn && st.round === round && st.winner === null) this.endTurn();
+    }, Math.max(this.undo ? 1600 : 700, this.fxEnd - performance.now() + 200));
   }
 
   private endTurn(): void {
     const st = this.st!;
+    clearTimeout(this.autoEndTimer);
     this.selected = null; this.mode = { type: 'idle' }; this.undo = null;
     // 番の始まりの毒なども演出に出す。おまかせどうしが速く進むときは省く
     this.perform([{ type: 'endTurn' }], this.human.size ? this.ownFx() : FX_SCALE[this.aiSpeed]);
@@ -861,6 +902,38 @@ export class App {
   }
 
   /** いまいる地形の、命中・回避のほかの効果 */
+  /** 乗せているマスの説明：自分の駒を選んでいれば、そこで起きること。選んでいなければ、地形と造り */
+  private hoverCellHtml(): string {
+    const st = this.st!, cell = this.hoverCell;
+    if (cell < 0 || st.map.terrain[cell] === 'void') return '';
+    const u = this.sel();
+    if (u && this.isHumanTurn() && !this.deploying) return this.cellInfo(u, cell);
+    const hs = st.structures?.[cell];
+    return `<div class="dim">マス：${TERRAIN_NAME[st.map.terrain[cell]]}${hs ? `（耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}）` : ''}</div>`;
+  }
+
+  /** 駒を選んでいるとき、乗せたマスで起きること：行けるか、地形の命中・回避、回復、射程、攻撃の種類の強まる・弱まる、采配の外、造り */
+  private cellInfo(u: BUnit, cell: number): string {
+    const st = this.st!, k = st.map.terrain[cell];
+    if (k === 'void') return '';
+    const lines: string[] = [];
+    const occ = unitAt(st, cell);
+    const can = moveCells(st, u).includes(cell);
+    const step = stepCost(st, u, cell);
+    lines.push(cell === u.pos ? 'いまいるマス' : can ? 'ここへ移動できる' : step === null ? 'この兵は入れない地形' : occ ? `${occ.side === u.side ? '味方' : '敵'}（${esc(occ.name)}）がいる` : '移動力が足りず、この番には届かない');
+    // ここに立ったとしての値（駒の位置を一時だけ動かして計る）
+    const from = u.pos;
+    u.pos = cell;
+    const tm = terrainMod(st, u), note = this.terrainNote(u), out = u.kind === 'troop' && outOfCommand(st, u);
+    u.pos = from;
+    lines.push(`命中・回避 ${tm >= 0 ? '+' : ''}${tm}${note}`);
+    if (out) lines.push('采配範囲の外になる（弱くなる）');
+    const hs = st.structures?.[cell];
+    if (hs) lines.push(`造り：耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}`);
+    if (st.hold && cell === st.hold.cell) lines.push(`天守：攻め手が${st.hold.need}巡いれば攻め手の勝ち`);
+    return `<div class="cellinfo"><b>${TERRAIN_NAME[k]}</b>　${lines.map(esc).join('<br>')}</div>`;
+  }
+
   private terrainNote(u: BUnit): string {
     const k = this.st!.map.terrain[u.pos];
     const notes: string[] = [];
@@ -967,10 +1040,18 @@ export class App {
         : undefined,
       area: fc.area.size ? fc.area : undefined,
       commandOf: u ? st.units[u.leader] : this.inspect !== null ? st.units[st.units[this.inspect].leader] : undefined,
+      // 行動済みとして扱う駒（行動した・動けない・移動したあとで使える行動が無い）
+      done: !this.deploying && st.winner === null ? new Set(st.units.filter((x) => x.alive && x.side === st.turn && this.unitDone(x)).map((x) => x.id)) : undefined,
     };
     view.draw();
     const fcBox = this.root.querySelector<HTMLElement>('#forecast');
-    if (!panel && fcBox) { fcBox.innerHTML = fc.text; return; }
+    if (!panel && fcBox) {
+      fcBox.innerHTML = fc.text;
+      // マスに乗せたときの説明も、乗せるたびに書き換える
+      const ci = this.root.querySelector<HTMLElement>('#cellinfo');
+      if (ci) ci.innerHTML = this.hoverCellHtml();
+      return;
+    }
 
     const shown = u ?? (this.inspect !== null ? st.units[this.inspect] : null);
     let actions = '';
@@ -987,18 +1068,27 @@ export class App {
     }
     if (u && human) {
       const act = canAct(st, u);
-      const btn = (kind: 'skill' | 'tactic', id: string, label: string, ok: boolean) =>
-        `<button data-${kind}="${id}" ${ok ? '' : 'disabled'} class="${this.mode.type === kind && this.mode.id === id ? 'on' : ''}" data-tip="${esc(kind === 'skill' ? skillTip(skillOf(id)) : tacticTip(D.byTactic[id]))}">${label}</button>`;
-      actions += u.skills.map((id) => { const s = skillOf(id); return btn('skill', id, this.skillLabel(s), act && canUseSkill(st, u, s) && skillTargetCells(st, u, s).length > 0); }).join('');
-      actions += u.tactics.map((id) => { const t = D.byTactic[id]; return btn('tactic', id, this.tacticLabel(t), act && canUseTactic(u, t) && tacticTargetCells(st, u, t).length > 0); }).join('');
+      // 使えない行動は灰色にして、理由を添える。移動の直後は、使える行動を一瞬光らせる
+      const notAct = !act ? (u.acted ? '行動済み' : '動けない状態') : '';
+      const btn = (kind: 'skill' | 'tactic', id: string, label: string, why: string) =>
+        `<button data-${kind}="${id}" ${why ? 'disabled' : ''} class="${this.mode.type === kind && this.mode.id === id ? 'on' : ''}${!why && this.flashActions ? ' flash' : ''}" data-tip="${esc(kind === 'skill' ? skillTip(skillOf(id)) : tacticTip(D.byTactic[id]))}${why ? esc(`（使えない：${why}）`) : ''}">${label}${why ? `<small class="why">${esc(why)}</small>` : ''}</button>`;
+      actions += u.skills.map((id) => {
+        const s = skillOf(id);
+        const why = notAct || (u.mp < s.mp ? '気力が足りない' : !canUseSkill(st, u, s) ? '今は使えない' : !skillTargetCells(st, u, s).length ? '届く所に相手がいない' : '');
+        return btn('skill', id, this.skillLabel(s), why);
+      }).join('');
+      actions += u.tactics.map((id) => {
+        const t = D.byTactic[id];
+        const why = notAct || (u.mp < t.mp ? '気力が足りない' : has(u, 'silence') ? '軍略を封じられている' : !canUseTactic(u, t) ? '今は使えない' : !tacticTargetCells(st, u, t).length ? '届く所に相手がいない' : '');
+        return btn('tactic', id, this.tacticLabel(t), why);
+      }).join('');
       const br = act ? breachTargets(st, u) : [];
       if (br.length) actions += `<button data-breach="1" class="${this.mode.type === 'breach' ? 'on' : ''}" data-tip="届く所の門・砦の門・柵を通常攻撃で打って壊します。門と砦の門は、壊すまで攻め手は通れません。石火矢・大筒の系統は2倍、火の攻撃は1.5倍の力で壊します。壊れた門は道に、柵は平地になります。">壊す（門・柵） <small>${br.length}か所</small></button>`;
-      actions += `<button id="wait" ${act ? '' : 'disabled'}>待機</button>`;
+      actions += `<button id="wait" ${act ? '' : 'disabled'} class="${act && this.flashActions ? 'flash' : ''}">待機${act ? '' : `<small class="why">${esc(notAct)}</small>`}</button>`;
       actions += `<button id="cancel">${this.mode.type !== 'idle' ? (this.mode.type === 'breach' ? '壊すのをやめる' : '技・軍略をやめる') : '選択を解く'}</button>`;
       if (this.undo && this.undo.unit === u.id && !u.acted) actions += `<button id="undo">移動を取り消す</button>`;
     }
-    const hs = this.hoverCell >= 0 ? st.structures?.[this.hoverCell] : undefined;
-    const cell = this.hoverCell >= 0 ? `<div class="dim">マス：${TERRAIN_NAME[st.map.terrain[this.hoverCell]]}${hs ? `（耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}）` : ''}</div>` : '';
+    const cell = `<div id="cellinfo">${this.hoverCellHtml()}</div>`;
     this.root.querySelector('#panel')!.innerHTML = `
       <div class="turn" style="background:${SIDE_COLOR[st.turn]}">${esc(st.sideNames[st.turn])}の番 <small>${st.round}／${st.maxRounds}巡</small></div>
       ${this.skyLine()}
@@ -1018,6 +1108,7 @@ export class App {
     on('#cancel', () => this.cancel());
     on('#wait', () => { this.act({ type: 'wait', unit: u!.id }); this.refresh(); });
     on('#undo', () => {
+      clearTimeout(this.autoEndTimer);
       const x = this.undo!; const t = st.units[x.unit];
       t.pos = x.pos; t.moveSpent = x.moveSpent; t.moved = false; this.undo = null;
       // 取り消した移動は、記録からも消す
@@ -1035,6 +1126,7 @@ export class App {
       for (const x of left) if (x.alive && canAct(st, x)) apply(st, { type: 'wait', unit: x.id });
       this.selected = null; this.mode = { type: 'idle' }; this.undo = null;
       this.refresh();
+      this.checkAutoEnd();
     });
     const frame = this.root.querySelector('.battle')!;
     on('#quit', async () => {
