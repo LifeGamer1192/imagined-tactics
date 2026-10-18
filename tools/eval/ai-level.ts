@@ -19,6 +19,7 @@ const variants: Record<string, { level: 'normal' | 'hard'; smart?: SmartConfig }
   'hard-full': { level: 'hard', smart: full },
   'hard-full+decap': { level: 'hard', smart: { ...full, decapitate: 2 } },
   'hard-full+decap3': { level: 'hard', smart: { ...full, decapitate: 3 } },
+  'hard-full+leader0.3': { level: 'hard', smart: { ...full, leaderKill: 0.3 } },
   'hard-full+leader0.5': { level: 'hard', smart: { ...full, leaderKill: 0.5 } },
   'hard-full+leader1': { level: 'hard', smart: { ...full, leaderKill: 1 } },
   'hard-full+leader2': { level: 'hard', smart: { ...full, leaderKill: 2 } },

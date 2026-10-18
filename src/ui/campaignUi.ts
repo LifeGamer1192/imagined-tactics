@@ -10,6 +10,7 @@ import {
   declareWar, dismissTroop, garrisonOf, recruit, recruitCost, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
   S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
+import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
 import {
@@ -85,7 +86,8 @@ const LOG_TEXT: Record<string, string> = {
 };
 const logLine = (e: CampaignLog): string => {
   // 史実の出来事：本文と、起きた効果。自分の勢力への効果は、いまは起こさない（知らせだけ）
-  if (e.key === 'history') return `【史実】${e.vars.text}${e.vars.effects ? `（${e.vars.effects}）` : ''}${e.vars.spared ? '（あなたの家には効果なし）' : ''}${e.vars.later ? '（領の動きは、まだ起こしません）' : ''}`;
+  if (e.key === 'history') return `【史実】${e.vars.text}${e.vars.effects ? `（${e.vars.effects}）` : ''}${e.vars.spared ? '（あなたの家には効果なし）' : ''}${e.vars.later ? '（領の動きは、まだ起こしません）' : ''}${e.vars.choice ? '（あなたの家は、受けるか断るかを選べます）' : ''}`;
+  if (e.key === 'historyChoice') return `【史実】${e.vars.result}`;
   return (LOG_TEXT[e.key] ?? e.key).replace(/\{(\w+)\}/g, (_m, k) => String(e.vars[k] ?? ''));
 };
 
@@ -591,11 +593,21 @@ export class CampaignScreen {
     return `<div class="dip"><span class="dim">外交（相手の心証 ${opinion}）</span>${buttons}</div>`;
   }
 
+  /** 史実の領の動きで、自分の家にかかわるもの（受けるか断るかを選ぶ。放っておくと断ったことになる） */
+  private choicesHtml(): string {
+    const c = this.c;
+    // 絵は付けない（いくつも並ぶことがあるため、小さく）
+    return (c.history.choices ?? []).map((ch) => `<div class="card status hchoice">
+        <div><b>史実：</b>${esc(choiceLine(c, ch))} <span class="dim small">あと${Math.max(0, ch.until - c.gs.tick)}か月（過ぎると断ったことになる）</span></div>
+        <div class="dip"><button data-hchoice="${esc(ch.id)}" data-yes="1">受ける</button><button data-hchoice="${esc(ch.id)}">断る</button></div>
+      </div>`).join('');
+  }
+
   /** ほかの勢力からの申し込み（受けるか断るかを選ぶ。放っておくと流れる） */
   private offersHtml(): string {
     const c = this.c, KIND = { truce: '停戦', alliance: '同盟', vassal: '従属' } as const;
     const envoy = sceneUrl('envoy', c.gs.variant);
-    return c.offers.filter((o) => c.gs.factions[o.from]).map((o) => `<div class="card status">
+    return this.choicesHtml() + c.offers.filter((o) => c.gs.factions[o.from]).map((o) => `<div class="card status">
         ${envoy ? `<div class="vignette" style="background-image:url('${envoy}')"></div>` : ''}
         <div>${esc(c.gs.factions[o.from].name.ja)}から${KIND[o.kind]}の申し込み${o.months ? `（${o.months}か月）` : ''} <span class="dim small">${o.hist ? '史実の出来事から・' : ''}あと${o.until - c.gs.tick}か月</span></div>
         <div class="dip"><button data-offer="${o.from}" data-yes="1">受ける</button><button data-offer="${o.from}">断る</button></div>
@@ -860,6 +872,21 @@ export class CampaignScreen {
         });
         if (!ok) return;
         if (b.dataset.yes) acceptOffer(c, from); else declineOffer(c, from);
+        this.refresh();
+      };
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-hchoice]').forEach((b) => {
+      b.onclick = async () => {
+        const ch = (c.history.choices ?? []).find((x) => x.id === b.dataset.hchoice);
+        if (!ch) return;
+        const yes = !!b.dataset.yes;
+        const ok = await confirmBox(this.frame(), {
+          title: `史実の出来事を${yes ? '受ける' : '断る'}`, banner: sceneUrl('envoy', gs.variant),
+          body: `<p>${esc(ch.text)}</p><p>${esc(choiceLine(c, ch))}</p><p class="dim small">${esc(choiceOutcome(c, ch, yes))}</p>`,
+          ok: yes ? '受ける' : '断る',
+        });
+        if (!ok) return;
+        chooseHistory(c, ch.id, yes);
         this.refresh();
       };
     });

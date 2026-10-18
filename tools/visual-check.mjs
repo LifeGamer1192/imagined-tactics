@@ -434,6 +434,22 @@ async function run(tag, ctxOpts) {
     await shot('news_history');
     await press('.confirm [data-a="ok"]');
   }
+  // 史実の領の動き（自分の家にかかわるもの）：受けるか断るかの欄が出て、断ると消える
+  await page.evaluate(() => {
+    const s = window.__campaign, c = s.c;
+    const p = c.gs.provinces.find((x) => x.owner && x.owner !== c.player && !x.out);
+    (c.history.choices ??= []).push({ id: 'vc:0', kind: 'give', text: '試しの出来事', provs: [p.id], to: c.player, until: c.gs.tick + 3 });
+    s.refresh();
+  });
+  await page.waitForSelector('.hchoice');
+  ok(`[${tag}] 史実の領の動きの欄が出る（受ける・断る）`, (await page.$$('[data-hchoice="vc:0"]')).length === 2, await page.textContent('.hchoice'));
+  await shot('history_choice');
+  await press('[data-hchoice="vc:0"]:not([data-yes])');
+  await page.waitForSelector('.confirm');
+  ok(`[${tag}] 断るときは、起きることを書いた確かめる窓が出る`, /何も起きません/.test(await page.textContent('.confirm')));
+  await press('.confirm [data-a="ok"]');
+  await page.waitForTimeout(150);
+  ok(`[${tag}] 断ると欄が消え、記録に残る`, !(await page.$('[data-hchoice="vc:0"]')) && await page.evaluate(() => window.__campaign.c.log.some((e) => e.key === 'historyChoice')));
   // 1か月オート・ずっとオート
   await press('#autoMonth');
   await page.waitForTimeout(700); await idle();
