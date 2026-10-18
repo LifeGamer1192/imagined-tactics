@@ -105,10 +105,11 @@ function urgency(st: BattleState, u: BUnit): number {
 
 // ---------------------------------------------------------------- 脅威
 
-interface Threat { u: BUnit; radius: number; expected: number; tm0: number }
+/** cells：道のりを読むときだけ。攻撃が実際に届くマス */
+interface Threat { u: BUnit; radius: number; expected: number; tm0: number; cells?: Uint8Array }
 
 /** 敵それぞれについて、届く範囲と、このユニットに与えるダメージの期待値を先に出しておく */
-function threatsTo(st: BattleState, u: BUnit): Threat[] {
+function threatsTo(st: BattleState, u: BUnit, exact = false): Threat[] {
   const out: Threat[] = [];
   for (const e of st.units) {
     if (!e.alive || e.side === u.side || disabled(e)) continue;
@@ -126,8 +127,26 @@ function threatsTo(st: BattleState, u: BUnit): Threat[] {
       const v = tacticDamage(st, e, t, u);
       if (v > best) { best = v; range = (t.range ?? 0) + t.area; }
     }
-    if (best > 0) out.push({ u: e, radius: moveOf(e) + range, expected: best, tm0: terrainMod(st, u) });
+    if (best > 0) out.push({ u: e, radius: moveOf(e) + range, expected: best, tm0: terrainMod(st, u), cells: exact ? strikeCells(st, e, range) : undefined });
   }
+  return out;
+}
+
+/** 道のりを読む：敵ごとの「次の番に攻撃が届くマス」。その番のあいだは敵が動かないので、戦い・番・敵・位置・射程ごとに1度だけ計算する */
+const strikeCache = new WeakMap<BattleState, Map<string, Uint8Array>>();
+function strikeCells(st: BattleState, e: BUnit, range: number): Uint8Array {
+  let m = strikeCache.get(st);
+  if (!m) { m = new Map(); strikeCache.set(st, m); }
+  const key = `${st.round}:${st.turn}:${e.id}:${e.pos}:${range}`;
+  let out = m.get(key);
+  if (out) return out;
+  const g = st.map.grid, from = reach(st, e, moveOf(e)).cells;
+  out = new Uint8Array(g.n);
+  for (let i = 0; i < g.n; i++) {
+    if (st.map.terrain[i] === 'void') continue;
+    for (const f of from) if (g.distance(f, i) <= range) { out[i] = 1; break; }
+  }
+  m.set(key, out);
   return out;
 }
 
@@ -140,6 +159,8 @@ function exposure(st: BattleState, u: BUnit, threats: Threat[], margin = 0): num
     if (!t.u.alive) continue;
     // margin：味方の後ろにいるユニットは、届くぎりぎりの敵までは数えない（前衛が止めてくれる見込み）
     if (g.distance(t.u.pos, u.pos) > Math.max(1, t.radius - margin)) continue;
+    // 道のりを読む（むずかしい）：城壁・川・山・味方の壁で、実際には届かないマスは数えない
+    if (t.cells && !t.cells[u.pos]) continue;
     // 地形で回避が変わるぶんを、ざっくり反映する（回避+10 なら1割減る、という見積もり）
     sum += t.expected * clamp(1 - (tm - t.tm0) / 100, 0.3, 1.5);
   }
@@ -148,6 +169,9 @@ function exposure(st: BattleState, u: BUnit, threats: Threat[], margin = 0): num
 
 // ---------------------------------------------------------------- 攻める価値
 
+/** 集中攻撃：相手ごとの、まだ動いていない味方の攻めの見込み（1駒の行動を決めるあいだだけ使う） */
+let focusCache = new Map<number, number>();
+
 function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: number, w: Record<string, number>, leader: BUnit | null): number {
   const d = Math.min(dmg, t.hp);
   let v = d * chance * w.damage;
@@ -155,6 +179,15 @@ function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: nu
   if (dmg >= t.hp) v += w.kill * (1 + attackPower(st, t) / 100) * chance;
   // 弱った相手ほど狙う
   v += w.weakTarget * (1 - t.hp / t.maxHp) * chance;
+  // 集中攻撃（むずかしい）：この一撃で倒せなくても、まだ動いていない味方の攻めと合わせて倒せるなら、倒す価値の一部を見込む
+  if (w.focus && dmg < t.hp && t.side !== u.side) {
+    let rest = focusCache.get(t.id);
+    if (rest === undefined) {
+      rest = threatsTo(st, t).filter((x) => x.u.id !== u.id && !x.u.acted && st.map.grid.distance(x.u.pos, t.pos) <= x.radius).reduce((s, x) => s + x.expected, 0);
+      focusCache.set(t.id, rest);
+    }
+    if (d * chance + rest >= t.hp) v += w.focus * w.kill * (1 + attackPower(st, t) / 100) * chance * Math.min(1, d / t.hp * 2);
+  }
   if (t.kind === 'general') {
     v *= w.generalTarget;
     // 将を狙い撃つ（むずかしい）：将を倒すと配下の兵がみな退く。その兵を倒したのと同じだけの価値を、倒せるなら全部、削るだけなら削った割合の一部を足す
@@ -286,6 +319,8 @@ interface PosCtx {
   guardMult: number;
   /** むずかしいだけの考え方 */
   smart?: SmartConfig;
+  /** 先手を取る：いま見ているマスに届く敵の数（scorePosition が書く） */
+  reachN?: number;
 }
 
 /**
@@ -344,14 +379,21 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
   const keepsBack0 = c.role !== 'front' || (isGeneral && !c.joins);
   const attacking = c.stance === 'advance' || c.stance === 'engage';
   // 地形を見て受ける（むずかしい）：受けるダメージの見込みを、このマスに立ったときの地形と天気で計算し直す
-  const exp = exposure(st, u, c.smart?.terrainAware ? threatsTo(st, u) : c.threats, attacking && keepsBack0 ? 3 : 0);
+  const exp = exposure(st, u, c.smart?.terrainAware ? threatsTo(st, u, !!c.smart.exactReach) : c.threats, attacking && keepsBack0 ? 3 : 0);
   // 危険の重み：退却中は重く、守備は普通。攻めているときは、前衛の兵は危険を承知で踏み込み、後衛と武将は気をつける
   const byStance = c.stance === 'retreat' ? 1.5 : c.stance === 'hold' ? 1
     : keepsBack0 ? 0.6 : isGeneral ? 0.3 : 0.15;
   const brave = byStance * (1 - 0.8 * c.urgent);
   let thr = -exp * w.threat * (isGeneral ? 1.5 : 1) * brave;
   if (exp >= u.hp) thr -= w.deathRisk * (isGeneral ? 2 : 1) * brave;
+  // 将を守る（むずかしい）：将が倒れると配下の兵がみな退くので、率いる兵が多い将ほど危険を重く見る
+  if (c.smart?.leaderSafe && isGeneral) {
+    const n = st.units.filter((x) => x.alive && x.leader === u.id && x.id !== u.id).length;
+    thr *= 1 + c.smart.leaderSafe * Math.min(n, 6) / 6;
+  }
   parts.threat = thr;
+  // 先手を取る（むずかしい）で使う：このマスに届く敵の数
+  if (c.smart?.firstStrike) c.reachN = c.threats.filter((t) => t.u.alive && g.distance(t.u.pos, u.pos) <= t.radius && (!t.cells || !!t.cells[u.pos])).length;
 
   // 間合い：射撃・軍略役・回復役は敵に隣り合わない。前に出ない武将も同じ
   let sp = 0;
@@ -382,6 +424,11 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
     if (sm.surrounded) {
       const around = c.foes.filter((f) => g.distance(f.pos, u.pos) === 1).length;
       if (around >= 2) sp -= sm.surrounded * (around - 1);
+    }
+    // 背中を預ける：危ない場所に立つなら、味方の隣に
+    if (sm.buddy && exp > 0) {
+      const mates = st.units.filter((x) => x.alive && x.side === u.side && x.id !== u.id && g.distance(x.pos, u.pos) === 1).length;
+      sp += sm.buddy * Math.min(mates, 2);
     }
   }
   parts.spacing = sp;
@@ -435,6 +482,8 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   // 大将狙い（むずかしい）：武将を全員倒せば勝ち。武将への攻撃を、さらに重く見る
   if (lv?.smart?.decapitate) w.generalTarget *= lv.smart.decapitate;
   w.leaderKill = lv?.smart?.leaderKill ?? 0;
+  w.focus = lv?.smart?.focus ?? 0;
+  focusCache = new Map();
   // 攻め手は押す（むずかしい）：時間が経つほど、危険と倒される危うさを軽く見る
   if (lv?.smart?.attackerPush && u.home === 0) {
     const k = 1 - lv.smart.attackerPush * Math.min(1, st.round / st.maxRounds * 1.5);
@@ -457,7 +506,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     seatPath: st.hold && u.side === 0 ? travelField(st, u, [{ pos: st.hold.cell } as BUnit]) : null,
     guardMult: lv?.weights.guard ?? 1,
     smart: lv?.smart,
-    threats: threatsTo(st, u),
+    threats: threatsTo(st, u, !!lv?.smart?.exactReach),
     // 武将が自ら前に出るか：猛攻・武勇の武将、前衛の役割で時間が押しているとき
     joins: u.kind !== 'general' || persona.aggression + persona.honor * 0.5 > 0.3 || urgent >= (AI.stance.generalJoinFrom - AI.stance.urgentFrom) / (1 - AI.stance.urgentFrom),
   };
@@ -474,8 +523,11 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
       const score = total(parts);
       if (score > best.score) best = { score, parts, move: c !== origin ? c : null, act };
     };
-    consider(base, null);
-    if (c === origin) stay = total(base);
+    // 先手を取る（むずかしい）：攻めずに敵の届く所に立つのは損。攻め手は時間が押すほど気にしない
+    const fs = ctx.smart?.firstStrike;
+    const idle = fs && ctx.reachN ? { ...base, spacing: base.spacing - fs * ctx.reachN * (1 - urgent) * (u.home === 0 ? 0.5 : 1) } : base;
+    consider(idle, null);
+    if (c === origin) stay = total(idle);
     if (!mayAct) continue;
     for (const sid of u.skills) {
       const skill = skillOf(sid);

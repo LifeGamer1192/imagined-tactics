@@ -33,9 +33,14 @@ export type AiLevel = 'easy' | 'normal' | 'hard';
  * attackerPush：攻め手は、時間が経つほど危険を恐れず押す（危険の重みを最大でこの割合まで下げる。終盤は傷んだ兵も下げない）
  * keepPush：攻め手は、天守を早めに強く目指す（天守へ近づく重みに掛ける）
  * decapitate：武将を全員倒せば勝ちなので、武将への攻撃と、武将を倒すことを、さらに重く見る（倍率）
+ * leaderSafe：将が倒れると配下の兵がみな退くので、率いる兵が多い将ほど危険を重く見る（兵6隊で 1+この値 倍）
+ * firstStrike：攻めずに敵の届く所に立つのを嫌う（届く敵1体ごとの減点。攻め手は半分、時間が押すほど小さく）
+ * buddy：危ない場所に立つなら、味方の隣を好む（隣の味方1体ごとの加点、2体まで）
+ * exactReach：敵の攻撃が届くかを、移動力＋射程の距離でなく、実際に歩ける道のり（城壁・川・山・壁になる駒）で読む
+ * focus：この一撃で倒せなくても、まだ動いていない味方と合わせて倒せる相手なら、倒す価値のこの割合を見込む（集中攻撃）
  * leaderKill：将を倒すと配下の兵がみな退くので、配下の兵の価値を、将を倒す（削る）価値に足す（割合）
  */
-export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number; leaderKill?: number }
+export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number; leaderKill?: number; leaderSafe?: number; firstStrike?: number; buddy?: number; focus?: number; exactReach?: boolean }
 export const AI = aiJson as unknown as AiConfig;
 
 export const NEUTRAL: Personality = { aggression: 0, caution: 0, discipline: 0, cunning: 0, cruelty: 0, care: 0, honor: 0 };
