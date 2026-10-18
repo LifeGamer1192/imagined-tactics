@@ -37,6 +37,7 @@ const TEXT: Record<string, string> = {
   'breach': '{unit}が{what}を打った（{dmg}。耐久 {hp}／{max}）',
   'broken': '{unit}が{what}を打ち破った',
   'retreatAll': '{side}は戦場から退いた。{winner}の勝ち',
+  'withdraw': '{unit}の部隊が、陣地から戦場を退いた（兵{n}隊も一緒に）',
   'turn': '── {side}の番（{round}巡目）──',
 };
 

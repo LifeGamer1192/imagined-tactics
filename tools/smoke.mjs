@@ -309,7 +309,8 @@ if (atk === 'ok') {
   check('戦略の戦いに「退く」ボタンがある', await page.isVisible('#retreat'));
   await page.click('#retreat');
   await page.waitForSelector('.confirm');
-  check('退くを押すと、罰の説明の窓が出る', /兵糧の\d+%を失う/.test(await page.textContent('.confirm')));
+  // 始めは全部隊が初期配置のマスにいるので、軽い退却（翌月の休養）の説明になる。マスの外の部隊があると、重い罰（兵糧を失う など）も出る
+  check('退くを押すと、負けになることと罰（休養・兵糧など）の説明の窓が出る', /負け/.test(await page.textContent('.confirm')) && /(休養|兵糧の\d+%を失う)/.test(await page.textContent('.confirm')));
   await page.screenshot({ path: path.join(out, '10b_retreat_confirm.png') }).catch(() => {});
   await page.click('.confirm [data-a="no"]');
   await page.click('#auto'); await page.click('.confirm [data-a="ok"]');

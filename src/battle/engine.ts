@@ -108,6 +108,21 @@ function heal(t: BUnit, amount: number): number {
   return v;
 }
 
+/**
+ * 部隊ごとの退却：自分の陣営の初期配置のマスにいる武将は、配下の兵を連れて戦場から必ず退ける（兵は失わず、深手にもならない）。
+ * 退いた駒は st.withdrawn に残る（戦略で、翌月の休養にする）。行動済みでも、自分の番なら退ける
+ */
+export function canWithdraw(st: BattleState, u: BUnit): boolean {
+  return st.winner === null && u.alive && u.kind === 'general' && u.side === st.turn && u.side === u.home && !disabled(u) && st.map.spawn[u.home].includes(u.pos);
+}
+
+/** 武将と配下の兵（こちらの陣営にいるもの）を戦場から退かせる */
+export function withdraw(st: BattleState, u: BUnit): void {
+  const who = st.units.filter((x) => x.alive && (x.id === u.id || (x.leader === u.id && x.side === u.home && x.home === u.home)));
+  for (const x of who) { x.alive = false; x.retreated = true; (st.withdrawn ??= []).push(x.id); }
+  log(st, 'withdraw', { unit: u.name, uid: u.id, n: who.length - 1 });
+}
+
 export function checkWinner(st: BattleState): void {
   if (st.winner !== null) return;
   const alive = (s: Side) => st.units.some((u) => u.alive && u.kind === 'general' && u.home === s);
@@ -431,6 +446,12 @@ export function apply(st: BattleState, a: Action): boolean {
       const act = openAct(st, u, 'wait', '', u.pos, 0);
       afterAction(st, u);
       closeAct(st, u, act);
+      return true;
+    }
+    case 'withdraw': {
+      if (!canWithdraw(st, u)) return false;
+      withdraw(st, u);
+      checkWinner(st);
       return true;
     }
   }

@@ -161,7 +161,9 @@ export interface BattleState {
   structures?: Record<number, { kind: TerrainKind; hp: number; max: number; def: number; closed: boolean; rubble: TerrainKind }>;
   /** 戦場の地形が変わった回数（造りが壊れると増える。描き直しの合図） */
   mapVersion?: number;
-  /** 退いた陣営（国モードの「退く」）。退いた陣営の負けで、戦略で重い罰を受ける */
+  /** 部隊ごとの退却で戦場から退いた駒（武将と兵の番号）。兵は失わず、武将は深手にならない（戦略で翌月の休養） */
+  withdrawn?: number[];
+  /** 退いた陣営（国モードの「退く」）。退いた陣営の負けで、初期配置のマスの外にいた部隊だけが重い罰を受ける */
   retreat?: Side;
   /** 戦闘の難しさ：自分と戦う相手の陣営（side）の、思考の賢さ（やさしい・ふつう・むずかしい）。数値は変えない */
   aiLevel?: { side: Side; level: 'easy' | 'normal' | 'hard' };
@@ -172,6 +174,8 @@ export type Action =
   | { type: 'skill'; unit: number; skill: string; target: number }
   | { type: 'tactic'; unit: number; tactic: string; target: number }
   | { type: 'wait'; unit: number }
+  /** 部隊ごとの退却：初期配置のマスにいる武将が、配下の兵を連れて戦場から退く */
+  | { type: 'withdraw'; unit: number }
   /** 造り（門・砦の門・柵）を壊す。通常攻撃の届くマスの、だれもいない造り */
   | { type: 'breach'; unit: number; target: number }
   | { type: 'endTurn' };

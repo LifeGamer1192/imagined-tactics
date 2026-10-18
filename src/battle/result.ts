@@ -36,7 +36,8 @@ export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary
     const g = gs.generals[u.generalId];
     if (!g) continue;
     if (u.kind === 'general') {
-      if (!u.alive) { sum.beaten.push(g.name.ja); sum.beatenSides.push(u.home); sum.beatenIds.push(g.id); }
+      // 退却した武将は、倒されたのではない（深手にしない）
+      if (!u.alive && !st.withdrawn?.includes(u.id)) { sum.beaten.push(g.name.ja); sum.beatenSides.push(u.home); sum.beatenIds.push(g.id); }
       const from = g.level;
       if (u.expGained > 0 && gainGeneralExp(g, u.expGained * D.combat.expGain, rng) > 0) sum.levelUps.push({ name: g.name.ja, from, to: g.level, side: u.home });
       continue;

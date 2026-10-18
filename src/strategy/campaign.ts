@@ -73,6 +73,8 @@ export interface Campaign {
   scoutMissions?: { gid: string; prov: number }[];
   /** 役職（P33）：相国 */
   offices?: { chancellor?: string };
+  /** 部隊ごとの退却のあと、休養している武将 → 休養の終わる月（tick。この月まで動けない） */
+  resting?: Record<string, number>;
   /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */
   reel?: ReelBattle[];
   /** 訓練（P30）：武将 → 1か月訓練かずっと訓練か */
@@ -286,6 +288,7 @@ export function recruitProblem(c: Campaign, g: GGeneral, unitId: string): string
   const f = c.gs.factions[g.faction];
   if (!f) return '勢力に仕えていません';
   if (!(unitId in provinceRecruit(c, g.prov))) return 'この領では雇えない兵種です';
+  if (isResting(c, g.id)) return '退却して休養中です';
   if (g.troops.length >= MAX_TROOPS) return `兵は${MAX_TROOPS}隊までです`;
   if (troopLoad(g) + D.byUnit[unitId].cost > g.command) return '采配力が足りません';
   // 軍略の兵（伝令・間者の系統）は本陣付きの少数の役なので、武将1人につき1隊まで
@@ -643,6 +646,7 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
     c.wounded[id] = c.gs.tick + months;
     note(c, 'wounded', { names: c.gs.generals[id].name.ja, months });
   }
+  restWithdrawn(c, battle);
   retreatPenalty(c, pb, battle, sum);
   afterBattle(c, pb, sum);
   dropGarrison(c, pb);
@@ -692,9 +696,25 @@ function giveCaught(c: Campaign, pb: PendingBattle, st: BattleState, caught: { t
  * 退いた陣営の罰（重い）：体力が半分を切った兵と、ほかの兵も一定の見込みで失う。兵糧を失う。武将は深手を負う。
  * 守り手が退いたときは、領も失う（勝敗で、ふつうに取られる）
  */
+/** 部隊ごとに退却した武将は、この月と翌月いっぱい休養（移動・攻め・政治の行動はできない。守りの出陣はできる） */
+function restWithdrawn(c: Campaign, st: BattleState): void {
+  for (const id of st.withdrawn ?? []) {
+    const u = st.units[id], g = u?.kind === 'general' ? c.gs.generals[u.generalId] : undefined;
+    if (!g || isGarrison(g.id)) continue;
+    (c.resting ??= {})[g.id] = c.gs.tick + 1;
+    c.moved.add(g.id);
+    note(c, 'resting', { name: g.name.ja });
+  }
+}
+
+/** 休養中か（部隊ごとの退却のあと） */
+export const isResting = (c: Campaign, gid: string): boolean => (c.resting?.[gid] ?? -1) >= c.gs.tick;
+
 function retreatPenalty(c: Campaign, pb: PendingBattle, st: BattleState, sum: BattleSummary): void {
   const side = st.retreat;
   if (side === undefined) return;
+  // 初期配置のマスにいた部隊は、退却（withdrawn）として軽く済んでいる。重い罰は、外にいた部隊だけ
+  if (!st.units.some((u) => u.home === side && u.alive)) return;
   const R = S.retreat, gs = c.gs;
   const fid = side === 0 ? pb.attacker : pb.defender, f = gs.factions[fid];
   const rng = new RNG(codeToSeed(`${gs.seed}:${gs.tick}:retreat:${pb.prov}:${fid}`));
@@ -966,6 +986,8 @@ export function finishMonth(c: Campaign): void {
   trainMonth(c);
   scoutMonth(c);
   c.moved.clear();
+  // 退却して休養中の武将は、この月も動けない（守りの出陣はできる）
+  for (const [gid, until] of Object.entries(c.resting ?? {})) { if (until >= gs.tick && gs.generals[gid]) c.moved.add(gid); else delete c.resting![gid]; }
   // 今月攻められなかった包囲は、守りが立て直されて進みが戻る
   for (const [k, sg] of Object.entries(c.sieges)) {
     if (sg.tick >= gs.tick - 1 && gs.factions[sg.by]) continue;

@@ -168,6 +168,23 @@ async function run(tag, ctxOpts) {
       ok(`[${tag}] 待機した駒は行動済み（済）、まだの駒は違う見た目`, p32.done && p32.readyOthers);
       await shot('battle_done_mark');
     }
+    // 部隊ごとの退却：初期配置のマスにいる武将を選ぶと「退却（この部隊）」が出る
+    const wd = await page.evaluate(() => {
+      const a = window.__app, st = a.st;
+      const g = st.units.find((u) => u.alive && u.kind === 'general' && u.side === st.turn && st.map.spawn[u.home].includes(u.pos));
+      if (!g) return false;
+      a.selected = g.id; a.mode = { type: 'idle' }; a.refresh();
+      return true;
+    });
+    if (wd) {
+      ok(`[${tag}] 初期配置のマスにいる武将には「退却（この部隊）」が出る`, !!(await page.$('#withdraw')));
+      await press('#withdraw');
+      await page.waitForSelector('.confirm');
+      ok(`[${tag}] 退却の窓に、兵を失わず翌月休養と出る`, /兵は失わず/.test(await page.textContent('.confirm')) && /休養/.test(await page.textContent('.confirm')));
+      await shot('battle_withdraw');
+      await press('.confirm [data-a="no"]');
+      await page.evaluate(() => { const a = window.__app; a.selected = null; a.refresh(); });
+    }
     // 全員待機の窓
     await press('#waitAll');
     await page.waitForSelector('.confirm');

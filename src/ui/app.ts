@@ -2,7 +2,7 @@
 
 import { autoBattle, nextAiActions, stanceOf } from '../ai/ai';
 import { personalityLabel, personalityOf } from '../ai/personality';
-import { apply, canAct, canMove, holder, moveCells } from '../battle/engine';
+import { apply, canAct, canMove, canWithdraw, holder, moveCells, withdraw } from '../battle/engine';
 import { mapFromProvince } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
 import { newCampaign, S, traitsOf, type Difficulty } from '../strategy/campaign';
@@ -1084,6 +1084,8 @@ export class App {
       }).join('');
       const br = act ? breachTargets(st, u) : [];
       if (br.length) actions += `<button data-breach="1" class="${this.mode.type === 'breach' ? 'on' : ''}" data-tip="届く所の門・砦の門・柵を通常攻撃で打って壊します。門と砦の門は、壊すまで攻め手は通れません。石火矢・大筒の系統は2倍、火の攻撃は1.5倍の力で壊します。壊れた門は道に、柵は平地になります。">壊す（門・柵） <small>${br.length}か所</small></button>`;
+      // 部隊ごとの退却：初期配置のマスにいる武将だけ
+      if (canWithdraw(st, u)) actions += `<button id="withdraw" data-tip="この武将と配下の兵が、戦場から必ず退きます。兵は失わず、深手にもなりません。武将は翌月いっぱい休養になります（守りの出陣だけできる）。自分の側の武将がみな退くと、この戦いは負けです">退却（この部隊）</button>`;
       actions += `<button id="wait" ${act ? '' : 'disabled'} class="${act && this.flashActions ? 'flash' : ''}">待機${act ? '' : `<small class="why">${esc(notAct)}</small>`}</button>`;
       actions += `<button id="cancel">${this.mode.type !== 'idle' ? (this.mode.type === 'breach' ? '壊すのをやめる' : '技・軍略をやめる') : '選択を解く'}</button>`;
       if (this.undo && this.undo.unit === u.id && !u.acted) actions += `<button id="undo">移動を取り消す</button>`;
@@ -1107,6 +1109,19 @@ export class App {
     const on = (id: string, fn: () => void) => { const b = this.root.querySelector<HTMLButtonElement>(id); if (b) b.onclick = fn; };
     on('#cancel', () => this.cancel());
     on('#wait', () => { this.act({ type: 'wait', unit: u!.id }); this.refresh(); });
+    on('#withdraw', async () => {
+      const g = u!;
+      const mine = st.units.filter((x) => x.alive && x.kind === 'general' && x.home === g.home && x.id !== g.id).length;
+      const ok = await confirmBox(this.root.querySelector('.battle')!, {
+        title: `${esc(g.name)}の部隊を退かせる`,
+        body: `<p>${esc(g.name)}と配下の兵が、戦場から退きます。兵は失わず、深手にもなりません。${esc(g.name)}は翌月いっぱい休養になります（守りの出陣だけできます）。</p>${mine ? '' : '<p><b>最後の武将なので、退くとこの戦いは負けになります。</b></p>'}`,
+        ok: '退却する', cancel: 'やめる', danger: !mine,
+      });
+      if (!ok || this.st !== st) return;
+      this.selected = null;
+      this.act({ type: 'withdraw', unit: g.id });
+      this.refresh();
+    });
     on('#undo', () => {
       clearTimeout(this.autoEndTimer);
       const x = this.undo!; const t = st.units[x.unit];
@@ -1136,15 +1151,21 @@ export class App {
     on('#retreat', async () => {
       const side = [...this.human][0] as Side, R = S.retreat;
       const lose = side === 1 ? '<li>守っている領は、相手に取られる</li>' : '';
+      // 初期配置のマスにいる部隊は、軽く退ける（翌月の休養だけ）。外にいる部隊には、これまでの重い罰
+      const safe = st.units.filter((x) => x.alive && x.kind === 'general' && x.home === side && x.side === side && st.map.spawn[side].includes(x.pos));
+      const outside = st.units.filter((x) => x.alive && x.kind === 'general' && x.home === side && !safe.includes(x));
       const ok = await confirmBox(frame, {
-        title: '戦いから退く', danger: true,
-        body: `<p>この戦いから退きます。<b>${esc(st.sideNames[side])}の負け</b>になり、次の重い罰があります。</p>
+        title: '戦いから退く', danger: outside.length > 0,
+        body: `<p>この戦いから退きます。<b>${esc(st.sideNames[side])}の負け</b>になります。${lose ? '守っている領は、相手に取られます。' : ''}</p>
+          ${safe.length ? `<p>初期配置のマスにいる部隊（${safe.map((x) => esc(x.name)).join('・')}）は、兵を失わずに退けます。翌月いっぱい休養（守りの出陣だけできる）になります。</p>` : ''}
+          ${outside.length ? `<p>初期配置のマスの外にいる部隊（${outside.map((x) => esc(x.name)).join('・')}）には、重い罰があります。</p>
           <ul class="small">${lose}<li>体力が${Math.round(R.troopLossBelowHp * 100)}%を切った兵は失う</li><li>ほかの兵も、${Math.round(R.troopLossChance * 100)}%の見込みで失う</li><li>兵糧の${R.supplyLossPct}%を失う</li><li>武将は${R.woundMonths}か月の深手を負う（戦えない）</li></ul>
-          <p class="dim small">倒されずに残った兵の多くは連れて帰れます。全滅しそうなときの手です。</p>`,
+          <p class="dim small">武将を初期配置のマスまで戻してから退けば、罰はほとんどありません（武将の「退却」でも、部隊ごとに退けます）。</p>` : ''}`,
         ok: '退く', cancel: '戦いを続ける',
       });
       if (!ok || this.st !== st || st.winner !== null) return;
       clearTimeout(this.aiTimer);
+      for (const g of safe) if (g.alive) withdraw(st, g);
       st.retreat = side; st.winner = (1 - side) as Side;
       st.log.push({ key: 'retreatAll', vars: { side: st.sideNames[side], winner: st.sideNames[1 - side] } });
       this.selected = null; this.finish();
