@@ -85,5 +85,6 @@ describe('battle map', () => {
       // 地形に変化がある
       expect(kinds.size, f).toBeGreaterThanOrEqual(4);
     }
-  });
+    // すべての領の地図を作るので、ほかの試験と同時に走ると5秒を超えることがある
+  }, 30_000);
 });
