@@ -36,11 +36,15 @@ export type AiLevel = 'easy' | 'normal' | 'hard';
  * leaderSafe：将が倒れると配下の兵がみな退くので、率いる兵が多い将ほど危険を重く見る（兵6隊で 1+この値 倍）
  * firstStrike：攻めずに敵の届く所に立つのを嫌う（届く敵1体ごとの減点。攻め手は半分、時間が押すほど小さく）
  * buddy：危ない場所に立つなら、味方の隣を好む（隣の味方1体ごとの加点、2体まで）
+ * lookahead：先読み。番の初めに、方針（いつもどおり・押す・固める）ごとに盤を写して、この手数（自分の番＝1、相手の番まで＝2）だけ試し、いちばん良い方針で動く（0 なら使わない）
+ * lookaheadRolls：先読みで、方針ごとに試す回数（出目を変えて平均する。どの方針も同じ出目の並び）
+ * lookaheadMedian：先読みの盤では出目をいつも真ん中にする（運のぶれを消す。試すのは1回）
+ * lookaheadControl：先読みの盤の評価での、盤の重みづけ（押さえているマス1つの点。天守のまわりは5倍）
  * exactReach：敵の攻撃が届くかを、移動力＋射程の距離でなく、実際に歩ける道のり（城壁・川・山・壁になる駒）で読む
  * focus：この一撃で倒せなくても、まだ動いていない味方と合わせて倒せる相手なら、倒す価値のこの割合を見込む（集中攻撃）
  * leaderKill：将を倒すと配下の兵がみな退くので、配下の兵の価値を、将を倒す（削る）価値に足す（割合）
  */
-export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number; leaderKill?: number; leaderSafe?: number; firstStrike?: number; buddy?: number; focus?: number; exactReach?: boolean }
+export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number; leaderKill?: number; leaderSafe?: number; firstStrike?: number; buddy?: number; focus?: number; exactReach?: boolean; lookahead?: number; lookaheadControl?: number; lookaheadRolls?: number; lookaheadMedian?: boolean }
 export const AI = aiJson as unknown as AiConfig;
 
 export const NEUTRAL: Personality = { aggression: 0, caution: 0, discipline: 0, cunning: 0, cruelty: 0, care: 0, honor: 0 };

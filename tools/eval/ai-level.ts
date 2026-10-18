@@ -14,6 +14,18 @@ const saves = await Promise.all(SAVES.map(async (n) => (await readSaveFile(new U
 const full = { ...AI.levels.hard.smart } as SmartConfig;
 const off: SmartConfig = { bestFirst: false, withdrawHp: 0, withdraw: 0, terrainAware: false, surround: 0, surrounded: 0, mpThrift: 0, attackerPush: 0, keepPush: 0 };
 const variants: Record<string, { level: 'normal' | 'hard'; smart?: SmartConfig; lv?: Record<string, number> }> = {
+  '+look2r1': { level: 'hard', smart: { ...full, lookahead: 2 } },
+  '+look2r2': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadRolls: 2 } },
+  '+look2r2c': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadRolls: 2, lookaheadControl: 3 } },
+  '+look3r2': { level: 'hard', smart: { ...full, lookahead: 3, lookaheadRolls: 2 } },
+  '+look2m': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadMedian: true } },
+  '+look2mc': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadMedian: true, lookaheadControl: 3 } },
+  '+look3m': { level: 'hard', smart: { ...full, lookahead: 3, lookaheadMedian: true } },
+  '+look1m': { level: 'hard', smart: { ...full, lookahead: 1, lookaheadMedian: true } },
+  '+look1': { level: 'hard', smart: { ...full, lookahead: 1 } },
+  '+look2': { level: 'hard', smart: { ...full, lookahead: 2 } },
+  '+look2c': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadControl: 3 } },
+  '+look3c': { level: 'hard', smart: { ...full, lookahead: 3, lookaheadControl: 3 } },
   'sally1.1': { level: 'hard', smart: full, lv: { sallyStrengthRatio: 1.1 } },
   'sally2': { level: 'hard', smart: full, lv: { sallyStrengthRatio: 2 } },
   'retreat0.2': { level: 'hard', smart: full, lv: { retreatHp: 0.2 } },

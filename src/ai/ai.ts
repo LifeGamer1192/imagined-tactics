@@ -17,6 +17,7 @@ import {
   tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { MinHeap } from '../core/heap';
+import { RNG, codeToSeed } from '../core/rng';
 import { reach, stepCost } from '../rules/move';
 import { attackPower, basicSkill, disabled, has, moveOf, outOfCommand, skillOf, skillRange, terrainMod } from '../rules/stats';
 import { AI, NEUTRAL, weightsFor, type Personality, type SmartConfig } from './personality';
@@ -77,6 +78,13 @@ function levelOf(st: BattleState, u: BUnit) {
 }
 
 export function stanceOf(st: BattleState, u: BUnit): Stance {
+  const s = baseStance(st, u);
+  // 先読み（むずかしい）で選んだ方針が構えを決めていれば、それに従う（退却はそのまま）
+  const forced = s !== 'retreat' ? policyStance(st, u) : undefined;
+  return forced ?? s;
+}
+
+function baseStance(st: BattleState, u: BUnit): Stance {
   const leader = st.units[u.leader];
   const lv = levelOf(st, u);
   const S = { ...AI.stance, ...(lv?.sallyAggression !== undefined ? { sallyAggression: lv.sallyAggression } : {}), ...(lv?.sallyStrengthRatio !== undefined ? { sallyStrengthRatio: lv.sallyStrengthRatio } : {}), ...(lv?.retreatHp !== undefined ? { retreatHp: lv.retreatHp } : {}), ...(lv?.engageDistance !== undefined ? { engageDistance: lv.engageDistance } : {}) };
@@ -477,6 +485,9 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   // 戦闘の難しさ：自分と戦う相手の駒は、思考の重みを変える（やさしいは、ばらつきが大きく危険や地形を気にしない。むずかしいは、その逆）
   const lv = levelOf(st, u);
   if (lv) for (const [k, m] of Object.entries(lv.weights)) if (k in w) w[k] *= m;
+  // 先読み（むずかしい）で選んだ方針の重み
+  const pol = policyFor(st, u.side);
+  if (pol) for (const [k, m] of Object.entries(POLICY[pol].w)) if (k in w) w[k] *= m;
   // 技の時機（むずかしい）：気力を使う技・軍略は、効き目が大きいときに取っておく
   if (lv?.smart?.mpThrift) w.mp *= lv.smart.mpThrift;
   // 大将狙い（むずかしい）：武将を全員倒せば勝ち。武将への攻撃を、さらに重く見る
@@ -581,7 +592,11 @@ export function nextAiActions(st: BattleState): Action[] {
     .sort((a, b) => orderOf(st, a, foes) - orderOf(st, b, foes) || a.id - b.id);
   // よい順に動く（むずかしい）：決まった順番でなく、行動で増える点がいちばん大きい駒から動く。とどめを刺せる駒が先に動き、ほかの駒は残りを見て動く
   const smart = st.aiLevel && st.aiLevel.side === st.turn ? AI.levels[st.aiLevel.level].smart : undefined;
-  if (smart?.bestFirst) {
+  const sim = SIM.has(st);
+  // 先読み（むずかしい）：番の初めに、方針ごとに先を試して、いちばん良い方針を選ぶ（試しの盤の中では先読みしない）
+  if (smart?.lookahead && !sim) choosePolicy(st, smart);
+  // 試しの盤の中では、軽く読むため、決まった順番で動かす
+  if (smart?.bestFirst && !sim) {
     let pick: UnitPlan | null = null;
     for (const u of order) {
       const p = planUnitDetailed(st, u);
@@ -614,6 +629,101 @@ export function runAiTurn(st: BattleState): void {
     }
   }
   if (st.winner === null && st.turn === side) endTurn(st);
+}
+
+// ---------------------------------------------------------------- 先読み（むずかしい）
+// 番の初めに、方針（いつもどおり・押す・固める）ごとに、盤を写して自分の番と相手の番（lookahead 手ぶん）を試し、
+// できた盤を評価して、いちばん良い方針でこの番を動かす。
+//   ・試しの盤は別の乱数で動かす（本物の戦いの出目は覗かない）
+//   ・試しの盤の中では、軽い読み方（決まった順番。先読みはしない）で動かす。相手はふつうの思考
+//   ・盤の評価：残っている力（体力×攻撃力。将は率いる兵の数だけ重い）の差 ＋ 盤の重みづけ（押さえているマス。天守のまわりは重い） ＋ 天守の占拠
+
+type PolicyId = 'base' | 'push' | 'guard';
+/** 方針：重みの掛け目と、決める構え（守り手だけ／攻め手だけ） */
+const POLICY: Record<PolicyId, { w: Record<string, number>; defender?: Stance; attacker?: Stance }> = {
+  base: { w: {} },
+  push: { w: { threat: 0.5, deathRisk: 0.6, approach: 1.6 }, defender: 'advance', attacker: 'advance' },
+  guard: { w: { threat: 1.6, deathRisk: 1.5, approach: 0.5 }, defender: 'hold', attacker: 'engage' },
+};
+/** 盤ごとに、その番に選んだ方針 */
+const chosenPolicy = new WeakMap<BattleState, { key: string; policy: PolicyId }>();
+/** 先読みのための試しの盤 */
+const SIM = new WeakSet<BattleState>();
+const policyKey = (st: BattleState, side: number): string => `${st.round}:${side}`;
+
+function policyFor(st: BattleState, side: number): PolicyId | undefined {
+  const c = chosenPolicy.get(st);
+  return c && c.key === policyKey(st, side) && c.policy !== 'base' ? c.policy : undefined;
+}
+function policyStance(st: BattleState, u: BUnit): Stance | undefined {
+  const pol = policyFor(st, u.side);
+  return pol ? (u.home === 0 ? POLICY[pol].attacker : POLICY[pol].defender) : undefined;
+}
+
+/** 出目がいつも真ん中の乱数（先読みで、運のぶれを消して方針の差だけを見るため） */
+class MedianRNG extends RNG {
+  override float(): number { return 0.4999; }
+}
+
+/** 盤を写す（駒・造り・天守・地形。乱数は別のものにする。median なら出目はいつも真ん中） */
+function cloneBattle(st: BattleState, seed: number, median = false): BattleState {
+  return {
+    ...st,
+    map: { ...st.map, terrain: [...st.map.terrain] },
+    units: st.units.map((u) => ({ ...u, statuses: u.statuses.map((s) => ({ ...s })) })),
+    rng: median ? new MedianRNG(seed) : new RNG(seed), log: [],
+    hold: st.hold ? { ...st.hold } : undefined,
+    structures: st.structures ? Object.fromEntries(Object.entries(st.structures).map(([k, v]) => [k, { ...v }])) : undefined,
+  };
+}
+
+/** 盤の評価（side から見て。大きいほど良い） */
+export function evaluateBattle(st: BattleState, side: number, control = 0): number {
+  if (st.winner !== null) return st.winner === side ? 1e6 : -1e6;
+  let v = 0;
+  const alive = st.units.filter((u) => u.alive);
+  for (const u of alive) {
+    const followers = u.kind === 'general' ? alive.filter((x) => x.leader === u.id && x.id !== u.id).length : 0;
+    v += (u.side === side ? 1 : -1) * (u.hp * attackPower(st, u) / 100 + 30) * (1 + 0.3 * followers);
+  }
+  if (st.hold) v += (side === 0 ? 1 : -1) * st.hold.count * AI.castle.hold;
+  // 盤の重みづけ：どちらの力がよく届くマスか。天守とそのまわりは5倍
+  if (control) {
+    const g = st.map.grid;
+    for (let c = 0; c < g.n; c++) {
+      if (st.map.terrain[c] === 'void') continue;
+      let mine = 0, theirs = 0;
+      for (const u of alive) {
+        if (g.distance(u.pos, c) > moveOf(u) + 1) continue;
+        const p = u.hp * attackPower(st, u) / 100;
+        if (u.side === side) mine += p; else theirs += p;
+      }
+      if (mine === theirs) continue;
+      const wt = st.hold && g.distance(c, st.hold.cell) <= 1 ? 5 : 1;
+      v += control * wt * (mine > theirs ? 1 : -1);
+    }
+  }
+  return v;
+}
+
+function choosePolicy(st: BattleState, smart: SmartConfig): void {
+  const side = st.turn, key = policyKey(st, side);
+  if (chosenPolicy.get(st)?.key === key) return;
+  let best: PolicyId = 'base', bestV = -Infinity;
+  // どの方針も同じ出目の並びで試す（方針の差を、運の差と分けるため）。rolls 回試して平均する
+  const median = !!smart.lookaheadMedian, rolls = median ? 1 : Math.max(1, smart.lookaheadRolls ?? 1);
+  for (const pol of ['base', 'push', 'guard'] as const) {
+    let v = 0;
+    for (let r = 0; r < rolls; r++) {
+      const sim = cloneBattle(st, codeToSeed(`${st.rng.seed0}:look:${key}:${r}`), median);
+      SIM.add(sim);
+      chosenPolicy.set(sim, { key, policy: pol });
+      for (let ply = 0; ply < smart.lookahead! && sim.winner === null; ply++) runAiTurn(sim);
+      v += evaluateBattle(sim, side, smart.lookaheadControl ?? 0) / rolls;
+    }
+    if (v > bestV) { bestV = v; best = pol; }
+  }
+  chosenPolicy.set(st, { key, policy: best });
 }
 
 /** 決着がつくまで両陣営を自動で進める（テスト・バランス調整用） */
