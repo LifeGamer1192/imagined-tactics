@@ -13,6 +13,8 @@ import {
 import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
 import { profileHtml } from './profile';
 import { toggleTrainAlways, trainMult, trainOnce, trainProblem } from '../strategy/training';
+import { envoyBonus, envoyPlan, envoyProblem, giftBonus, sendEnvoy, type DipKind } from '../strategy/envoy';
+import { factionStrength } from '../strategy/events';
 import { appointChancellor, approx, missionGain, officeGain, roughCount, scoutOf, scoutProblem, scoutTier, sendScout, type ScoutTier } from '../strategy/scouting';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
@@ -76,6 +78,8 @@ const LOG_TEXT: Record<string, string> = {
   train: '{name}が訓練した（経験値{exp}・×{mult}{lv}{troops}）',
   trainEvent: '【訓練】{name}：{text}',
   scouted: '{name}が{prov}を偵察した（偵察度{v}）',
+  envoy: '{name}を使者として{faction}へ送った（土産：兵糧{gift}。心証{from}→{to}）',
+  envoyRefused: '{faction}に断られた（{why}）',
   tieJoin: '{name}は、戦場で出会った{friend}との縁で{faction}に仕えた',
   surrender: '{name}が{faction}に降った',
   defect: '{name}が{from}を見限り、{to}へ寝返った',
@@ -717,20 +721,65 @@ export class CampaignScreen {
     const btn = (kind: string, label: string, problem: string | null) =>
       `<button data-dip="${kind}" data-to="${other}" ${problem ? `disabled title="${esc(problem)}"` : ''}>${label}</button>${problem ? `<span class="dim small">${esc(problem)}</span>` : ''}`;
     const opinion = Math.round(c.gs.factions[other].opinions[me] ?? 0);
+    // 同盟・停戦・加勢・親善は、使者と土産を選ぶ窓を開く（受けてもらえるかの見込みは窓の中で出す）
+    const envoy = (kind: DipKind, label: string, enemy?: number) => `<button data-envoy="${kind}" data-to="${other}" ${enemy !== undefined ? `data-enemy="${enemy}"` : ''}>${label}</button>`;
     let buttons = '';
-    if (rel === 'neutral') buttons = btn('ally', '同盟を申し込む', allianceProblem(c, me, other)) + btn('war', '戦を仕掛ける', null);
-    else if (rel === 'war') buttons = btn('truce', '停戦を申し込む', truceProblem(c, me, other));
+    if (rel === 'neutral') buttons = envoy('ally', '同盟を申し込む') + btn('war', '戦を仕掛ける', null);
+    else if (rel === 'war') buttons = envoy('truce', '停戦を申し込む');
     else if (rel === 'ally') {
       // 味方には、今戦っている相手への加勢を頼める
       for (const e of playerEnemies(c)) {
-        if (e === other) continue;
-        const problem = callProblem(c, other, e);
-        if (problem === 'すでに戦っています') continue;
-        buttons += `<button data-call="${other}" data-enemy="${e}" ${problem ? `disabled title="${esc(problem)}"` : ''}>${esc(c.gs.factions[e].name.ja)}への加勢を頼む</button>${problem ? `<span class="dim small">${esc(problem)}</span>` : ''}`;
+        if (e === other || callProblem(c, other, e) === 'すでに戦っています') continue;
+        buttons += envoy('call', `${esc(c.gs.factions[e].name.ja)}への加勢を頼む`, e);
       }
       if (c.gs.alliances.some(([x, y]) => (x === me && y === other) || (x === other && y === me))) buttons += btn('break', '同盟を破る', null);
     }
+    buttons += envoy('goodwill', '親善の使者を送る');
     return `<div class="dip"><span class="dim">外交（相手の心証 ${opinion}）</span>${buttons}</div>`;
+  }
+
+  /**
+   * 外交の窓（P34）：相手のようす（関係・心証・力の比べ）、使者（外交の能力で心証に上乗せ）と土産（兵糧）を選び、
+   * 選ぶたびに見込み（申し込めるか・受けてもらえるか・心証がいくつになるか）を書き換える。申し込むと使者はその月行動済み
+   */
+  private async openEnvoy(kind: DipKind, other: number, enemy?: number): Promise<void> {
+    const c = this.c, gs = c.gs, me = gs.factions[c.player], f = gs.factions[other];
+    if (!me || !f) return;
+    const TEXT: Record<DipKind, [string, string]> = {
+      ally: ['同盟を申し込む', '結べば互いに攻め合えなくなり、加勢を頼み合えます。受けてもらえるかは、相手の心証しだいです。'],
+      truce: ['停戦を申し込む', `結べば${S.diplomacy.truceMonths}か月のあいだ互いに攻め合えなくなります。相手が大きく優勢だと受けませんが、使者と土産で基準がゆるみます。`],
+      call: ['加勢を頼む', `${enemy !== undefined ? esc(gs.factions[enemy]?.name.ja ?? '') : ''}との戦に、この味方を引き入れます。受けてもらえるかは、相手の心証しだいです。`],
+      goodwill: ['親善の使者を送る', '申し込みはせず、使者と土産で相手の心証を上げます。'],
+    };
+    const gens = Object.values(gs.generals).filter((g) => g.faction === c.player && !envoyProblem(c, g))
+      .sort((a, b) => envoyBonus(b) - envoyBonus(a) || a.id.localeCompare(b.id));
+    const rel = REL_NAME[relation(c, c.player, other)];
+    const mine = Math.round(factionStrength(c, c.player)), theirs = Math.round(factionStrength(c, other));
+    const body = `<div class="envoy">
+      <table class="pf-stats"><tr><th>相手</th><td>${factionBadge(f.name.ja, f.color)}（${rel}）</td></tr>
+        <tr><th>心証</th><td>${Math.round(f.opinions[c.player] ?? 0)}</td></tr>
+        <tr><th>力の比べ</th><td>こちら${mine}／相手${theirs}</td></tr></table>
+      <p>${TEXT[kind][1]}</p>
+      ${gens.length ? `<label>使者 <select id="envWho">${gens.map((g) => `<option value="${g.id}">${esc(g.name.ja)}（外交${g.ab[2]}・心証${envoyBonus(g) >= 0 ? '+' : ''}${envoyBonus(g)}）</option>`).join('')}</select></label>` : '<p class="dim">使者に出せる武将がいません（今月まだ動いていない武将が要ります）</p>'}
+      <label>土産 <select id="envGift">${S.envoy.gifts.map((n) => `<option value="${n}" ${n > me.supply ? 'disabled' : ''}>${n ? `兵糧${n}（心証+${giftBonus(n)}）` : 'なし'}</option>`).join('')}</select></label>
+      <div id="envPlan" class="small"></div>
+      <p class="dim small">使者はその月は行動済みになります。申し込むと、受けてもらえなくても、使者と土産は使い、上がった心証は残ります。</p></div>`;
+    const pending = confirmBox(this.frame(), { title: `${esc(f.name.ja)}へ：${TEXT[kind][0]}`, banner: sceneUrl('envoy', gs.variant), body, ok: kind === 'goodwill' ? '使者を送る' : '申し込む' });
+    const box = this.frame().querySelector<HTMLElement>('.confirm')!;
+    const who = box.querySelector<HTMLSelectElement>('#envWho'), gift = box.querySelector<HTMLSelectElement>('#envGift')!;
+    const okBtn = box.querySelector<HTMLButtonElement>('[data-a="ok"]')!;
+    const update = (): void => {
+      const plan = envoyPlan(c, kind, other, who?.value ?? '', Number(gift.value), enemy);
+      okBtn.disabled = !!plan.blocked;
+      box.querySelector('#envPlan')!.innerHTML = plan.blocked ? `<b class="ng">申し込めません：${esc(plan.blocked)}</b>`
+        : `心証 ${plan.opinionNow} → <b>${plan.opinionAfter}</b>（+${plan.bonus}）<br>${kind === 'goodwill' ? '心証が上がります' : plan.refused ? `<b class="ng">断られる見込み：${esc(plan.refused)}</b>` : '<b class="okc">受けてもらえる見込み</b>'}`;
+    };
+    who?.addEventListener('change', update); gift.addEventListener('change', update);
+    update();
+    if (!(await pending)) return;
+    const r = sendEnvoy(c, kind, other, who?.value ?? '', Number(gift.value), enemy);
+    if (r.sent) toast(kind === 'goodwill' ? '使者を送りました' : r.accepted ? '受けてもらえました' : '断られました');
+    this.refresh();
   }
 
   /** 史実の領の動きで、自分の家にかかわるもの（受けるか断るかを選ぶ。放っておくと断ったことになる） */
@@ -1057,6 +1106,9 @@ export class CampaignScreen {
     });
     root.querySelectorAll<HTMLButtonElement>('[data-call]').forEach((b) => {
       b.onclick = () => { if (callToArms(c, Number(b.dataset.call), Number(b.dataset.enemy))) this.refresh(); };
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-envoy]').forEach((b) => {
+      b.onclick = () => { void this.openEnvoy(b.dataset.envoy as DipKind, Number(b.dataset.to), b.dataset.enemy !== undefined ? Number(b.dataset.enemy) : undefined); };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-dip]').forEach((b) => {
       b.onclick = async () => {

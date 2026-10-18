@@ -56,9 +56,9 @@ for (const vp of [{ width: 1280, height: 800 }, { width: 390, height: 780 }]) {
     s.selected = p.id; s.refresh();
     return c.gs.factions[p.owner].name.ja;
   });
-  ok(tag + '中立の勢力の領で外交のボタンが出る', !!(await page.$('[data-dip="war"]')) && !!(await page.$('[data-dip="ally"]')), rel);
+  ok(tag + '中立の勢力の領で外交のボタンが出る', !!(await page.$('[data-dip="war"]')) && !!(await page.$('[data-envoy="ally"]')), rel);
   await page.click('[data-dip="war"]'); await page.click('.confirm [data-a="ok"]');
-  ok(tag + '戦を仕掛けると交戦中になり、停戦のボタンに変わる', (await page.textContent('#panel')).includes('交戦中') && !!(await page.$('[data-dip="truce"]')));
+  ok(tag + '戦を仕掛けると交戦中になり、停戦のボタンに変わる', (await page.textContent('#panel')).includes('交戦中') && !!(await page.$('[data-envoy="truce"]')));
   // 昇進：当主の兵を高いレベルにして、昇進のボタンを押す
   const before = await page.evaluate(() => {
     const s = window.__campaign, c = s.c, f = c.gs.factions[c.player], lord = c.gs.generals[f.lordId];

@@ -12,6 +12,8 @@ export const S = strategyJson as unknown as {
   /** 戦いから退いたときの罰：体力がこの割合を切った兵は失う・ほかの兵も見込みで失う・兵糧を失う（%）・武将の深手（月） */
   retreat: { troopLossBelowHp: number; troopLossChance: number; supplyLossPct: number; woundMonths: number };
   /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段・戦うときの攻撃と防御（%） */
+  /** 使者と土産（P34）：外交1あたりの心証の上乗せ（5を超えたぶん）・心証1あたりの兵糧・停戦の基準のゆるみ（上乗せ÷）・土産の選択肢（兵糧） */
+  envoy: { perDiplomacy: number; supplyPerOpinion: number; truceRelaxPer: number; gifts: number[] };
   /**
    * 偵察度（P33）：始めの隣の領・味方の領の下限・毎月の隣の上がりと、ほかの薄れ・偵察の上がり（基本＋知略×）・相国（外交×、届く歩数）・見える量の境（すべて・名前・おおまか）
    */
