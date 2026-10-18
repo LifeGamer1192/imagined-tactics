@@ -102,6 +102,8 @@ export interface GProvince {
   cy: number;
   /** 舞台の外（どの勢力の領も無い陸のかたまりにある領）。地図に描かず、行くことも攻めることもできない */
   out?: boolean;
+  /** この領で雇える兵種と選ばれやすさ（P37。はじめの持ち主の国の土台＋この領の土地の兵）。無い古いセーブは持ち主の勢力の一覧 */
+  recruit?: Record<string, number>;
 }
 
 export interface GameStart {

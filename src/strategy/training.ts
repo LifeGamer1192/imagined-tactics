@@ -12,7 +12,7 @@ import { makeTroop } from '../convert/convert';
 import type { GGeneral } from '../convert/model';
 import { D, L } from '../data/db';
 import { gainGeneralExp, gainTroopExp, generalExpToNext, troopExpToNext } from '../rules/growth';
-import { MAX_TROOPS, note, recruitLevel, toReserve, troopLoad, type Campaign } from './campaign';
+import { MAX_TROOPS, note, provinceRecruit, recruitLevel, toReserve, troopLoad, type Campaign } from './campaign';
 import { S } from './config';
 
 export type TrainMode = 'once' | 'always';
@@ -83,7 +83,7 @@ export function trainMonth(c: Campaign): void {
         event = `訓練の場で${D.items[item]?.[gs.variant] ?? item}を見つけた`;
       } else if (kind === 1) {
         const f = gs.factions[g.faction];
-        const units = Object.keys(f.recruit).filter((u) => D.byUnit[u]).sort();
+        const units = Object.keys(provinceRecruit(c, g.prov)).filter((u) => D.byUnit[u]).sort();
         if (units.length) {
           const u = units[c.rng.int(0, units.length - 1)], t = makeTroop(D.byUnit[u], recruitLevel(c, u, f));
           if (troopLoad(g) + D.byUnit[u].cost <= g.command && g.troops.length < MAX_TROOPS) { g.troops.push(t); event = `訓練を見た若者が加わり、${L(D.byUnit[u].name)}が1隊増えた`; }

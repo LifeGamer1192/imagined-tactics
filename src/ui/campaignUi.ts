@@ -8,7 +8,7 @@ import { StrategyView } from '../render/strategyView';
 import {
   autoMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
   declareWar, dismissTroop, garrisonOf, recruit, recruitCost, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
-  S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, type ReelBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
+  S, supplyCap, provinceRecruit, isNativeUnit, type Campaign, type CampaignLog, type PendingBattle, type ReelBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
 import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
 import { profileHtml } from './profile';
@@ -83,6 +83,7 @@ const LOG_TEXT: Record<string, string> = {
   scouted: '{name}が{prov}を偵察した（偵察度{v}）',
   envoy: '{name}を使者として{faction}へ送った（土産：兵糧{gift}。心証{from}→{to}）',
   envoyRefused: '{faction}に断られた（{why}）',
+  caught: '【捕獲】{from}の{unit}を捕まえ、{to}に加えた（Lv{lv}）',
   tieJoin: '{name}は、戦場で出会った{friend}との縁で{faction}に仕えた',
   surrender: '{name}が{faction}に降った',
   defect: '{name}が{from}を見限り、{to}へ寝返った',
@@ -684,8 +685,10 @@ export class CampaignScreen {
     let rec = '';
     if (own) {
       const f = c.gs.factions[g.faction];
-      const opts = Object.keys(f.recruit).filter((u) => !recruitProblem(c, g, u))
-        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（兵糧${recruitCost(u, f, isExclave(c, g.prov))}）</option>`).join('');
+      // 武将のいる領で雇える兵種から（P37）。初めから雇えた兵種でなければ、兵糧が2倍
+      const opts = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u))
+        .sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))
+        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（兵糧${recruitCost(u, f, isExclave(c, g.prov))}${isNativeUnit(f, u) ? '' : '・新しい兵種で2倍'}）</option>`).join('');
       rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button></span>` : '';
       // 昇進：武将は役職、兵は兵種。条件を満たした昇進先だけをボタンにする
       const ups: string[] = [];
@@ -725,6 +728,21 @@ export class CampaignScreen {
     if (tier === 'names') return `人口${approx(p.pop)} 収入${approx(p.income)} 城${Math.round(p.fort * 10) * 10}%前後${sea}`;
     if (tier === 'rough') return `城は${p.fort >= 0.6 ? '固い' : p.fort >= 0.3 ? 'ふつう' : '弱い'}らしい${sea}`;
     return `様子が分からない${sea}`;
+  }
+
+  /** 領で雇える兵種（P37）：自分の領は雇える兵種（新しい兵種は2倍）、よく分かっている他国の領は、奪えば新しく雇える兵種 */
+  private recruitLine(prov: number, own: boolean, tier: ScoutTier): string {
+    const c = this.c, me = c.gs.factions[c.player];
+    if (!me) return '';
+    const ids = Object.keys(provinceRecruit(c, prov)).filter((u) => D.byUnit[u]);
+    const name = (u: string): string => esc(L(D.byUnit[u].name));
+    if (own) {
+      const fresh = ids.filter((u) => !isNativeUnit(me, u));
+      return `<div class="small">この領で雇える兵種：${ids.filter((u) => isNativeUnit(me, u)).map(name).join('・') || 'なし'}${fresh.length ? `　<span class="okc">新しい兵種（兵糧2倍）：${fresh.map(name).join('・')}</span>` : ''}</div>`;
+    }
+    if (tier !== 'full') return '';
+    const gain = ids.filter((u) => !isNativeUnit(me, u) && !Object.values(c.gs.provinces).some((q) => q.owner === me.id && u in provinceRecruit(c, q.id)));
+    return gain.length ? `<div class="small"><span class="okc">奪えば雇える新しい兵種：${gain.map(name).join('・')}</span></div>` : '';
   }
 
   /** 偵察度の欄：いまの偵察度と、偵察させるボタン（武将を選ぶ） */
@@ -967,6 +985,7 @@ export class CampaignScreen {
           ${town ? `<img class="town" src="${town}" alt="" draggable="false">` : ''}
           <div><b>${esc(p.name.ja)}</b> ${owner ? factionBadge(owner.name.ja, owner.color) : '<span class="dim">持ち主なし</span>'}<span class="dim">${rel}${owner?.capital === p.id ? '・本拠' : ''}</span></div>
           <div class="dim">${this.provStats(p.id, tier)}</div>
+          ${this.recruitLine(p.id, own, tier)}
           ${owner && isExclave(c, p.id) ? this.exclaveHtml(p.id) : ''}
           ${this.previewHtml(p.id)}
         </div>

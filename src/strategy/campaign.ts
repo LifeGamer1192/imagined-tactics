@@ -10,7 +10,7 @@ import type { HWorld } from '../bridge/histsim';
 import { makeGarrison, makeTroop } from '../convert/convert';
 import type { GFaction, GGeneral, GProvince, GTroop, GameStart } from '../convert/model';
 import { RNG, codeToSeed } from '../core/rng';
-import { D } from '../data/db';
+import { D, L } from '../data/db';
 import { NEUTRAL, personalityOf, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
@@ -234,10 +234,20 @@ export function strengthOf(g: GGeneral): number {
 }
 const strengthSum = (gs: GGeneral[]): number => gs.slice(0, MAX_GENERALS).reduce((s, g) => s + strengthOf(g), 0);
 
-/** 徴兵の費用。勢力を渡すと、勢力の特色による割引を入れる */
+/** 領で雇える兵種と選ばれやすさ（P37）。無い古いセーブは、持ち主の勢力の一覧 */
+export function provinceRecruit(c: Campaign, prov: number): Record<string, number> {
+  const p = c.gs.provinces[prov];
+  return p?.recruit ?? c.gs.factions[p?.owner ?? -1]?.recruit ?? {};
+}
+
+/** 勢力が初めから雇えた兵種か（違えば、雇うのに兵糧が2倍。P37） */
+export const isNativeUnit = (f: GFaction, unitId: string): boolean => unitId in f.recruit;
+
+/** 徴兵の費用。勢力を渡すと、勢力の特色による割引と、初めから雇えた兵種でないときの2倍（P37）を入れる */
 export function recruitCost(unitId: string, f?: GFaction, exclave = false): number {
   const u = D.byUnit[unitId];
   let mult = exclave ? S.exclave.recruitCostMult : 1;
+  if (f && !isNativeUnit(f, unitId)) mult *= S.newUnitCostMult;
   if (f) for (const t of traitsOf(f)) if (t.cost?.lines.includes(u.line)) mult *= t.cost.mult;
   return Math.round(u.cost * SUPPLY.recruitCostMult * mult);
 }
@@ -275,7 +285,7 @@ export const troopLoad = (g: GGeneral): number => g.troops.reduce((s, t) => s + 
 export function recruitProblem(c: Campaign, g: GGeneral, unitId: string): string | null {
   const f = c.gs.factions[g.faction];
   if (!f) return '勢力に仕えていません';
-  if (!(unitId in f.recruit)) return 'この兵種は徴兵できません';
+  if (!(unitId in provinceRecruit(c, g.prov))) return 'この領では雇えない兵種です';
   if (g.troops.length >= MAX_TROOPS) return `兵は${MAX_TROOPS}隊までです`;
   if (troopLoad(g) + D.byUnit[unitId].cost > g.command) return '采配力が足りません';
   // 軍略の兵（伝令・間者の系統）は本陣付きの少数の役なので、武将1人につき1隊まで
@@ -618,6 +628,8 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
     : null;
   const battle = st ?? autoBattle(battleFor(c, pb));
   if (battle.winner === null) throw new Error('戦闘がまだ終わっていません');
+  // 敵の兵を捕まえる（P37）：結果を当てる前に、捕まえる兵を写しておく（当てると、寝返ったままの兵は失われるため）
+  const caught = catchTroops(c, pb, battle);
   const sum = applyBattleResult(c.gs, battle);
   if (reel) { reel.winner = sum.winner; (c.reel ??= []).push(reel); }
   note(c, 'battle', {
@@ -636,9 +648,44 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
   dropGarrison(c, pb);
   if (sum.winner === 0 && c.gs.factions[pb.attacker]) capture(c, pb);
   if (reel) reel.captured = c.gs.provinces[pb.prov].owner === pb.attacker;
+  giveCaught(c, pb, battle, caught);
   refreshIncome(c);
   checkOver(c);
   return sum;
+}
+
+/**
+ * 敵の兵を捕まえる（P37。条件は厳しい）：自分の勢力が勝った戦いで、寝返り・敗残兵収容でこちらに付いた敵の兵が、
+ * 戦いの終わりまで生き残ってこちらにいたとき、見込み capture.chance でこちらの兵として残る（レベルは levelDrop 下がる）。
+ * ここでは写しを作るだけ（渡すのは giveCaught）
+ */
+function catchTroops(c: Campaign, pb: PendingBattle, st: BattleState): { troop: GTroop; from: string }[] {
+  const win = st.winner;
+  if (win === null || !c.player) return [];
+  const winner = win === 0 ? pb.attacker : pb.defender;
+  if (winner !== c.player) return [];
+  const out: { troop: GTroop; from: string }[] = [];
+  for (const u of st.units) {
+    if (u.kind !== 'troop' || !u.alive || u.home === win || u.side !== win) continue;
+    if (!u.statuses.some((s) => s.id === 'defect' || s.id === 'routed')) continue;
+    const g = c.gs.generals[u.generalId], t = g?.troops[u.troopIndex];
+    if (!t || isGarrison(g.id) || !c.rng.chance(S.capture.chance)) continue;
+    out.push({ troop: { ...t, stats: { ...t.stats }, level: Math.max(1, t.level - S.capture.levelDrop), exp: 0 }, from: g.name.ja });
+  }
+  return out;
+}
+
+/** 捕まえた兵を、その戦いに出た自分の武将（采配に空きのある者）へ。だれも受けられなければ、その領の予備兵に */
+function giveCaught(c: Campaign, pb: PendingBattle, st: BattleState, caught: { troop: GTroop; from: string }[]): void {
+  if (!caught.length) return;
+  const gs = c.gs, ids = st.winner === 0 ? pb.atk : pb.def;
+  const prov = st.winner === 0 ? (gs.provinces[pb.prov].owner === c.player ? pb.prov : pb.from) : pb.prov;
+  for (const { troop, from } of caught) {
+    const g = ids.map((id) => gs.generals[id]).find((x) => x && x.faction === c.player && x.troops.length < MAX_TROOPS && troopLoad(x) + D.byUnit[troop.unitId].cost <= x.command);
+    const name = troop.name ?? L(D.byUnit[troop.unitId].name);
+    if (g) { g.troops.push(troop); note(c, 'caught', { unit: name, from, to: g.name.ja, lv: troop.level }); }
+    else { toReserve(c, prov, [troop]); note(c, 'caught', { unit: name, from, to: `${gs.provinces[prov].name.ja}の予備兵`, lv: troop.level }); }
+  }
 }
 
 /**
@@ -727,17 +774,18 @@ function finishRelocations(c: Campaign): void {
 // ---------------------------------------------------------------- 勢力の思考
 
 function aiRecruit(c: Campaign, f: GFaction): void {
-  const ids = Object.keys(f.recruit);
-  if (!ids.length) return;
   for (const g of Object.values(c.gs.generals)) {
     if (g.faction !== f.id) continue;
+    // 武将のいる領で雇える兵種から（P37）
+    const pool = provinceRecruit(c, g.prov), ids = Object.keys(pool);
+    if (!ids.length) continue;
     for (let guard = 0; guard < MAX_TROOPS; guard++) {
       if (f.supply < S.ai.reserveSupply) return;        // 兵糧は少し残す
       const ok = ids.filter((u) => !recruitProblem(c, g, u));
       if (!ok.length) break;
-      let r = c.rng.float() * ok.reduce((s, u) => s + f.recruit[u], 0);
+      let r = c.rng.float() * ok.reduce((s, u) => s + pool[u], 0);
       let pick = ok[ok.length - 1];
-      for (const u of ok) { r -= f.recruit[u]; if (r < 0) { pick = u; break; } }
+      for (const u of ok) { r -= pool[u]; if (r < 0) { pick = u; break; } }
       recruit(c, g.id, pick);
     }
   }

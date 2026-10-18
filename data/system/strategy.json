@@ -3,6 +3,8 @@
   "move": { "range": 3 },
   "capital": { "costMin": 800, "costIncomeMonths": 8, "monthsNear": 2, "monthsFar": 3 },
   "retreat": { "troopLossBelowHp": 0.5, "troopLossChance": 0.3, "supplyLossPct": 10, "woundMonths": 1 },
+  "newUnitCostMult": 2,
+  "capture": { "chance": 0.4, "levelDrop": 1 },
   "envoy": { "perDiplomacy": 2, "supplyPerOpinion": 20, "truceRelaxPer": 40, "gifts": [0, 100, 300, 600] },
   "scout": { "start": 60, "allyFloor": 60, "adjacentGain": 25, "decay": 5, "missionBase": 30, "missionPerInt": 0.3, "officeGain": 1.2, "officeRange": 2, "full": 80, "names": 50, "rough": 20 },
   "train": { "generalShare": 0.25, "troopShare": 0.3, "bonusMult": 1.5, "bonusTraits": ["warrior", "brave", "charismatic", "unifier", "just"], "bonusMilitary": 8, "bonusDiscipline": 0.4, "eventChance": 0.06, "bonusStep": 0.1, "bonusMax": 0.5 },

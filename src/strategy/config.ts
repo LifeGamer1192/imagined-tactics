@@ -12,6 +12,10 @@ export const S = strategyJson as unknown as {
   /** 戦いから退いたときの罰：体力がこの割合を切った兵は失う・ほかの兵も見込みで失う・兵糧を失う（%）・武将の深手（月） */
   retreat: { troopLossBelowHp: number; troopLossChance: number; supplyLossPct: number; woundMonths: number };
   /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段・戦うときの攻撃と防御（%） */
+  /** 初めから雇えた兵種でない兵を雇うときの、兵糧の倍率（P37） */
+  newUnitCostMult: number;
+  /** 敵の兵を捕まえる（P37）：寝返り・敗残兵収容でこちらに付いた兵が、勝った戦いの終わりまでこちらにいたとき、残る見込みと、下がるレベル */
+  capture: { chance: number; levelDrop: number };
   /** 使者と土産（P34）：外交1あたりの心証の上乗せ（5を超えたぶん）・心証1あたりの兵糧・停戦の基準のゆるみ（上乗せ÷）・土産の選択肢（兵糧） */
   envoy: { perDiplomacy: number; supplyPerOpinion: number; truceRelaxPer: number; gifts: number[] };
   /**

@@ -299,19 +299,24 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
 
   // ---- 勢力
   const factions: Record<number, GFaction> = {};
-  for (const n of nations) {
+  /**
+   * 雇える兵種と選ばれやすさ。セーブに「記録にある兵種」が入っていれば、その国がその年に使っていた兵種の割合を土台にする。
+   * 無ければ（架空の世界、古いセーブ）、経済などから決めるこれまでの決まりだけを使う。
+   * land：土地の兵（山・森）を足す領。勢力の一覧では国の領ぜんぶ（山が1つでもあれば山の兵、半分以上が森なら森の兵）、
+   * 領の一覧（P37）ではその領だけ
+   */
+  const weightsFor = (n: HNation | null, land: GProvince[], perProvince: boolean): Weights => {
     const recruit: Weights = {};
-    const own = provinces.filter((p) => p.owner === n.id);
-    // セーブに「記録にある兵種」が入っていれば、その国がその年に使っていた兵種の割合を、兵の選ばれやすさの土台にする。
-    // 無ければ（架空の世界、古いセーブ）、経済などから決めるこれまでの決まりだけを使う
-    const shares = armShares(w, n, year);
+    const shares = n ? armShares(w, n, year) : null;
     const other: Weights = {};
     if (!shares) addWeights(other, CFG.troops.base);
-    addWeights(other, CFG.troops.economy[n.economy]);
-    if (n.government === 'theocracy' || n.ruler.traits?.includes('pious')) addWeights(other, CFG.troops.theocracy);
-    if (n.treasury >= CFG.troops.richTreasury) addWeights(other, CFG.troops.rich);
-    if (own.some((p) => MOUNTAIN_BIOMES.has(p.biome))) addWeights(other, CFG.troops.mountainBiome);
-    if (own.filter((p) => FOREST_BIOMES.has(p.biome)).length * 2 >= Math.max(1, own.length)) addWeights(other, CFG.troops.forestBiome);
+    if (n) {
+      addWeights(other, CFG.troops.economy[n.economy]);
+      if (n.government === 'theocracy' || n.ruler.traits?.includes('pious')) addWeights(other, CFG.troops.theocracy);
+      if (n.treasury >= CFG.troops.richTreasury) addWeights(other, CFG.troops.rich);
+    }
+    if (land.some((p) => MOUNTAIN_BIOMES.has(p.biome))) addWeights(other, CFG.troops.mountainBiome);
+    if (perProvince ? land.some((p) => FOREST_BIOMES.has(p.biome)) : land.filter((p) => FOREST_BIOMES.has(p.biome)).length * 2 >= Math.max(1, land.length)) addWeights(other, CFG.troops.forestBiome);
     if (shares) {
       for (const [glyph, share] of Object.entries(shares)) {
         const id = CFG.troops.glyph[glyph];
@@ -324,6 +329,14 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
       const fromArms = !!shares && Object.entries(shares).some(([g, sh]) => CFG.troops.glyph[g] === id && sh >= CFG.troops.armsMinShare);
       if (!D.byUnit[id] || (!fromArms && !unlocked(id, variant, year))) delete recruit[id];
     }
+    return recruit;
+  };
+  // 領ごとの雇える兵種（P37）：はじめの持ち主の国の土台に、その領の土地の兵を足す。領を奪えば、その領の兵種も雇える
+  const nationById = new Map(nations.map((n) => [n.id, n]));
+  for (const p of provinces) if (!p.out) p.recruit = weightsFor(nationById.get(p.owner) ?? null, [p], true);
+  for (const n of nations) {
+    const own = provinces.filter((p) => p.owner === n.id);
+    const recruit = weightsFor(n, own, false);
     const lt = CFG.troops.levelFromTech;
     factions[n.id] = {
       id: n.id, name: n.label ?? n.root, color: n.color, government: n.government, economy: n.economy,
