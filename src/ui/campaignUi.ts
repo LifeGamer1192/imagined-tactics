@@ -13,6 +13,7 @@ import {
 import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
 import { profileHtml } from './profile';
 import { toggleTrainAlways, trainMult, trainOnce, trainProblem } from '../strategy/training';
+import { appointChancellor, approx, missionGain, officeGain, roughCount, scoutOf, scoutProblem, scoutTier, sendScout, type ScoutTier } from '../strategy/scouting';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
 import {
@@ -74,6 +75,7 @@ const LOG_TEXT: Record<string, string> = {
   truce: '{a}と{b}が停戦した（{months}か月）',
   train: '{name}が訓練した（経験値{exp}・×{mult}{lv}{troops}）',
   trainEvent: '【訓練】{name}：{text}',
+  scouted: '{name}が{prov}を偵察した（偵察度{v}）',
   tieJoin: '{name}は、戦場で出会った{friend}との縁で{faction}に仕えた',
   surrender: '{name}が{faction}に降った',
   defect: '{name}が{from}を見限り、{to}へ寝返った',
@@ -602,6 +604,8 @@ export class CampaignScreen {
     for (const g of Object.values(c.gs.generals)) {
       if (!g.faction || g.prov < 0) continue;
       if (c.player && g.faction !== c.player && c.gs.provinces[g.prov].owner !== g.faction) continue;
+      // 偵察度が低い領の武将の数は、地図に出さない
+      if (c.player && g.faction !== c.player) { const tier = scoutTier(c, g.prov); if (tier === 'rough' || tier === 'none') continue; }
       counts.set(g.prov, (counts.get(g.prov) ?? 0) + 1);
     }
     const wars = new Set<string>();
@@ -652,16 +656,52 @@ export class CampaignScreen {
       const multText = tm.mult > 1 ? `経験値×${Math.round(tm.mult * 100) / 100}（${tm.why.join('・')}）` : '経験値×1';
       ups.push(`<button data-train="${g.id}" ${tp ? `disabled title="${esc(tp)}"` : `title="${esc(`この月は訓練して行動済みになります。月の終わりに、${g.name.ja}と配下の兵に経験値が入ります。${multText}`)}"`}>1か月訓練</button>`);
       ups.push(`<button data-train-always="${g.id}" class="${always ? 'on' : ''}" title="${esc(`毎月の終わりに訓練します（その月に移動・攻めるなどで動かしたときは訓練しません）。${multText}`)}">ずっと訓練：${always ? '入' : '切'}</button>`);
+      // 相国（偵察度を毎月上げる役。1人だけ）
+      const chan = c.offices?.chancellor === g.id;
+      ups.push(`<button data-chancellor="${g.id}" class="${chan ? 'on' : ''}" title="${esc(`相国は、自分の領から${S.scout.officeRange}つ先までの他国の領の偵察度を、毎月+${officeGain(g)}上げます（外交${g.ab[2]}から）。1人だけ任じられます`)}">${chan ? '相国を解く' : '相国に任じる'}</button>`);
       if (!questProblem(c, g)) ups.push(`<button data-quest="${g.id}" title="2か月のあいだ戦えないが、浪人や昇進の品を得ることがある">諸国巡りに出す</button>`);
       if (ups.length) rec += `<div class="ups">${ups.join('')}</div>`;
     }
     const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
     const fig = this.figure(g);
     return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}
-      ${L(cls.name)} Lv${g.level} <span class="dim">強さ${Math.round(strengthOf(g))} 采配${troopLoad(g)}/${g.command}${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}
+      ${L(cls.name)} Lv${g.level} <span class="dim">強さ${Math.round(strengthOf(g))} 采配${troopLoad(g)}/${g.command}${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}
       ${g.traits.length ? ` ・${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}
       ・<span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span></span><br>
       <span class="troops">${troops}</span> ${own ? this.troopMenuHtml(g.id) : ''}${rec}</span></div>`;
+  }
+
+  /** 領の人口などの行：偵察度で見える量が変わる */
+  private provStats(prov: number, tier: ScoutTier): string {
+    const p = this.c.gs.provinces[prov], sea = p.coastal ? ' 海沿い' : '';
+    if (tier === 'full') return `人口${Math.round(p.pop)} 収入${Math.round(p.income)} 城${Math.round(p.fort * 100)}% 不穏${Math.round(p.unrest * 100)}%${sea}`;
+    if (tier === 'names') return `人口${approx(p.pop)} 収入${approx(p.income)} 城${Math.round(p.fort * 10) * 10}%前後${sea}`;
+    if (tier === 'rough') return `城は${p.fort >= 0.6 ? '固い' : p.fort >= 0.3 ? 'ふつう' : '弱い'}らしい${sea}`;
+    return `様子が分からない${sea}`;
+  }
+
+  /** 偵察度の欄：いまの偵察度と、偵察させるボタン（武将を選ぶ） */
+  private scoutHtml(prov: number): string {
+    const c = this.c, v = Math.round(scoutOf(c, prov)), tier = scoutTier(c, prov);
+    const TIER = { full: 'すべて分かる', names: '武将の名と兵の数まで', rough: 'おおまかにだけ', none: 'ほとんど分からない' } as const;
+    const sent = (c.scoutMissions ?? []).find((m) => m.prov === prov);
+    const cands = Object.values(c.gs.generals).filter((g) => g.faction === c.player && !scoutProblem(c, g, prov))
+      .sort((a, b) => missionGain(b) - missionGain(a) || a.id.localeCompare(b.id));
+    const opts = cands.map((g) => `<option value="${g.id}">${esc(g.name.ja)}（+${missionGain(g)}）</option>`).join('');
+    return `<div class="card scout"><div><b>偵察度 ${v}</b> <span class="dim small">${TIER[tier]}</span></div>
+      <div class="dim small">隣の領は毎月上がり、離れた領は少しずつ薄れます。偵察させた武将は、その月は行動済みになります。相国を任じると、まわりの領が毎月上がります。</div>
+      ${sent ? `<div class="small">今月は${esc(c.gs.generals[sent.gid]?.name.ja ?? '')}が偵察に出ています（月の終わりに上がる）</div>`
+        : opts ? `<div class="rec"><select id="scoutWho">${opts}</select><button id="scoutGo">偵察させる</button></div>` : '<div class="dim small">偵察に出せる武将がいません</div>'}</div>`;
+  }
+
+  /** 偵察度が低いときの、武将の欄 */
+  private hiddenGensHtml(gens: GGeneral[], tier: ScoutTier): string {
+    if (tier === 'names') {
+      return gens.map((g) => `<div class="gen hidden"><span><b>${esc(g.name.ja)}</b> Lv${g.level} <span class="dim">兵${g.troops.length}隊（兵種とレベルは分からない）</span></span></div>`).join('')
+        || '<div class="dim">武将はいないらしい。守備兵が守る</div>';
+    }
+    if (tier === 'rough') return `<div class="dim">武将：${roughCount(gens.length)}　兵：${roughCount(gens.reduce((s, g) => s + g.troops.length, 0))}（偵察すると分かる）</div>`;
+    return '<div class="dim">武将や兵のようすは分からない（偵察すると分かる）</div>';
   }
 
   /** 包囲の進み具合（守る武将のいない領が攻められているとき） */
@@ -823,27 +863,29 @@ export class CampaignScreen {
       const gens = owner ? generalsAt(c, p.id, owner.id) : [];
       const rel = me && owner && !own ? `（${REL_NAME[relation(c, me.id, owner.id)]}）` : '';
       const picked = this.pickedHere().length;
+      // 偵察度（P33）：ほかの勢力の領は、分かっているぶんだけ見せる
+      const tier: ScoutTier = own || !owner ? 'full' : scoutTier(c, p.id);
       const town = this.view.townImage(p.id);
       // 町の絵がまだ読めていなければ、少し待って描き直す（地図の絵は、あとから読み込まれる）
       if (!town && !this.townRetry) this.townRetry = window.setTimeout(() => { this.townRetry = 0; if (this.host.root.contains(this.view.canvas)) this.refresh(); }, 400);
       body = `<div class="card">
           ${town ? `<img class="town" src="${town}" alt="" draggable="false">` : ''}
           <div><b>${esc(p.name.ja)}</b> ${owner ? factionBadge(owner.name.ja, owner.color) : '<span class="dim">持ち主なし</span>'}<span class="dim">${rel}${owner?.capital === p.id ? '・本拠' : ''}</span></div>
-          <div class="dim">人口${Math.round(p.pop)} 収入${Math.round(p.income)} 城${Math.round(p.fort * 100)}% 不穏${Math.round(p.unrest * 100)}%${p.coastal ? ' 海沿い' : ''}</div>
+          <div class="dim">${this.provStats(p.id, tier)}</div>
           ${owner && isExclave(c, p.id) ? this.exclaveHtml(p.id) : ''}
           ${this.previewHtml(p.id)}
         </div>
-        ${this.siegeHtml(p.id)}${me && owner && !own ? this.diplomacyHtml(me.id, owner.id) : ''}
+        ${this.siegeHtml(p.id)}${me && owner && !own ? this.diplomacyHtml(me.id, owner.id) : ''}${me && owner && !own ? this.scoutHtml(p.id) : ''}
         ${own ? `<div class="actions row">
           <button id="move" ${picked ? '' : 'disabled'} class="${this.order === 'move' ? 'on' : ''}" title="自分の領づたいに行ける所まで">移動（${S.move.range}つ先まで）</button>
           <button id="attack" ${picked && picked <= MAX_GENERALS ? '' : 'disabled'} class="${this.order === 'attack' ? 'on' : ''}">攻める（${MAX_GENERALS}人まで）</button>
         </div><div class="dim">${this.order === 'move' ? '青い領をクリックで移動（自分の領づたいに行ける所）' : this.order === 'attack' ? '赤い領をクリックで侵攻' : '武将にチェックを入れて、移動か攻めるを選びます'}</div>` : ''}
         ${own && gens.some((g) => !c.moved.has(g.id)) ? `<div class="sel"><span class="dim">まとめて選ぶ</span>
           <button id="selAll">全員</button><button id="selTop">レベルの高い${MAX_GENERALS}人</button><button id="selNone" ${picked ? '' : 'disabled'}>外す</button></div>` : ''}
-        <div class="gens2">${gens.map((g) => this.generalHtml(g, own)).join('') || `<div class="dim">武将はいません。守備兵が守ります（Lv${garrisonOf(c, p.id).level}・${garrisonOf(c, p.id).troops}隊）</div>`}</div>
+        <div class="gens2">${tier === 'full' ? gens.map((g) => this.generalHtml(g, own)).join('') || `<div class="dim">武将はいません。守備兵が守ります（Lv${garrisonOf(c, p.id).level}・${garrisonOf(c, p.id).troops}隊）</div>` : this.hiddenGensHtml(gens, tier)}</div>
         ${own ? this.reserveHtml(p.id) : ''}${own ? this.buildHtml(p.id) : ''}${own ? this.capitalHtml(p.id) : ''}
-        ${!own && reserveOf(c, p.id).length ? `<div class="card status">予備兵 ${reserveOf(c, p.id).length}隊（${reserveOf(c, p.id).map((t) => `<span class="nm">${esc(t.name ?? L(D.byUnit[t.unitId].name))}</span>Lv${t.level}`).join('、')}）<span class="dim small">この領を奪えば手に入ります</span></div>` : ''}
-        ${owner ? woundedAt(c, p.id, owner.id).map((g) => `<div class="dim">${esc(g.name.ja)} Lv${g.level}：深手（あと${c.wounded[g.id] - gs.tick}か月は戦えない）</div>`).join('') : ''}
+        ${!own && tier === 'full' && reserveOf(c, p.id).length ? `<div class="card status">予備兵 ${reserveOf(c, p.id).length}隊（${reserveOf(c, p.id).map((t) => `<span class="nm">${esc(t.name ?? L(D.byUnit[t.unitId].name))}</span>Lv${t.level}`).join('、')}）<span class="dim small">この領を奪えば手に入ります</span></div>` : ''}
+        ${owner && tier === 'full' ? woundedAt(c, p.id, owner.id).map((g) => `<div class="dim">${esc(g.name.ja)} Lv${g.level}：深手（あと${c.wounded[g.id] - gs.tick}か月は戦えない）</div>`).join('') : ''}
         ${own && me ? awayAt(c, p.id, me.id).map((g) => `<div class="dim">${esc(g.name.ja)}：諸国巡り中（あと${c.away[g.id] - gs.tick}か月）</div>`).join('') : ''}
         `;
     }
@@ -893,6 +935,14 @@ export class CampaignScreen {
         if (ok && startQuest(c, gid)) { this.picked.delete(gid); this.refresh(); }
       };
     });
+    root.querySelectorAll<HTMLButtonElement>('[data-chancellor]').forEach((b) => {
+      b.onclick = () => { const on = appointChancellor(c, b.dataset.chancellor!); toast(on ? '相国に任じました' : '相国を解きました'); this.refresh(); };
+    });
+    const scoutGo = root.querySelector<HTMLButtonElement>('#scoutGo');
+    if (scoutGo && p) scoutGo.onclick = () => {
+      const who = root.querySelector<HTMLSelectElement>('#scoutWho')?.value;
+      if (who && sendScout(c, who, p.id)) { this.picked.delete(who); toast(`${gs.generals[who].name.ja}を${p.name.ja}の偵察に出しました（月の終わりに上がります）`); this.refresh(); }
+    };
     root.querySelectorAll<HTMLButtonElement>('[data-train]').forEach((b) => {
       b.onclick = () => { if (trainOnce(c, b.dataset.train!)) { this.picked.delete(b.dataset.train!); toast('この月は訓練します（月の終わりに経験値が入ります）'); this.refresh(); } };
     });

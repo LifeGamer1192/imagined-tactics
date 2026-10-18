@@ -17,6 +17,7 @@ export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
 import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated } from './events';
 import { historyMonth } from './history';
 import { trainMonth } from './training';
+import { initScout, scoutMonth } from './scouting';
 
 const SUPPLY = (cfgJson as unknown as { supply: { recruitCostMult: number } }).supply;
 export const MAX_TROOPS = (cfgJson as unknown as { troops: { maxPerGeneral: number } }).troops.maxPerGeneral;
@@ -66,6 +67,12 @@ export interface Campaign {
   /** 本拠を移している最中の勢力（勢力 → 移す先・終わる月・払った兵糧） */
   relocations: Record<number, { to: number; until: number; cost: number }>;
   /** 史実の出来事：起きた（または、もう起きようがない）出来事の id */
+  /** 偵察度（P33）：領 → 0〜100（自分の勢力から見て） */
+  scout?: Record<number, number>;
+  /** 今月の偵察（武将 → 領） */
+  scoutMissions?: { gid: string; prov: number }[];
+  /** 役職（P33）：相国 */
+  offices?: { chancellor?: string };
   /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */
   reel?: ReelBattle[];
   /** 訓練（P30）：武将 → 1か月訓練かずっと訓練か */
@@ -113,6 +120,7 @@ export function newCampaign(gs: GameStart, world: HWorld, player: number, diffic
   // 開始時の兵糧も、蔵に入るぶんまで（hist-sim の国庫が大きい勢力は、上限の何倍にもなるため）
   refreshIncome(c);
   for (const f of Object.values(gs.factions)) f.supply = Math.min(f.supply, supplyCap(f));
+  initScout(c);
   return c;
 }
 
@@ -900,6 +908,7 @@ export function finishMonth(c: Campaign): void {
   if (gs.month > 12) { gs.month = 1; gs.year++; }
   gs.truces = gs.truces.filter((t) => t.until > gs.tick);
   trainMonth(c);
+  scoutMonth(c);
   c.moved.clear();
   // 今月攻められなかった包囲は、守りが立て直されて進みが戻る
   for (const [k, sg] of Object.entries(c.sieges)) {

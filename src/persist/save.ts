@@ -6,6 +6,7 @@ import type { HWorld } from '../bridge/histsim';
 import type { GameStart } from '../convert/model';
 import { RNG } from '../core/rng';
 import type { Campaign, CampaignLog } from '../strategy/campaign';
+import { initScout } from '../strategy/scouting';
 
 export const SAVE_FORMAT = 'hex-sim';
 export const SAVE_VERSION = 1;
@@ -40,6 +41,9 @@ export interface HexSave {
     training?: Campaign['training'];
     trainedThisMonth?: string[];
     trainBonus?: Campaign['trainBonus'];
+    scout?: Campaign['scout'];
+    scoutMissions?: Campaign['scoutMissions'];
+    offices?: Campaign['offices'];
   };
 }
 
@@ -62,7 +66,7 @@ export function snapshot(c: Campaign): HexSave {
       gs, player: c.player, months: c.months, over: c.over, moved: [...c.moved],
       log: c.log.slice(-LOG_KEEP), rng: [c.rng.seed0, c.rng.state],
       items: c.items, sieges: c.sieges, away: c.away, difficulty: c.difficulty, offers: c.offers, wounded: c.wounded, reserve: c.reserve, built: c.built, relocations: c.relocations, history: c.history,
-      training: c.training, trainedThisMonth: c.trainedThisMonth, trainBonus: c.trainBonus,
+      training: c.training, trainedThisMonth: c.trainedThisMonth, trainBonus: c.trainBonus, scout: c.scout, scoutMissions: c.scoutMissions, offices: c.offices,
     },
   };
 }
@@ -77,12 +81,15 @@ export function restore(s: HexSave): Campaign {
   let data = s;
   for (let v = s.version; v < SAVE_VERSION; v++) data = MIGRATIONS[v]?.(data) ?? data;
   const k = data.campaign;
-  return {
+  const c: Campaign = {
     gs: k.gs, world: data.world, player: k.player, months: k.months, over: k.over,
     moved: new Set(k.moved), log: [...k.log], rng: RNG.restore(k.rng[0], k.rng[1]),
     items: k.items ?? {}, sieges: k.sieges ?? {}, away: k.away ?? {}, difficulty: k.difficulty ?? 'normal', offers: k.offers ?? [], wounded: k.wounded ?? {}, reserve: k.reserve ?? {}, built: k.built ?? {}, relocations: k.relocations ?? {}, history: k.history ?? { done: [] },
-    training: k.training ?? {}, trainedThisMonth: k.trainedThisMonth ?? [], trainBonus: k.trainBonus ?? {},
+    training: k.training ?? {}, trainedThisMonth: k.trainedThisMonth ?? [], trainBonus: k.trainBonus ?? {}, scout: k.scout, scoutMissions: k.scoutMissions ?? [], offices: k.offices ?? {},
   };
+  // 偵察度の無い古いセーブは、隣の領から始める
+  if (!c.scout) initScout(c);
+  return c;
 }
 
 // ---- ファイルへの書き出し：型付き配列は {__ta, b64} にして JSON に入れる（hist-sim と同じ形）

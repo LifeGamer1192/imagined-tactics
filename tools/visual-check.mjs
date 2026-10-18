@@ -497,6 +497,22 @@ async function run(tag, ctxOpts) {
     await press('[data-train-always]');
     await page.waitForTimeout(150);
   }
+  // 偵察度（P33）：離れた敵の領はほとんど見えず、偵察度の欄と「偵察させる」が出る
+  const farProv = await page.evaluate(async () => {
+    const cam = await import('/src/strategy/campaign.ts');
+    const s = window.__campaign, c = s.c, close = new Set();
+    for (const p of c.gs.provinces) if (p.owner === c.player) { close.add(p.id); for (const n of cam.neighborsOf(c, p.id)) { close.add(n); for (const m of cam.neighborsOf(c, n)) close.add(m); } }
+    const p = c.gs.provinces.find((q) => q.owner && q.owner !== c.player && !close.has(q.id) && !q.out);
+    if (!p) return null;
+    s.selected = p.id; s.refresh(); document.querySelector('.scout')?.scrollIntoView({ block: 'center' });
+    return p.name.ja;
+  });
+  if (farProv) {
+    await page.waitForTimeout(200);
+    const pt = await page.textContent('#panel');
+    ok(`[${tag}] 離れた敵の領は様子が分からず、偵察度と「偵察させる」が出る`, /様子が分からない/.test(pt) && /偵察度/.test(pt) && !!(await page.$('#scoutGo')), farProv);
+    await shot('scout');
+  }
   ok(`[${tag}] 領の画面の国名は、国の色の札`, !!(await page.$('#panel .fac')));
   ok(`[${tag}] 断ると欄が消え、記録に残る`, !(await page.$('[data-hchoice="vc:0"]')) && await page.evaluate(() => window.__campaign.c.log.some((e) => e.key === 'historyChoice')));
   // 月送りの演出（P31）：ほかの国どうしの戦いを、矢印・顔ぶれ・小さな戦場・結果で見せる。飛ばすボタン2つ

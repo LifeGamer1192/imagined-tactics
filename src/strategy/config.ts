@@ -13,6 +13,10 @@ export const S = strategyJson as unknown as {
   retreat: { troopLossBelowHp: number; troopLossChance: number; supplyLossPct: number; woundMonths: number };
   /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段・戦うときの攻撃と防御（%） */
   /**
+   * 偵察度（P33）：始めの隣の領・味方の領の下限・毎月の隣の上がりと、ほかの薄れ・偵察の上がり（基本＋知略×）・相国（外交×、届く歩数）・見える量の境（すべて・名前・おおまか）
+   */
+  scout: { start: number; allyFloor: number; adjacentGain: number; decay: number; missionBase: number; missionPerInt: number; officeGain: number; officeRange: number; full: number; names: number; rough: number };
+  /**
    * 訓練（P30）：1回で得る経験値（次のレベルまでの割合：武将・兵）、倍率（特性・軍事・規律の性格のどれかで bonusMult 倍）、
    * まれな出来事の確率、出来事で上がる倍率（1回ぶん・上限）
    */
