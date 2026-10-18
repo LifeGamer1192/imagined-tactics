@@ -12,6 +12,8 @@ export const S = strategyJson as unknown as {
   /** 戦いから退いたときの罰：体力がこの割合を切った兵は失う・ほかの兵も見込みで失う・兵糧を失う（%）・武将の深手（月） */
   retreat: { troopLossBelowHp: number; troopLossChance: number; supplyLossPct: number; woundMonths: number };
   /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段・戦うときの攻撃と防御（%） */
+  /** 徴兵した兵のレベル：徴兵する時点の国どうしの技術と威信の位置（重み）から、minLevel〜maxLevel で決める */
+  recruit: { minLevel: number; maxLevel: number; techWeight: number; prestigeWeight: number };
   /**
    * 史実の領の動き（P28）：自分の家にかかわるときに選べる月数・断ったときの相手の心証と領の不満・
    * 新しく起きる家の兵糧・当主の兵（領1つあたり・最少・最多）・当主の名声

@@ -217,11 +217,21 @@ export function recruitCost(unitId: string, f?: GFaction, exclave = false): numb
   if (f) for (const t of traitsOf(f)) if (t.cost?.lines.includes(u.line)) mult *= t.cost.mult;
   return Math.round(u.cost * SUPPLY.recruitCostMult * mult);
 }
-/** 徴兵した兵の開始レベル（勢力の特色を含む） */
-export function recruitLevel(unitId: string, f: GFaction): number {
-  let lv = f.troopLevel - 2;
+/**
+ * 徴兵した兵の開始レベル。徴兵する時点で生き残っている国どうしを比べて決める（いちばん進んだ国が最も高く、いちばん遅れた国が最も低い）。
+ * 比べる値＝技術の位置×techWeight＋威信の位置×prestigeWeight（位置は、いちばん低い国を0、いちばん高い国を1とした割合）。
+ * そこに勢力の特色と難しさ（bonus）を足し、minLevel〜maxLevel に収める（strategy.json の recruit）
+ */
+export function recruitLevel(c: Campaign, unitId: string, f: GFaction, bonus = 0): number {
+  const R = S.recruit, all = Object.values(c.gs.factions);
+  const pos = (v: (x: GFaction) => number): number => {
+    const vs = all.map(v), lo = Math.min(...vs), hi = Math.max(...vs);
+    return hi > lo ? (v(f) - lo) / (hi - lo) : 0.5;
+  };
+  const s = (pos((x) => x.tech) * R.techWeight + pos((x) => x.prestige) * R.prestigeWeight) / (R.techWeight + R.prestigeWeight);
+  let lv = R.minLevel + Math.round(s * (R.maxLevel - R.minLevel)) + bonus;
   for (const t of traitsOf(f)) { lv += t.troopLevel ?? 0; if (t.level?.lines.includes(D.byUnit[unitId].line)) lv += t.level.add; }
-  return Math.max(1, lv);
+  return Math.max(R.minLevel, Math.min(R.maxLevel, lv));
 }
 /** 守る武将のいない領を落とすのに要る力（城が強いほど大きい） */
 export function siegeResist(c: Campaign, prov: number): number {
@@ -256,7 +266,7 @@ export function recruit(c: Campaign, gid: string, unitId: string): boolean {
   if (!g || recruitProblem(c, g, unitId)) return false;
   const f = c.gs.factions[g.faction];
   f.supply -= recruitCost(unitId, f, isExclave(c, g.prov));
-  g.troops.push(makeTroop(D.byUnit[unitId], recruitLevel(unitId, f) + (c.player && f.id !== c.player ? S.difficulty[c.difficulty].aiTroopLevel : 0)));
+  g.troops.push(makeTroop(D.byUnit[unitId], recruitLevel(c, unitId, f, c.player && f.id !== c.player ? S.difficulty[c.difficulty].aiTroopLevel : 0)));
   return true;
 }
 

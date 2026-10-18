@@ -3,6 +3,7 @@
   "move": { "range": 3 },
   "capital": { "costMin": 800, "costIncomeMonths": 8, "monthsNear": 2, "monthsFar": 3 },
   "retreat": { "troopLossBelowHp": 0.5, "troopLossChance": 0.3, "supplyLossPct": 10, "woundMonths": 1 },
+  "recruit": { "minLevel": 1, "maxLevel": 8, "techWeight": 0.7, "prestigeWeight": 0.3 },
   "history": { "choiceMonths": 3, "refuseOpinion": -40, "refuseUnrest": 30, "newRealmSupply": 150, "newRealmTroopsPerProv": 1, "newRealmTroopsMin": 2, "newRealmTroopsMax": 6, "newRealmFame": 4 },
   "exclave": { "incomeMult": 0.4, "garrisonLevel": -2, "garrisonTroops": -1, "recruitCostMult": 1.5, "battleAtkDefPct": -10 },
   "officer": { "minTroopLevel": 5, "nameMax": 100, "unit": "u01a", "raiseCostBase": 100, "raiseCostPerLevel": 10, "lowerRefund": 0.6667, "leaderTraits": ["brave", "warrior", "charismatic", "wise", "scholar", "pious"] },
