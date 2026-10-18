@@ -513,6 +513,33 @@ async function run(tag, ctxOpts) {
     ok(`[${tag}] 離れた敵の領は様子が分からず、偵察度と「偵察させる」が出る`, /様子が分からない/.test(pt) && /偵察度/.test(pt) && !!(await page.$('#scoutGo')), farProv);
     await shot('scout');
   }
+  // 複数の領から攻める（P35）：2つの領で武将を選ぶと、両方に隣り合う領が攻め先になり、押すと戦場の向きを選ぶ窓が出る
+  const multi = await page.evaluate(async () => {
+    const cam = await import('/src/strategy/campaign.ts');
+    const s = window.__campaign, c = s.c, gs = c.gs, me = c.player;
+    for (const p of gs.provinces) {
+      if (!p.owner || p.owner === me || p.out || !cam.canAttack(c, me, p.owner)) continue;
+      const srcs = cam.neighborsOf(c, p.id).filter((n) => gs.provinces[n].owner === me);
+      if (srcs.length < 2) continue;
+      // まだ動いていない武将を2人、その2つの領に置く
+      const free = Object.values(gs.generals).filter((g) => g.faction === me && !c.moved.has(g.id) && !g.isLord && !(g.id in c.away) && !(g.id in c.wounded)).slice(0, 2);
+      if (free.length < 2) return null;
+      free[0].prov = srcs[0]; free[1].prov = srcs[1];
+      s.picked = new Set(free.map((g) => g.id));
+      s.selected = srcs[0]; s.order = 'attack'; s.refresh();
+      return { to: p.id, ok: s.targets('attack').has(p.id) };
+    }
+    return null;
+  });
+  if (multi) {
+    ok(`[${tag}] 2つの領で武将を選ぶと、両方に隣り合う領が攻め先になる`, multi.ok && /ほかの領で選んだ武将/.test(await page.textContent('#panel')));
+    await page.evaluate((to) => window.__campaign.onClick(to), multi.to);
+    await page.waitForSelector('.confirm #atkFrom');
+    ok(`[${tag}] 複数の領から攻めるときは、戦場の向きを選ぶ窓が出る`, (await page.$$('.confirm #atkFrom option')).length >= 2);
+    await shot('multi_attack');
+    await press('.confirm [data-a="no"]');
+    await page.evaluate(() => { const s = window.__campaign; s.picked.clear(); s.order = 'none'; s.refresh(); });
+  }
   ok(`[${tag}] 領の画面の国名は、国の色の札`, !!(await page.$('#panel .fac')));
   ok(`[${tag}] 断ると欄が消え、記録に残る`, !(await page.$('[data-hchoice="vc:0"]')) && await page.evaluate(() => window.__campaign.c.log.some((e) => e.key === 'historyChoice')));
   // 月送りの演出（P31）：ほかの国どうしの戦いを、矢印・顔ぶれ・小さな戦場・結果で見せる。飛ばすボタン2つ

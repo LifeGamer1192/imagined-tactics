@@ -37,10 +37,27 @@ const setup = await page.evaluate(async () => {
 });
 /** 兵をつまんで運ぶ（実際のマウスの動きで） */
 const drag = async (from, to) => {
-  const a = await (await page.$(from)).boundingBox(), b = await (await page.$(to)).boundingBox();
+  // 運ぶ兵を見える所に出してつまむ。運ぶ先が欄の外なら、つまんだまま欄の端に寄せて、欄が送られるのを待つ（遊ぶ人と同じ操作）
+  await page.$eval(from, (el) => el.scrollIntoView({ block: 'nearest' }));
+  await page.waitForTimeout(100);
+  const a = await (await page.$(from)).boundingBox();
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
   await page.mouse.move(a.x + a.width / 2 + 8, a.y + a.height / 2 + 8, { steps: 3 });
+  // 欄の見えている範囲（下のほうは記録の箱が重なるので、その上まで）
+  const pb = await (await page.$('#panel')).boundingBox(), lb = await (await page.$('#log'))?.boundingBox();
+  const top = pb.y, bottom = Math.min(pb.y + pb.height, lb && lb.y > pb.y ? lb.y : Infinity);
+  for (let k = 0; k < 400; k++) {
+    const b = await (await page.$(to)).boundingBox();
+    if (b && b.y >= top + 40 && b.y + Math.min(b.height, 24) <= bottom - 10) break;
+    const up = !b || b.y < top + 40;
+    await page.mouse.move(a.x, up ? top + 10 : pb.y + pb.height - 10, { steps: 2 });
+    await page.waitForTimeout(40);
+  }
+  // 端から離して欄の送りを止め、止まってから測り直して落とす
+  await page.mouse.move(a.x, (top + bottom) / 2, { steps: 2 });
+  await page.waitForTimeout(120);
+  const b = await (await page.$(to)).boundingBox();
   await page.mouse.move(b.x + b.width / 2, b.y + Math.min(b.height / 2, 24), { steps: 8 });
   await page.mouse.up();
   await page.waitForTimeout(150);
@@ -131,6 +148,8 @@ const spot = await page.evaluate(async () => {
   s.selected = from; s.refresh();
   // 相手の領に予備兵を置いておく（奪えば手に入ることを確かめる）
   c.reserve[to] = [{ ...Object.values(gs.generals).find((g) => g.troops.length).troops[0], name: '置き土産' }];
+  // 偵察度（P33）：相手の領の予備兵と守備兵は、よく分かっているときだけ見える
+  (c.scout ??= {})[to] = 100;
   const garrison = cam.garrisonOf(c, to);
   s.selected = to; s.refresh();
   const card = document.querySelector('#panel').textContent;
@@ -143,10 +162,10 @@ ok('守る武将のいない領の欄に、守備兵の強さが出る', spot.ca
 await page.click('#selTop');
 await page.click('#attack');
 await page.mouse.click(spot.xy[0], spot.xy[1]);
-// 守備兵が相手のときは、「観戦」か「おまかせ」を選ぶ窓が出る
+// 守備兵が相手のときは、「自分で戦う」「観戦」「おまかせ」を選ぶ窓が出る（P29 で自分で戦うを足した）
 await page.waitForSelector('.result [data-a="watch"]', { timeout: 30000 });
 const ask = await page.textContent('.result');
-ok('守備兵が相手だと、「観戦」と「おまかせ」を選べる', !!(await page.$('.result [data-a="auto"]')) && !(await page.$('.result [data-a="play"]')) && /守備兵（Lv\d+・\d+隊）/.test(ask));
+ok('守備兵が相手だと、「自分で戦う」「観戦」「おまかせ」を選べる', !!(await page.$('.result [data-a="auto"]')) && !!(await page.$('.result [data-a="play"]')) && /守備兵（Lv\d+・\d+隊）/.test(ask));
 if (process.argv[2]) await page.screenshot({ path: path.join(process.argv[2], 'garrison_ask.png') });
 await page.click('.result [data-a="watch"]');
 await page.waitForSelector('#watch', { timeout: 30000 });

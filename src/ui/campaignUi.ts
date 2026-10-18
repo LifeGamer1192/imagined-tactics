@@ -231,11 +231,15 @@ export class CampaignScreen {
         ghost.className = 'chip ghost';
         document.body.appendChild(ghost);
         // 欄の上下の端へ寄せたら、欄を送る（隠れている武将へ運べるように）
+        // 端で押さえ続けるほど速く送る（武将の多い領でも、すぐ下の予備兵の欄まで届くように）
         const panel = frame.querySelector<HTMLElement>('#panel');
+        let held = 0;
         scrollTimer = window.setInterval(() => {
           if (!panel) return;
           const r = panel.getBoundingClientRect();
-          if (py < r.top + 36) panel.scrollTop -= 14; else if (py > r.bottom - 36) panel.scrollTop += 14;
+          const edge = py < r.top + 36 ? -1 : py > r.bottom - 36 ? 1 : 0;
+          held = edge ? held + 1 : 0;
+          if (edge) panel.scrollTop += edge * Math.min(70, 14 + held * 2);
         }, 30);
       }
       e.preventDefault();
@@ -440,14 +444,24 @@ export class CampaignScreen {
     return this.mine().filter((g) => this.picked.has(g.id) && !this.c.moved.has(g.id)).map((g) => g.id);
   }
 
+  /** 選んだ武将（どの領にいても。今月まだ動いていない自分の武将）。攻めるときは、複数の領から出られる（P35） */
+  private pickedAll(): GGeneral[] {
+    const c = this.c;
+    return [...this.picked].map((id) => c.gs.generals[id]).filter((g): g is GGeneral => !!g && g.faction === c.player && !c.moved.has(g.id));
+  }
+
   private targets(kind: 'move' | 'attack'): Set<number> {
     const c = this.c, out = new Set<number>();
-    if (this.selected < 0 || !c.player || !this.pickedHere().length) return out;
-    // 移動は、自分の領づたいに3つ先まで。攻めるのは隣の領だけ
-    if (kind === 'move') return moveTargets(c, this.selected, c.player);
-    for (const n of neighborsOf(c, this.selected)) {
+    if (!c.player) return out;
+    // 移動は、選んでいる領の武将を、自分の領づたいに3つ先まで
+    if (kind === 'move') return this.selected >= 0 && this.pickedHere().length ? moveTargets(c, this.selected, c.player) : out;
+    // 攻めるのは、選んだ武将のいる領のどれにも隣り合う領（複数の領から1つの領を攻める）
+    const srcs = [...new Set(this.pickedAll().map((g) => g.prov))];
+    if (!srcs.length) return out;
+    for (const n of neighborsOf(c, srcs[0])) {
       const owner = c.gs.provinces[n].owner;
-      if (owner !== c.player && canAttack(c, c.player, owner)) out.add(n);
+      if (owner === c.player || !canAttack(c, c.player, owner)) continue;
+      if (srcs.every((s) => neighborsOf(c, s).includes(n))) out.add(n);
     }
     return out;
   }
@@ -461,14 +475,40 @@ export class CampaignScreen {
         for (const id of this.pickedHere()) moveGeneral(c, id, prov);
         this.picked.clear(); this.order = 'none'; this.selected = prov;
       } else if (ok) {
-        const pb = planAttack(c, c.player, this.selected, prov, this.pickedHere());
-        this.order = 'none'; this.picked.clear();
-        if (pb) { void busy('攻め込んでいます…', () => this.fight(pb, 0, () => this.mount())); return; }
+        void this.attackFrom(prov);
+        return;
       } else this.order = 'none';
       this.refresh();
       return;
     }
-    this.selected = prov; this.picked.clear();
+    // 自分の領どうしを選び直すときは、選んだ武将を残す（複数の領から攻めるため）
+    if (!c.player || c.gs.provinces[prov]?.owner !== c.player) this.picked.clear();
+    this.selected = prov;
+    this.refresh();
+  }
+
+  /** 選んだ武将で攻める。出陣する領が複数なら、戦場の向き（どの領の側から攻めるか）を選ぶ */
+  private async attackFrom(prov: number): Promise<void> {
+    const c = this.c, gs = c.gs, gens = this.pickedAll();
+    const srcs = [...new Set(gens.map((g) => g.prov))];
+    let from = srcs[0];
+    if (srcs.length > 1) {
+      const count = (s: number) => gens.filter((g) => g.prov === s).length;
+      srcs.sort((a, b) => count(b) - count(a) || a - b);
+      const pending = confirmBox(this.frame(), {
+        title: `複数の領から${esc(gs.provinces[prov].name.ja)}へ攻める`,
+        body: `<p>${srcs.map((s) => `<b>${esc(gs.provinces[s].name.ja)}</b>（${gens.filter((g) => g.prov === s).map((g) => esc(g.name.ja)).join('・')}）`).join('、')}から攻めます。</p>
+          <label>戦場の向き：<select id="atkFrom">${srcs.map((s) => `<option value="${s}">${esc(gs.provinces[s].name.ja)}の側から</option>`).join('')}</select></label>
+          <p class="dim small">戦場は、選んだ領の方角から攻め入る形になります。負けたら、武将はそれぞれの領に残ります。勝ったら、みな攻め取った領に移ります。</p>`,
+        ok: '攻める',
+      });
+      const sel = this.frame().querySelector<HTMLSelectElement>('.confirm #atkFrom');
+      if (!(await pending)) { this.order = 'none'; this.refresh(); return; }
+      from = Number(sel?.value ?? from);
+    }
+    const pb = planAttack(c, c.player, from, prov, gens.map((g) => g.id));
+    this.order = 'none'; this.picked.clear();
+    if (pb) { void busy('攻め込んでいます…', () => this.fight(pb, 0, () => this.mount())); return; }
     this.refresh();
   }
 
@@ -912,6 +952,9 @@ export class CampaignScreen {
       const gens = owner ? generalsAt(c, p.id, owner.id) : [];
       const rel = me && owner && !own ? `（${REL_NAME[relation(c, me.id, owner.id)]}）` : '';
       const picked = this.pickedHere().length;
+      // 攻めるときは、ほかの領で選んだ武将も数える（複数の領から1つの領を攻める）
+      const allPickedGens = this.pickedAll(), allPicked = allPickedGens.length;
+      const pickedElsewhere = allPickedGens.filter((g) => g.prov !== p.id);
       // 偵察度（P33）：ほかの勢力の領は、分かっているぶんだけ見せる
       const tier: ScoutTier = own || !owner ? 'full' : scoutTier(c, p.id);
       const town = this.view.townImage(p.id);
@@ -927,8 +970,9 @@ export class CampaignScreen {
         ${this.siegeHtml(p.id)}${me && owner && !own ? this.diplomacyHtml(me.id, owner.id) : ''}${me && owner && !own ? this.scoutHtml(p.id) : ''}
         ${own ? `<div class="actions row">
           <button id="move" ${picked ? '' : 'disabled'} class="${this.order === 'move' ? 'on' : ''}" title="自分の領づたいに行ける所まで">移動（${S.move.range}つ先まで）</button>
-          <button id="attack" ${picked && picked <= MAX_GENERALS ? '' : 'disabled'} class="${this.order === 'attack' ? 'on' : ''}">攻める（${MAX_GENERALS}人まで）</button>
-        </div><div class="dim">${this.order === 'move' ? '青い領をクリックで移動（自分の領づたいに行ける所）' : this.order === 'attack' ? '赤い領をクリックで侵攻' : '武将にチェックを入れて、移動か攻めるを選びます'}</div>` : ''}
+          <button id="attack" ${allPicked && allPicked <= MAX_GENERALS ? '' : 'disabled'} class="${this.order === 'attack' ? 'on' : ''}" title="ほかの領で選んだ武将も、攻める領に隣り合っていれば一緒に攻められます">攻める（${MAX_GENERALS}人まで）</button>
+        </div>${pickedElsewhere.length ? `<div class="small">ほかの領で選んだ武将：${pickedElsewhere.map((g) => `${esc(g.name.ja)}<span class="dim">（${esc(gs.provinces[g.prov]?.name.ja ?? '')}）</span>`).join('、')}${allPicked > MAX_GENERALS ? `<span class="ng">　${MAX_GENERALS}人までです</span>` : ''}</div>` : ''}
+        <div class="dim">${this.order === 'move' ? '青い領をクリックで移動（自分の領づたいに行ける所）' : this.order === 'attack' ? '赤い領をクリックで侵攻（選んだ武将のいる領のどれにも隣り合う領）' : '武将にチェックを入れて、移動か攻めるを選びます（攻めるときは、ほかの領の武将も選んでおけば一緒に攻められます）'}</div>` : ''}
         ${own && gens.some((g) => !c.moved.has(g.id)) ? `<div class="sel"><span class="dim">まとめて選ぶ</span>
           <button id="selAll">全員</button><button id="selTop">レベルの高い${MAX_GENERALS}人</button><button id="selNone" ${picked ? '' : 'disabled'}>外す</button></div>` : ''}
         <div class="gens2">${tier === 'full' ? gens.map((g) => this.generalHtml(g, own)).join('') || `<div class="dim">武将はいません。守備兵が守ります（Lv${garrisonOf(c, p.id).level}・${garrisonOf(c, p.id).troops}隊）</div>` : this.hiddenGensHtml(gens, tier)}</div>

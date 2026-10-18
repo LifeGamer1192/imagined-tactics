@@ -324,12 +324,20 @@ export function moveGeneral(c: Campaign, gid: string, to: number): boolean {
   return true;
 }
 
-/** 攻め込む準備：出陣する武将と、迎え撃つ武将を決める */
+/**
+ * 攻め込む準備：出陣する武将と、迎え撃つ武将を決める。
+ * 武将は、攻める領に隣り合う自分の領ならどこからでも出られる（複数の領から1つの領を攻める。P35）。
+ * from は戦場の向きを決める領（出陣する領のどれか）。負けたら武将はそれぞれの領に残り、勝ったらみな攻め取った領に移る
+ */
 export function planAttack(c: Campaign, faction: number, from: number, to: number, gids: string[]): PendingBattle | null {
   const target = c.gs.provinces[to];
   if (!target || target.owner === faction || !neighborsOf(c, from).includes(to)) return null;
   if (!canAttack(c, faction, target.owner)) return null;
-  const atk = gids.filter((id) => { const g = c.gs.generals[id]; return g && g.faction === faction && g.prov === from && !c.moved.has(id) && !(id in c.away) && !(id in c.wounded); }).slice(0, MAX_GENERALS);
+  const near = new Set(neighborsOf(c, to));
+  const atk = gids.filter((id) => {
+    const g = c.gs.generals[id];
+    return g && g.faction === faction && near.has(g.prov) && c.gs.provinces[g.prov]?.owner === faction && !c.moved.has(id) && !(id in c.away) && !(id in c.wounded);
+  }).slice(0, MAX_GENERALS);
   if (!atk.length) return null;
   const def = target.owner ? generalsAt(c, to, target.owner).slice(0, MAX_GENERALS).map((g) => g.id) : [];
   return { attacker: faction, defender: target.owner, prov: to, from, atk, def };
