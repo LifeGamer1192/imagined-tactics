@@ -39,6 +39,7 @@ const variants: Record<string, { level: 'normal' | 'hard'; smart?: SmartConfig; 
   '+look2r2': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadRolls: 2 } },
   '+look2r2c': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadRolls: 2, lookaheadControl: 3 } },
   '+look3r2': { level: 'hard', smart: { ...full, lookahead: 3, lookaheadRolls: 2 } },
+  '+buffT': { level: 'hard', smart: { ...full, buffTiming: true } },
   '+early0.5': { level: 'hard', smart: { ...full, early: 0.5 } },
   '+kindA': { level: 'hard', smart: { ...full, mpKind: { damage: 3.5, heal: 2, revive: 2.5, buff: 1, debuff: 1, status: 1 } } },
   '+kindA+e': { level: 'hard', smart: { ...full, early: 0.5, mpKind: { damage: 3.5, heal: 2, revive: 2.5, buff: 1, debuff: 1, status: 1 } } },

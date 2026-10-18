@@ -9,6 +9,7 @@ import { newCampaign, S, traitsOf, type Difficulty } from '../strategy/campaign'
 import { CampaignScreen } from './campaignUi';
 import { restore, type HexSave } from '../persist/save';
 import { anySlot, openSaveMenu, readHexSaveFile } from './saveMenu';
+import { WORLDS_LEAD, worldsHtml } from './worlds';
 import { createBattle, MAX_GENERALS } from '../battle/setup';
 import type { Action, BUnit, BattleState, Side } from '../battle/types';
 import { normalizeSave, readSaveFile, SaveError, type HSave } from '../bridge/histsim';
@@ -149,6 +150,8 @@ export class App {
         <p>${SAMPLES.map(([id, name]) => `<button data-sample="${id}">${name}</button>`).join(' ')}</p>
         <p><button data-help="intro">遊び方</button></p>
         <p class="error">${esc(error)}</p>
+        <p class="worlds-lead">${WORLDS_LEAD}</p>
+        ${worldsHtml()}
         <p class="dim" style="font-size:12px">地図の記号、地形、兵の駒、背景の絵は AI で生成したものです。見本の世界の地形：Terrain Tiles（Mapzen ほか）、川：Natural Earth。</p>
       </div>`;
     const file = this.root.querySelector<HTMLInputElement>('input[type=file]')!;

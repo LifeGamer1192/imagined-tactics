@@ -170,7 +170,23 @@
 
     .center { max-width: 640px; margin: 0 auto; padding: 12vh 20px; text-align: center; }
     .center h1 { font: 700 44px var(--mincho); letter-spacing: 0.18em; margin: 0 0 12px; text-shadow: 0 2px 12px rgba(0,0,0,0.8); }
-    body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88)), var(--title-bg, none) center / cover no-repeat fixed, var(--bg); }
+    .worlds-lead { font-size: 13px; margin: 18px 0 6px; }
+details.worlds { max-height: none; overflow: visible; text-align: left; margin: 0 auto 12px; background: rgba(20,18,15,0.72); border: 1px solid rgba(201,162,39,0.35); border-radius: 6px; padding: 6px 12px; font-size: 13px; line-height: 1.6; }
+details.worlds > summary { cursor: pointer; color: var(--gold, #c9a227); font-weight: 700; padding: 4px 0; text-align: center; }
+details.worlds .worlds-copy { font: 700 17px var(--mincho); text-align: center; margin: 10px 0; letter-spacing: 0.05em; }
+details.worlds h4 { margin: 14px 0 4px; font-size: 14px; color: var(--gold, #c9a227); }
+.worlds-roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.worlds-role { background: rgba(255,255,255,0.04); border-radius: 4px; padding: 6px 8px; }
+.worlds-role b { margin-right: 6px; }
+.worlds-role p { margin: 4px 0 0; }
+.worlds-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.worlds-table th, .worlds-table td { border-bottom: 1px solid rgba(255,255,255,0.1); padding: 4px 6px; vertical-align: top; text-align: left; }
+.worlds-table td:nth-child(2) { white-space: nowrap; }
+.worlds-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.worlds-cols ul, .worlds-examples { margin: 4px 0; padding-left: 18px; }
+.worlds-examples li { margin-bottom: 6px; }
+@media (max-width: 700px) { .worlds-roles, .worlds-cols { grid-template-columns: 1fr; } }
+body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88)), var(--title-bg, none) center / cover no-repeat fixed, var(--bg); }
     h2 { font-family: var(--mincho); }
 
     .setup { display: flex; flex-direction: column; height: 100%; padding: 12px 16px; gap: 10px; }

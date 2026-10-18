@@ -238,6 +238,29 @@ function scoreSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number, 
   return { value: value - skill.mp * w.mp, counter: counter * w.counter };
 }
 
+/**
+ * 敵とぶつかるまでの巡の見込み（0 = この巡のうちに届く）。近い敵ごとに、どちらかの届く範囲（移動＋射程）に入るまでの距離を、
+ * 近づく速さ（自分の移動＋相手の移動の半分。守り手は待つことが多いため）で割る
+ */
+function contactIn(st: BattleState, t: BUnit): number {
+  const g = st.map.grid;
+  let best = Infinity;
+  for (const f of st.units) {
+    if (!f.alive || f.side === t.side) continue;
+    const reachT = moveOf(t) + (basicSkill(t)?.range[1] ?? 1), reachF = moveOf(f) + (basicSkill(f)?.range[1] ?? 1);
+    const gap = g.distance(t.pos, f.pos) - Math.max(reachT, reachF);
+    best = Math.min(best, Math.max(0, Math.ceil(gap / Math.max(1, moveOf(t) + moveOf(f) * 0.5))));
+  }
+  return best;
+}
+
+/** 効き目が続く軍略のうち、敵とぶつかってから使えるぶんの割合（戦いの終わりまで続くものは 1） */
+function usefulShare(st: BattleState, t: BUnit, tac: TacticDef): number {
+  const turns = tac.turns ?? -1;
+  if (turns < 0) return 1;
+  return clamp((turns - contactIn(st, t)) / turns, 0, 1);
+}
+
 function scoreTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number, w: Record<string, number>, leader: BUnit | null): number {
   let s = 0;
   if (tac.kind === 'revive') return w.buff * 2;
@@ -281,6 +304,8 @@ function scoreTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number, 
           case 'mounted': v = 0; break;
           default: v = 0.5;
         }
+        // 補助の時機（むずかしい）：敵に届く前に切れるぶんは効かない（足を速くする補助は行軍に効くので除く）
+        if (w.buffTiming && tac.status !== 'moveUp') v *= usefulShare(st, t, tac);
         s += w.buff * v * big;
         break;
       }
@@ -290,6 +315,7 @@ function scoreTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number, 
         if (tac.status === 'grounded') v = t.affinity === 'rider' ? 1.5 : 0.6;                  // 騎馬を降ろす
         if (tac.status === 'intDown') v = t.tactics.length ? 1.2 : 0.2;
         if (tac.status === 'weaken') v = attackPower(st, t) > 150 ? 1.3 : 0.8;
+        if (w.buffTiming) v *= usefulShare(st, t, tac);
         s += w.debuff * v * big;
         break;
       }
@@ -534,6 +560,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   // 種類ごとの惜しみ方：軍略の種類ごとに、気力の重み（ふつうの何倍か）を決める
   if (lv?.smart?.mpKind && w.mp > 0) for (const [k, m] of Object.entries(lv.smart.mpKind)) w[`mpK_${k}`] = m * mpBase / w.mp;
   w.early = lv?.smart?.early ?? 0;
+  w.buffTiming = lv?.smart?.buffTiming ? 1 : 0;
   // 気力の値打ち（むずかしい）：気力の使い方を、残りの巡・あと何回撃てるか・これまでの良い一撃の大きさから決める
   if (lv?.smart?.mpPlan) w.mp = mpPrice(st, u, lv.smart, w);
   // 大将狙い（むずかしい）：武将を全員倒せば勝ち。武将への攻撃を、さらに重く見る
