@@ -38,6 +38,8 @@ export type AiLevel = 'easy' | 'normal' | 'hard';
  * buddy：危ない場所に立つなら、味方の隣を好む（隣の味方1体ごとの加点、2体まで）
  * mpPlan・mpHorizon：気力の値打ち。限りある技を、いちばん効くときに撃つ（足りなさ×良い一撃の大きさ÷1回の気力×この値を、気力1あたり引く。mpHorizon は先を見る巡の数。0 なら使わない。使うと mpThrift の代わりになる）
  * mpAdaptive：気力の値打ちで先を見る巡の数を、両陣営の残りの体力の割合（小さいほう）で縮める（決着が近いほど使い切る）
+ * mpKind：軍略の種類（damage・buff・debuff・status・heal・revive など）ごとの、気力の重み（ふつうの何倍か）。書いた種類は mpThrift の代わりになる
+ * early：効き目が続く軍略（補助・妨害・状態）を、序盤ほど高く見る（最大でこの割合だけ上乗せ。戦いの6割の巡で0になる）
  * lookahead：先読み。番の初めに、方針（いつもどおり・押す・固める）ごとに盤を写して、この手数（自分の番＝1、相手の番まで＝2）だけ試し、いちばん良い方針で動く（0 なら使わない）
  * lookaheadRolls：先読みで、方針ごとに試す回数（出目を変えて平均する。どの方針も同じ出目の並び）
  * lookaheadMedian：先読みの盤では出目をいつも真ん中にする（運のぶれを消す。試すのは1回）
@@ -46,7 +48,7 @@ export type AiLevel = 'easy' | 'normal' | 'hard';
  * focus：この一撃で倒せなくても、まだ動いていない味方と合わせて倒せる相手なら、倒す価値のこの割合を見込む（集中攻撃）
  * leaderKill：将を倒すと配下の兵がみな退くので、配下の兵の価値を、将を倒す（削る）価値に足す（割合）
  */
-export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number; leaderKill?: number; leaderSafe?: number; firstStrike?: number; buddy?: number; focus?: number; exactReach?: boolean; lookahead?: number; lookaheadControl?: number; lookaheadRolls?: number; lookaheadMedian?: boolean; mpPlan?: number; mpHorizon?: number; mpAdaptive?: boolean }
+export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdraw?: number; terrainAware?: boolean; surround?: number; surrounded?: number; mpThrift?: number; attackerPush?: number; keepPush?: number; decapitate?: number; leaderKill?: number; leaderSafe?: number; firstStrike?: number; buddy?: number; focus?: number; exactReach?: boolean; lookahead?: number; lookaheadControl?: number; lookaheadRolls?: number; lookaheadMedian?: boolean; mpPlan?: number; mpHorizon?: number; mpAdaptive?: boolean; mpKind?: Record<string, number>; early?: number }
 export const AI = aiJson as unknown as AiConfig;
 
 export const NEUTRAL: Personality = { aggression: 0, caution: 0, discipline: 0, cunning: 0, cruelty: 0, care: 0, honor: 0 };

@@ -7,8 +7,29 @@ import { mapFromProvince } from '../../src/battle/map';
 import { createBattle } from '../../src/battle/setup';
 import { readSaveFile } from '../../src/bridge/histsim';
 import { convert, generalsOf } from '../../src/convert/convert';
+import { RNG, codeToSeed } from '../../src/core/rng';
+import { gainGeneralExp, gainTroopExp, generalExpToNext, generalPromotions, promoteGeneral, promoteTroop, troopExpToNext, troopPromotions } from '../../src/rules/growth';
 
 const per = Number(process.argv[2] ?? 32), only = process.argv[3] ?? 'all', offset = Number(process.argv[4] ?? 0);
+// 高いレベルの戦い：出陣する武将と兵を、このレベルまで育てて昇進させる（0 ならそのまま）
+const high = Number(process.argv[5] ?? 0);
+function boost(gs: ReturnType<typeof convert>, ids: string[], seed: string): void {
+  const rng = new RNG(codeToSeed(seed));
+  for (const id of ids) {
+    const g = gs.generals[id];
+    while (g.level < high) {
+      gainGeneralExp(g, generalExpToNext(g) - g.exp, rng);
+      for (let k = 0; k < 3; k++) { const up = generalPromotions(g).filter((p) => p.ok); if (!up.length) break; promoteGeneral(g, up[rng.int(0, up.length - 1)].to.id); }
+    }
+    for (const t of g.troops) {
+      while (t.level < high) {
+        gainTroopExp(t, troopExpToNext(t) - t.exp, rng);
+        const up = troopPromotions(t).filter((p) => p.ok);
+        if (up.length) promoteTroop(t, up[rng.int(0, up.length - 1)].to.id);
+      }
+    }
+  }
+}
 const SAVES = ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'rome_fid3_212bc'];
 const saves = await Promise.all(SAVES.map(async (n) => (await readSaveFile(new Uint8Array(readFileSync(`tests/fixtures/${n}.histsim`)))).save));
 const full = { ...AI.levels.hard.smart } as SmartConfig;
@@ -18,6 +39,10 @@ const variants: Record<string, { level: 'normal' | 'hard'; smart?: SmartConfig; 
   '+look2r2': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadRolls: 2 } },
   '+look2r2c': { level: 'hard', smart: { ...full, lookahead: 2, lookaheadRolls: 2, lookaheadControl: 3 } },
   '+look3r2': { level: 'hard', smart: { ...full, lookahead: 3, lookaheadRolls: 2 } },
+  '+early0.5': { level: 'hard', smart: { ...full, early: 0.5 } },
+  '+kindA': { level: 'hard', smart: { ...full, mpKind: { damage: 3.5, heal: 2, revive: 2.5, buff: 1, debuff: 1, status: 1 } } },
+  '+kindA+e': { level: 'hard', smart: { ...full, early: 0.5, mpKind: { damage: 3.5, heal: 2, revive: 2.5, buff: 1, debuff: 1, status: 1 } } },
+  '+kindB+e': { level: 'hard', smart: { ...full, early: 0.5, mpKind: { damage: 2.5, heal: 2.5, revive: 3, buff: 0.7, debuff: 0.7, status: 0.7 } } },
   '+mpFree': { level: 'hard', smart: { ...full, mpThrift: 0, mpPlan: 0.000001 } },
   '+mp0.7h3': { level: 'hard', smart: { ...full, mpPlan: 0.7, mpHorizon: 3 } },
   '+mpA0.7': { level: 'hard', smart: { ...full, mpPlan: 0.7, mpAdaptive: true } },
@@ -80,7 +105,9 @@ for (const [name, v] of Object.entries(variants)) {
       const a = facs[i % facs.length], d = facs[(i + 3) % facs.length], p = gs.provinces[d.capital];
       const pick = (id: number) => generalsOf(gs, id).sort((x, y) => y.level - x.level).slice(0, 3).map((g) => g.id);
       const map = mapFromProvince(save.world, d.capital, { capital: i % 3 !== 0, fort: i % 3 === 0 ? 0.2 : undefined, walls: i % 2 === 0, from: p.nb[i % Math.max(1, p.nb.length)] });
-      const st = createBattle(gs, map, [pick(a.id), pick(d.id)], `ev${i}`, undefined, undefined, { weather: (['clear', 'rain', 'fog', 'clear'] as const)[i % 4], night: i % 5 === 0 });
+      const sides = [pick(a.id), pick(d.id)];
+      if (high) boost(gs, [...sides[0], ...sides[1]], `hi${i}`);
+      const st = createBattle(gs, map, sides, `ev${i}`, undefined, undefined, { weather: (['clear', 'rain', 'fog', 'clear'] as const)[i % 4], night: i % 5 === 0 });
       st.aiLevel = { side, level: v.level };
       autoBattle(st); n++; if (st.winner !== side) playerWins++;
     }

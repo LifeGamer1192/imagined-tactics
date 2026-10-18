@@ -304,7 +304,10 @@ function scoreTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number, 
       case 'displace': if (hostile) s += w.debuff * 0.4 * tacticSuccess(st, u, t) / 100 * big; break;
     }
   }
-  return s - tac.mp * w.mp;
+  // 種類ごとの使い時（むずかしい）：効き目が続く軍略（補助・妨害・状態）は、序盤ほど得が大きい。気力の惜しみ方も種類ごとに変える
+  const lasting = tac.kind === 'buff' || tac.kind === 'debuff' || tac.kind === 'status';
+  if (lasting && w.early && s > 0) s *= 1 + w.early * clamp(1 - st.round / (st.maxRounds * 0.6), 0, 1);
+  return s - tac.mp * w.mp * (w[`mpK_${tac.kind}`] ?? 1);
 }
 
 // ---------------------------------------------------------------- 位置
@@ -526,7 +529,11 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   const pol = policyFor(st, u.side);
   if (pol) for (const [k, m] of Object.entries(POLICY[pol].w)) if (k in w) w[k] *= m;
   // 技の時機（むずかしい）：気力を使う技・軍略は、効き目が大きいときに取っておく
+  const mpBase = w.mp;
   if (lv?.smart?.mpThrift) w.mp *= lv.smart.mpThrift;
+  // 種類ごとの惜しみ方：軍略の種類ごとに、気力の重み（ふつうの何倍か）を決める
+  if (lv?.smart?.mpKind && w.mp > 0) for (const [k, m] of Object.entries(lv.smart.mpKind)) w[`mpK_${k}`] = m * mpBase / w.mp;
+  w.early = lv?.smart?.early ?? 0;
   // 気力の値打ち（むずかしい）：気力の使い方を、残りの巡・あと何回撃てるか・これまでの良い一撃の大きさから決める
   if (lv?.smart?.mpPlan) w.mp = mpPrice(st, u, lv.smart, w);
   // 大将狙い（むずかしい）：武将を全員倒せば勝ち。武将への攻撃を、さらに重く見る
