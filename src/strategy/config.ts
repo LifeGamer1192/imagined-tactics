@@ -12,6 +12,11 @@ export const S = strategyJson as unknown as {
   /** 戦いから退いたときの罰：体力がこの割合を切った兵は失う・ほかの兵も見込みで失う・兵糧を失う（%）・武将の深手（月） */
   retreat: { troopLossBelowHp: number; troopLossChance: number; supplyLossPct: number; woundMonths: number };
   /** 飛び地（本拠と自分の領づたいにつながっていない領）の重い罰：収入・守備兵・徴兵の値段・戦うときの攻撃と防御（%） */
+  /**
+   * 訓練（P30）：1回で得る経験値（次のレベルまでの割合：武将・兵）、倍率（特性・軍事・規律の性格のどれかで bonusMult 倍）、
+   * まれな出来事の確率、出来事で上がる倍率（1回ぶん・上限）
+   */
+  train: { generalShare: number; troopShare: number; bonusMult: number; bonusTraits: string[]; bonusMilitary: number; bonusDiscipline: number; eventChance: number; bonusStep: number; bonusMax: number };
   /** 徴兵した兵のレベル：徴兵する時点の国どうしの技術と威信の位置（重み）から、minLevel〜maxLevel で決める */
   recruit: { minLevel: number; maxLevel: number; techWeight: number; prestigeWeight: number };
   /**

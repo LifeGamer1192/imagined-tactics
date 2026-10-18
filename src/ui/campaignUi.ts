@@ -12,6 +12,7 @@ import {
 } from '../strategy/campaign';
 import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
 import { profileHtml } from './profile';
+import { toggleTrainAlways, trainMult, trainOnce, trainProblem } from '../strategy/training';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
 import {
@@ -59,6 +60,8 @@ const LOG_TEXT: Record<string, string> = {
   alliance: '{a}と{b}が同盟を結んだ',
   breakAlliance: '{a}が{b}との同盟を破った',
   truce: '{a}と{b}が停戦した（{months}か月）',
+  train: '{name}が訓練した（経験値{exp}・×{mult}{lv}{troops}）',
+  trainEvent: '【訓練】{name}：{text}',
   tieJoin: '{name}は、戦場で出会った{friend}との縁で{faction}に仕えた',
   surrender: '{name}が{faction}に降った',
   defect: '{name}が{from}を見限り、{to}へ寝返った',
@@ -557,13 +560,18 @@ export class CampaignScreen {
         }
       });
       if (!g.isLord && !(g.id in c.away)) ups.push(`<button data-lower="${g.id}" title="武将ではなくなり、この領の予備兵1隊になります。兵糧が${lowerRefund(g.level)}戻ります">兵にする</button>`);
+      // 訓練：1か月訓練（行動済みになる）と、ずっと訓練（切り替え。その月ほかの命令で動いたときは訓練しない）
+      const tp = trainProblem(c, g), always = c.training?.[g.id] === 'always', tm = trainMult(c, g);
+      const multText = tm.mult > 1 ? `経験値×${Math.round(tm.mult * 100) / 100}（${tm.why.join('・')}）` : '経験値×1';
+      ups.push(`<button data-train="${g.id}" ${tp ? `disabled title="${esc(tp)}"` : `title="${esc(`この月は訓練して行動済みになります。月の終わりに、${g.name.ja}と配下の兵に経験値が入ります。${multText}`)}"`}>1か月訓練</button>`);
+      ups.push(`<button data-train-always="${g.id}" class="${always ? 'on' : ''}" title="${esc(`毎月の終わりに訓練します（その月に移動・攻めるなどで動かしたときは訓練しません）。${multText}`)}">ずっと訓練：${always ? '入' : '切'}</button>`);
       if (!questProblem(c, g)) ups.push(`<button data-quest="${g.id}" title="2か月のあいだ戦えないが、浪人や昇進の品を得ることがある">諸国巡りに出す</button>`);
       if (ups.length) rec += `<div class="ups">${ups.join('')}</div>`;
     }
     const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
     const fig = this.figure(g);
     return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}
-      ${L(cls.name)} Lv${g.level} <span class="dim">強さ${Math.round(strengthOf(g))} 采配${troopLoad(g)}/${g.command}${moved ? ' ・行動済' : ''}
+      ${L(cls.name)} Lv${g.level} <span class="dim">強さ${Math.round(strengthOf(g))} 采配${troopLoad(g)}/${g.command}${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}
       ${g.traits.length ? ` ・${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}
       ・<span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span></span><br>
       <span class="troops">${troops}</span> ${own ? this.troopMenuHtml(g.id) : ''}${rec}</span></div>`;
@@ -796,6 +804,12 @@ export class CampaignScreen {
         });
         if (ok && startQuest(c, gid)) { this.picked.delete(gid); this.refresh(); }
       };
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-train]').forEach((b) => {
+      b.onclick = () => { if (trainOnce(c, b.dataset.train!)) { this.picked.delete(b.dataset.train!); toast('この月は訓練します（月の終わりに経験値が入ります）'); this.refresh(); } };
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-train-always]').forEach((b) => {
+      b.onclick = () => { const on = toggleTrainAlways(c, b.dataset.trainAlways!); toast(on ? 'ずっと訓練にしました' : 'ずっと訓練をやめました'); this.refresh(); };
     });
     // 将の名前：押すと、能力と列伝の窓
     root.querySelectorAll<HTMLElement>('[data-profile]').forEach((el) => {

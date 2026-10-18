@@ -458,6 +458,16 @@ async function run(tag, ctxOpts) {
     await shot('profile');
     await press('.confirm [data-a="ok"]');
   }
+  // 訓練（P30）：ずっと訓練を入れると欄に出る。もう一度押すと切れる
+  const ta = await page.$('[data-train-always]');
+  if (ta) {
+    await press('[data-train-always]');
+    await page.waitForTimeout(150);
+    ok(`[${tag}] ずっと訓練を入れると、武将の欄に出る`, /ずっと訓練：入/.test(await page.textContent('#panel')));
+    await shot('train');
+    await press('[data-train-always]');
+    await page.waitForTimeout(150);
+  }
   ok(`[${tag}] 領の画面の国名は、国の色の札`, !!(await page.$('#panel .fac')));
   ok(`[${tag}] 断ると欄が消え、記録に残る`, !(await page.$('[data-hchoice="vc:0"]')) && await page.evaluate(() => window.__campaign.c.log.some((e) => e.key === 'historyChoice')));
   // 1か月オート・ずっとオート

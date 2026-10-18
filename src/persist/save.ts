@@ -37,6 +37,9 @@ export interface HexSave {
     built?: Record<number, number>;
     relocations?: Campaign['relocations'];
     history?: Campaign['history'];
+    training?: Campaign['training'];
+    trainedThisMonth?: string[];
+    trainBonus?: Campaign['trainBonus'];
   };
 }
 
@@ -59,6 +62,7 @@ export function snapshot(c: Campaign): HexSave {
       gs, player: c.player, months: c.months, over: c.over, moved: [...c.moved],
       log: c.log.slice(-LOG_KEEP), rng: [c.rng.seed0, c.rng.state],
       items: c.items, sieges: c.sieges, away: c.away, difficulty: c.difficulty, offers: c.offers, wounded: c.wounded, reserve: c.reserve, built: c.built, relocations: c.relocations, history: c.history,
+      training: c.training, trainedThisMonth: c.trainedThisMonth, trainBonus: c.trainBonus,
     },
   };
 }
@@ -77,6 +81,7 @@ export function restore(s: HexSave): Campaign {
     gs: k.gs, world: data.world, player: k.player, months: k.months, over: k.over,
     moved: new Set(k.moved), log: [...k.log], rng: RNG.restore(k.rng[0], k.rng[1]),
     items: k.items ?? {}, sieges: k.sieges ?? {}, away: k.away ?? {}, difficulty: k.difficulty ?? 'normal', offers: k.offers ?? [], wounded: k.wounded ?? {}, reserve: k.reserve ?? {}, built: k.built ?? {}, relocations: k.relocations ?? {}, history: k.history ?? { done: [] },
+    training: k.training ?? {}, trainedThisMonth: k.trainedThisMonth ?? [], trainBonus: k.trainBonus ?? {},
   };
 }
 

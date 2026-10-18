@@ -16,9 +16,10 @@ import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
 import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated } from './events';
 import { historyMonth } from './history';
+import { trainMonth } from './training';
 
 const SUPPLY = (cfgJson as unknown as { supply: { recruitCostMult: number } }).supply;
-const MAX_TROOPS = (cfgJson as unknown as { troops: { maxPerGeneral: number } }).troops.maxPerGeneral;
+export const MAX_TROOPS = (cfgJson as unknown as { troops: { maxPerGeneral: number } }).troops.maxPerGeneral;
 
 export interface CampaignLog { key: string; vars: Record<string, string | number> }
 
@@ -65,6 +66,12 @@ export interface Campaign {
   /** 本拠を移している最中の勢力（勢力 → 移す先・終わる月・払った兵糧） */
   relocations: Record<number, { to: number; until: number; cost: number }>;
   /** 史実の出来事：起きた（または、もう起きようがない）出来事の id */
+  /** 訓練（P30）：武将 → 1か月訓練かずっと訓練か */
+  training?: Record<string, 'once' | 'always'>;
+  /** 今月「1か月訓練」を命じた武将 */
+  trainedThisMonth?: string[];
+  /** 訓練の出来事で上がった、武将ごとの訓練の倍率（+割合） */
+  trainBonus?: Record<string, number>;
   history: {
     done: string[]; from?: number;
     /** 出来事で新しく起きた家（シナリオの家の名 → 勢力の番号） */
@@ -875,6 +882,7 @@ export function finishMonth(c: Campaign): void {
   gs.month++;
   if (gs.month > 12) { gs.month = 1; gs.year++; }
   gs.truces = gs.truces.filter((t) => t.until > gs.tick);
+  trainMonth(c);
   c.moved.clear();
   // 今月攻められなかった包囲は、守りが立て直されて進みが戻る
   for (const [k, sg] of Object.entries(c.sieges)) {
