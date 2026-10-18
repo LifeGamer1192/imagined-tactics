@@ -472,6 +472,43 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
   parts.noise = jitter(u.id, u.pos, st.round) * w.noise;
 }
 
+// ---------------------------------------------------------------- 気力の値打ち（むずかしい）
+// 気力は戦いの間ほとんど戻らないので、限りある技は「いちばん効くとき」に撃ちたい。気力1あたりの値打ち（引く点）を、
+//   値打ち = mpPlan × 足りなさ × 良い一撃の大きさ ÷ 1回の気力
+//   足りなさ：あと撃てる回数が、これから戦う巡（残りの巡、最大 mpHorizon）より少ないほど大きい（足りていれば 0。好きなだけ撃つ）
+//   良い一撃の大きさ：この戦いでこの駒が撃てたいちばん良い一撃（少しずつ忘れる。まだ無ければ「倒す」の値）
+//   倒されそうな駒（体力が4割を切った）は、抱えたまま倒れないよう、値打ち 0（今のうちに撃つ）
+
+const castMemory = new WeakMap<BattleState, Map<number, number>>();
+function noteCast(st: BattleState, u: BUnit, v: number): void {
+  let m = castMemory.get(st);
+  if (!m) { m = new Map(); castMemory.set(st, m); }
+  m.set(u.id, Math.max((m.get(u.id) ?? 0) * 0.85, v));
+}
+
+function mpPrice(st: BattleState, u: BUnit, sm: SmartConfig, w: Record<string, number>): number {
+  if (u.hp < u.maxHp * 0.4) return 0;
+  const costs = [...u.skills.map((id) => skillOf(id).mp), ...u.tactics.map((id) => D.byTactic[id].mp)].filter((c) => c > 0 && c <= u.maxMp);
+  if (!costs.length) return 0;
+  const avg = costs.reduce((s, c) => s + c, 0) / costs.length;
+  const left = st.maxRounds - st.round + 1;
+  let horizon = Math.min(left, sm.mpHorizon ?? 8);
+  // 戦いの残りの見込み：どちらかの体力が減るほど決着は近い（減った割合の小さいほうで縮める）
+  if (sm.mpAdaptive) {
+    const frac = (side: boolean) => {
+      const us = st.units.filter((x) => (x.side === u.side) === side);
+      const max = us.reduce((s, x) => s + x.maxHp, 0);
+      return max ? us.reduce((s, x) => s + (x.alive ? x.hp : 0), 0) / max : 0;
+    };
+    horizon = Math.max(1, Math.min(left, Math.round(horizon * Math.min(frac(true), frac(false)))));
+  }
+  const casts = u.mp / avg;
+  if (casts >= horizon) return 0;
+  const scarcity = 1 - casts / horizon;
+  const ref = castMemory.get(st)?.get(u.id) ?? w.kill;
+  return sm.mpPlan! * scarcity * ref / avg;
+}
+
 // ---------------------------------------------------------------- 1ユニットの行動
 
 const zeroParts = (): ScoreParts => ({ attack: 0, support: 0, counter: 0, threat: 0, terrain: 0, cohesion: 0, stance: 0, spacing: 0, noise: 0 });
@@ -490,6 +527,8 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   if (pol) for (const [k, m] of Object.entries(POLICY[pol].w)) if (k in w) w[k] *= m;
   // 技の時機（むずかしい）：気力を使う技・軍略は、効き目が大きいときに取っておく
   if (lv?.smart?.mpThrift) w.mp *= lv.smart.mpThrift;
+  // 気力の値打ち（むずかしい）：気力の使い方を、残りの巡・あと何回撃てるか・これまでの良い一撃の大きさから決める
+  if (lv?.smart?.mpPlan) w.mp = mpPrice(st, u, lv.smart, w);
   // 大将狙い（むずかしい）：武将を全員倒せば勝ち。武将への攻撃を、さらに重く見る
   if (lv?.smart?.decapitate) w.generalTarget *= lv.smart.decapitate;
   w.leaderKill = lv?.smart?.leaderKill ?? 0;
@@ -526,6 +565,8 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   const cells = mayMove ? reach(st, u, moveOf(u) - u.moveSpent).cells : [origin];
   let best: { score: number; parts: ScoreParts; move: number | null; act: Action | null } = { score: -Infinity, parts: zeroParts(), move: null, act: null };
   let stay = -Infinity;
+  // 気力の値打ちで使う：この駒が、いま撃てるいちばん良い一撃の大きさ（気力の値打ちを引く前）
+  let bestCast = 0;
   for (const c of cells) {
     u.pos = c; u.moved = wasMoved || c !== origin;
     const base = zeroParts();
@@ -545,6 +586,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
       if (!canUseSkill(st, u, skill)) continue;
       for (const t of skillTargetCells(st, u, skill)) {
         const r = scoreSkill(st, u, skill, t, w, leader);
+        if (skill.mp > 0) bestCast = Math.max(bestCast, r.value + skill.mp * w.mp);
         if (r.value <= 0) continue;
         const heals = skill.effects.some((e) => e.type === 'heal');
         consider({ ...base, attack: heals ? 0 : r.value, support: heals ? r.value : 0, counter: r.counter }, { type: 'skill', unit: u.id, skill: sid, target: t });
@@ -561,6 +603,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
       if (!canUseTactic(u, tac)) continue;
       for (const t of tacticTargetCells(st, u, tac)) {
         const v = scoreTactic(st, u, tac, t, w, leader);
+        if (tac.mp > 0) bestCast = Math.max(bestCast, v + tac.mp * w.mp);
         if (v <= 0) continue;
         const isAttack = tac.kind === 'damage';
         consider({ ...base, attack: isAttack ? v : 0, support: isAttack ? 0 : v }, { type: 'tactic', unit: u.id, tactic: tid, target: t });
@@ -568,6 +611,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     }
   }
   u.pos = origin; u.moved = wasMoved;
+  if (lv?.smart?.mpPlan && bestCast > 0) noteCast(st, u, bestCast);
   const actions: Action[] = [];
   if (best.move !== null) actions.push({ type: 'move', unit: u.id, to: best.move });
   if (mayAct) actions.push(best.act ?? { type: 'wait', unit: u.id });
