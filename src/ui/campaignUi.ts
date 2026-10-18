@@ -11,6 +11,7 @@ import {
   S, supplyCap, type Campaign, type CampaignLog, type PendingBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
 import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
+import { profileHtml } from './profile';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
 import {
@@ -39,6 +40,10 @@ export interface Host {
 }
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+
+/** 国名の札：地図と同じ国の色を地にする（字は地の明るさで白か黒） */
+const factionBadge = (name: string, [r, g, b]: [number, number, number]): string =>
+  `<span class="fac" style="background:rgb(${r},${g},${b});color:${0.299 * r + 0.587 * g + 0.114 * b > 150 ? '#1a1612' : '#fff'}">${esc(name)}</span>`;
 const REL_NAME = { self: '自分', ally: '味方', truce: '停戦中', war: '交戦中', neutral: '中立' } as const;
 const LOG_TEXT: Record<string, string> = {
   capture: '{faction}が{prov}を取った',
@@ -462,7 +467,7 @@ export class CampaignScreen {
       <p>攻め手：${esc(names(pb.atk))}</p>
       <p>守り手：${garrison ? `守備兵（Lv${g.level}・${g.troops}隊）<span class="dim">　守る武将はいません</span>` : esc(names(pb.def))}</p>
       ${garrison
-        ? '<button class="primary" data-a="watch">観戦</button> <button data-a="auto">おまかせ</button><p class="dim small">観戦は、戦いを見ます。途中で「手動にする」を押すと、自分で動かせます。おまかせは、結果だけ出ます。</p>'
+        ? '<button class="primary" data-a="play">自分で戦う</button> <button data-a="watch">観戦</button> <button data-a="auto">おまかせ</button><p class="dim small">自分で戦うは、自分の側を動かします。観戦は、戦いを見ます（途中で「手動にする」を押すと、自分で動かせます）。おまかせは、結果だけ出ます。</p>'
         : '<button class="primary" data-a="play">自分で戦う</button> <button data-a="auto">おまかせ</button>'}`;
     this.host.root.querySelector('.battle')!.appendChild(box);
     // 攻めてきた領と攻められた領を、地図で目立たせて真ん中へ寄せる
@@ -557,7 +562,7 @@ export class CampaignScreen {
     }
     const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
     const fig = this.figure(g);
-    return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}
+    return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}
       ${L(cls.name)} Lv${g.level} <span class="dim">強さ${Math.round(strengthOf(g))} 采配${troopLoad(g)}/${g.command}${moved ? ' ・行動済' : ''}
       ${g.traits.length ? ` ・${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}
       ・<span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span></span><br>
@@ -728,7 +733,7 @@ export class CampaignScreen {
       if (!town && !this.townRetry) this.townRetry = window.setTimeout(() => { this.townRetry = 0; if (this.host.root.contains(this.view.canvas)) this.refresh(); }, 400);
       body = `<div class="card">
           ${town ? `<img class="town" src="${town}" alt="" draggable="false">` : ''}
-          <div><b>${esc(p.name.ja)}</b> <span class="dim">${owner ? esc(owner.name.ja) : '持ち主なし'}${rel}${owner?.capital === p.id ? '・本拠' : ''}</span></div>
+          <div><b>${esc(p.name.ja)}</b> ${owner ? factionBadge(owner.name.ja, owner.color) : '<span class="dim">持ち主なし</span>'}<span class="dim">${rel}${owner?.capital === p.id ? '・本拠' : ''}</span></div>
           <div class="dim">人口${Math.round(p.pop)} 収入${Math.round(p.income)} 城${Math.round(p.fort * 100)}% 不穏${Math.round(p.unrest * 100)}%${p.coastal ? ' 海沿い' : ''}</div>
           ${owner && isExclave(c, p.id) ? this.exclaveHtml(p.id) : ''}
           ${this.previewHtml(p.id)}
@@ -740,8 +745,8 @@ export class CampaignScreen {
         </div><div class="dim">${this.order === 'move' ? '青い領をクリックで移動（自分の領づたいに行ける所）' : this.order === 'attack' ? '赤い領をクリックで侵攻' : '武将にチェックを入れて、移動か攻めるを選びます'}</div>` : ''}
         ${own && gens.some((g) => !c.moved.has(g.id)) ? `<div class="sel"><span class="dim">まとめて選ぶ</span>
           <button id="selAll">全員</button><button id="selTop">レベルの高い${MAX_GENERALS}人</button><button id="selNone" ${picked ? '' : 'disabled'}>外す</button></div>` : ''}
-        ${own ? this.reserveHtml(p.id) : ''}${own ? this.buildHtml(p.id) : ''}${own ? this.capitalHtml(p.id) : ''}
         <div class="gens2">${gens.map((g) => this.generalHtml(g, own)).join('') || `<div class="dim">武将はいません。守備兵が守ります（Lv${garrisonOf(c, p.id).level}・${garrisonOf(c, p.id).troops}隊）</div>`}</div>
+        ${own ? this.reserveHtml(p.id) : ''}${own ? this.buildHtml(p.id) : ''}${own ? this.capitalHtml(p.id) : ''}
         ${!own && reserveOf(c, p.id).length ? `<div class="card status">予備兵 ${reserveOf(c, p.id).length}隊（${reserveOf(c, p.id).map((t) => `<span class="nm">${esc(t.name ?? L(D.byUnit[t.unitId].name))}</span>Lv${t.level}`).join('、')}）<span class="dim small">この領を奪えば手に入ります</span></div>` : ''}
         ${owner ? woundedAt(c, p.id, owner.id).map((g) => `<div class="dim">${esc(g.name.ja)} Lv${g.level}：深手（あと${c.wounded[g.id] - gs.tick}か月は戦えない）</div>`).join('') : ''}
         ${own && me ? awayAt(c, p.id, me.id).map((g) => `<div class="dim">${esc(g.name.ja)}：諸国巡り中（あと${c.away[g.id] - gs.tick}か月）</div>`).join('') : ''}
@@ -790,6 +795,14 @@ export class CampaignScreen {
           ok: '旅に出す',
         });
         if (ok && startQuest(c, gid)) { this.picked.delete(gid); this.refresh(); }
+      };
+    });
+    // 将の名前：押すと、能力と列伝の窓
+    root.querySelectorAll<HTMLElement>('[data-profile]').forEach((el) => {
+      el.onclick = (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const g = gs.generals[el.dataset.profile!];
+        if (g) void confirmBox(this.frame(), { title: '能力と列伝', body: profileHtml(c, g, this.figure(g), logLine), ok: '閉じる', single: true });
       };
     });
     root.querySelector<HTMLDetailsElement>('details.bmap')?.addEventListener('toggle', (e) => { this.previewOpen = (e.target as HTMLDetailsElement).open; });

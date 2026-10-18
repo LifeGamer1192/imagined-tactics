@@ -449,6 +449,16 @@ async function run(tag, ctxOpts) {
   ok(`[${tag}] 断るときは、起きることを書いた確かめる窓が出る`, /何も起きません/.test(await page.textContent('.confirm')));
   await press('.confirm [data-a="ok"]');
   await page.waitForTimeout(150);
+  // 将の名前を押すと、能力と列伝の窓（P29）
+  if (await page.$('.gname')) {
+    await press('.gname');
+    await page.waitForSelector('.confirm .profile');
+    const pf = await page.textContent('.confirm .profile');
+    ok(`[${tag}] 将の名前で、能力と列伝の窓が開く`, /列伝/.test(pf) && /采配/.test(pf), pf.slice(0, 60));
+    await shot('profile');
+    await press('.confirm [data-a="ok"]');
+  }
+  ok(`[${tag}] 領の画面の国名は、国の色の札`, !!(await page.$('#panel .fac')));
   ok(`[${tag}] 断ると欄が消え、記録に残る`, !(await page.$('[data-hchoice="vc:0"]')) && await page.evaluate(() => window.__campaign.c.log.some((e) => e.key === 'historyChoice')));
   // 1か月オート・ずっとオート
   await press('#autoMonth');

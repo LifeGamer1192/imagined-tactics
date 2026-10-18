@@ -31,6 +31,8 @@ export function confirmBox(host: Element, o: ConfirmOptions): Promise<boolean> {
     const key = (e: KeyboardEvent): void => { if (e.key === 'Escape') { e.stopPropagation(); done(false); } };
     window.addEventListener('keydown', key, true);
     box.querySelectorAll<HTMLButtonElement>('button').forEach((b) => { b.onclick = () => done(b.dataset.a === 'ok'); });
-    (box.querySelector<HTMLButtonElement>(o.danger ? '[data-a="no"]' : '[data-a="ok"]'))?.focus();
+    // 長い窓でも、上から読めるように（ボタンへ移すときに下まで送らない）
+    (box.querySelector<HTMLButtonElement>(o.danger ? '[data-a="no"]' : '[data-a="ok"]'))?.focus({ preventScroll: true });
+    box.scrollTop = 0;
   });
 }
