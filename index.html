@@ -93,7 +93,23 @@
     /* 確かめる窓：画面の真ん中に、後ろを暗くして出す */
     body .result.confirm { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 45; width: min(520px, 92vw); text-align: left; box-shadow: 0 0 0 100vmax rgba(0,0,0,0.45), 0 14px 50px rgba(0,0,0,0.6); }
     body .result.confirm h2 { text-align: center; }
-    .cbody { font-size: 13.5px; line-height: 1.7; } .cbody ul { margin: 4px 0; padding-left: 1.4em; }
+    body .result.confirm:has(.profile) { width: min(680px, 94vw); max-height: 88vh; overflow-y: auto; }
+.profile h3 { margin: 12px 0 4px; font: 700 16px var(--mincho); border-bottom: 1px solid rgba(201,162,39,0.35); }
+.profile h4 { margin: 8px 0 2px; font-size: 13px; color: var(--gold, #c9a227); }
+.profile p { margin: 2px 0; }
+details.pf-more { max-height: none; margin: 0 0 4px; } details.pf-more > summary { cursor: pointer; color: var(--gold, #c9a227); font-size: 12px; }
+.pf-head { display: flex; gap: 10px; align-items: center; }
+.pf-head .fig { width: 64px; height: auto; }
+.pf-name { font: 700 20px var(--mincho); }
+.pf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
+.pf-stats { border-collapse: collapse; font-size: 12.5px; }
+.pf-stats th { text-align: left; color: var(--dim, #a99); font-weight: 400; padding: 1px 8px 1px 0; white-space: nowrap; }
+.pf-stats td { padding: 1px 0; }
+@media (max-width: 600px) { .pf-cols { grid-template-columns: 1fr; } }
+.gname { cursor: pointer; text-decoration: underline dotted rgba(201,162,39,0.6); text-underline-offset: 3px; }
+.gname:hover { color: var(--gold, #c9a227); }
+.fac { display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 12px; line-height: 1.6; margin-left: 4px; }
+.cbody { font-size: 13.5px; line-height: 1.7; } .cbody ul { margin: 4px 0; padding-left: 1.4em; }
     .cbtns { text-align: center; margin-top: 12px; }
     ul.news { margin: 4px 0; padding-left: 1.3em; line-height: 1.8; }
     #autoMonth.autoing { background-image: linear-gradient(#c9a45a, #8f7236); color: #1c1a17; font-weight: bold; animation: autoing 1.2s ease-in-out infinite; }
@@ -388,7 +404,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-BlrA8Dx6.js"></script>
+  <script type="module" crossorigin src="./assets/index-D77Fq31H.js"></script>
 </head>
 <body>
   <div id="app"></div>
