@@ -12,6 +12,7 @@ import { TERRAIN_NAME } from '../render/battleView';
 import { FIELD } from '../rules/stats';
 import { S } from '../strategy/config';
 import { AFFINITY_NAME, STATUS_NAME, TRAIT_NAME } from './text';
+import { statusEffect } from './describe';
 
 type Tab = 'intro' | 'strategy' | 'battle' | 'terms';
 const TABS: [Tab, string][] = [['intro', 'はじめに'], ['strategy', '戦略'], ['battle', '戦闘'], ['terms', '用語']];
@@ -270,30 +271,9 @@ function battle(): string {
 function statusRows(): [string, string][] {
   const s = D.status, hp = term('hp'), agi = term('agi'), int = term('int');
   const span = (t: [number, number]): string => `${t[0]}〜${t[1]}ターン`;
-  const text: Partial<Record<StatusId, string>> = {
-    poison: `番の始めに、最大${hp}の${s.poison.pct}%を失う。戦いが終わるまで続く。`,
-    daze: `${span(s.daze.turns)}動けず、受ける攻撃が必ず当たる。`,
-    stun: `${span(s.stun.turns)}動けず、受ける攻撃が必ず当たる。攻撃を受けると解ける。`,
-    confuse: `動けず、受ける攻撃が必ず当たる。防御が${s.confuse.def}になる。戦いが終わるまで続く。`,
-    silence: `${span(s.silence.turns)}、軍略を使えない。`,
-    defect: `${span(s.defect.turns)}、相手の陣営として動く。反撃もしない。兵だけがかかり、武将はかからない。`,
-    weaken: `${s.weaken.turns}ターン、攻撃${signed(s.weaken.atk)}、防御${signed(s.weaken.def)}。`,
-    atkDown: `${s.atkDown.turns}ターン、攻撃${signed(s.atkDown.atk)}。`,
-    intDown: `${s.intDown.turns}ターン、${int}${signed(s.intDown.int)}（軍略の威力と、軍略への強さが下がる）。`,
-    grounded: `${s.grounded.turns}ターン、${agi}${signed(s.grounded.agi)}。得意地形が平地になる（馬から降ろされる）。`,
-    atkNext: `次に使う技の攻撃${signed(s.atkNext.atk)}。`,
-    sureNext: '次に使う技が必ず当たる。',
-    atkUp: `${s.atkUp.turns}ターン、攻撃${signed(s.atkUp.atk)}。`,
-    defUp: `${s.defUp.turns}ターン、防御${signed(s.defUp.def)}。`,
-    agiUp: `${s.agiUp.turns}ターン、${agi}${signed(s.agiUp.agi)}。`,
-    moveUp: `${s.moveUp.turns}ターン、移動${signed(s.moveUp.move)}。`,
-    resistUp: `${s.resistUp.turns}ターン、軍略で受けるダメージと、かけられる軍略の成功率が${s.resistUp.pct}%下がる。`,
-    regen: `${s.regen.turns}ターン、番の始めに最大${hp}の${s.regen.pct}%を回復する。`,
-    ward: '次に受ける軍略を、1度だけ無効にする。味方からの回復も無効になる。',
-    extraAct: '行動のあと、もう1度動ける。',
-    mounted: '得意地形が「騎」になる（馬に乗る）。',
-    routed: '倒れた兵が、収容した側の陣営で戦う。戦いが終わると失われる。',
-  };
+  // 効き目の文は describe.ts の statusEffect（技・軍略の説明と同じもの）
+  const ids: StatusId[] = ['poison', 'daze', 'stun', 'confuse', 'silence', 'defect', 'weaken', 'atkDown', 'intDown', 'grounded', 'atkNext', 'sureNext', 'atkUp', 'defUp', 'agiUp', 'moveUp', 'resistUp', 'regen', 'ward', 'extraAct', 'mounted', 'routed'];
+  const text: Partial<Record<StatusId, string>> = Object.fromEntries(ids.map((id) => [id, statusEffect(id)]));
   const rows = (Object.keys(text) as StatusId[]).map((id): [string, string] => [STATUS_NAME[id], text[id]!]);
   rows.push(['采配範囲外', `武将の采配範囲の外にいる兵。攻撃と防御が${Math.abs(s.outOfCommand.atkDefPct)}%下がり、軍略で受けるダメージが${s.outOfCommand.tacticDamagePct}%増える。`]);
   return rows;

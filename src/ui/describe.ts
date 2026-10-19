@@ -94,6 +94,61 @@ export function personalityTip(p: Personality, label: string): string {
 
 const MARK: Record<string, string> = { sure: '必中', o: '有効', tri: '効きにくい', x: '効かない' };
 
+const sgn = (v: number): string => (v > 0 ? `+${v}` : String(v));
+
+/** 騎乗（得意地形が「騎」になる）で何が変わるか：地形ごとの動きやすさを、平地が得意のときと比べて（データから） */
+function mountedText(): string {
+  const mc = D.terrain.moveCost as Record<string, Record<string, number | null>>;
+  const better: string[] = [], worse: string[] = [], barred: string[] = [];
+  for (const k of ['plain', 'road', 'forest', 'mountain', 'swamp', 'paddy', 'desert', 'snowfield', 'town']) {
+    const a = mc[k]?.plain, b = mc[k]?.rider, name = TERRAIN_WORD[k] ?? k;
+    if (a === undefined || b === undefined) continue;
+    if (b === null && a !== null) barred.push(name);
+    else if (a !== null && b !== null && b < a) better.push(name);
+    else if (a !== null && b !== null && b > a) worse.push(name);
+  }
+  return [`得意地形が「騎」になる（馬に乗る）`, better.length ? `${better.join('・')}で動きやすくなる` : '', worse.length ? `${worse.join('・')}では動きにくくなる` : '', barred.length ? `${barred.join('・')}には入れなくなる` : '', '受ける技は、技ごとの「騎馬の相手」への効き目で決まる'].filter(Boolean).join('。') + '。';
+}
+const TERRAIN_WORD: Record<string, string> = { plain: '平地', road: '道', forest: '森', mountain: '山', swamp: '湿地', paddy: '田', desert: '荒れ地', snowfield: '雪原', town: '町' };
+
+/**
+ * 状態（強化・弱化・状態異常）が、かかるとどう変わるか。数字は statuses.json から。
+ * 技・軍略の説明と、遊び方の状態の表の両方で使う
+ */
+export function statusEffect(id: string): string {
+  const s = D.status as unknown as Record<string, Record<string, number | [number, number]>>;
+  const hp = T.hp(), agi = T.agi(), int = T.int();
+  const n = (k: string, f: string): number => Number((s[k]?.[f] as number) ?? 0);
+  const span = (k: string): string => { const t = s[k]?.turns; return Array.isArray(t) ? `${t[0]}〜${t[1]}ターン` : `${t}ターン`; };
+  switch (id) {
+    case 'poison': return `番の始めに、最大${hp}の${n('poison', 'pct')}%を失う。戦いが終わるまで続く。`;
+    case 'daze': return `${span('daze')}動けず、受ける攻撃が必ず当たる。`;
+    case 'stun': return `${span('stun')}動けず、受ける攻撃が必ず当たる。攻撃を受けると解ける。`;
+    case 'confuse': return `動けず、受ける攻撃が必ず当たる。防御が${n('confuse', 'def')}になる。戦いが終わるまで続く。`;
+    case 'silence': return `${span('silence')}、軍略を使えない。`;
+    case 'defect': return `${span('defect')}、相手の陣営として動く。反撃もしない。兵だけがかかり、武将はかからない。`;
+    case 'weaken': return `${span('weaken')}、攻撃${sgn(n('weaken', 'atk'))}、防御${sgn(n('weaken', 'def'))}。`;
+    case 'atkDown': return `${span('atkDown')}、攻撃${sgn(n('atkDown', 'atk'))}。`;
+    case 'intDown': return `${span('intDown')}、${int}${sgn(n('intDown', 'int'))}（軍略の威力と、軍略への強さが下がる）。`;
+    case 'grounded': return `${span('grounded')}、${agi}${sgn(n('grounded', 'agi'))}。得意地形が平地になる（馬から降ろされる）。`;
+    case 'atkNext': return `次に使う技の攻撃${sgn(n('atkNext', 'atk'))}。`;
+    case 'sureNext': return '次に使う技が必ず当たる。';
+    case 'atkUp': return `${span('atkUp')}、攻撃${sgn(n('atkUp', 'atk'))}。`;
+    case 'defUp': return `${span('defUp')}、防御${sgn(n('defUp', 'def'))}。`;
+    case 'agiUp': return `${span('agiUp')}、${agi}${sgn(n('agiUp', 'agi'))}。`;
+    case 'moveUp': return `${span('moveUp')}、移動${sgn(n('moveUp', 'move'))}。`;
+    case 'resistUp': return `${span('resistUp')}、軍略で受けるダメージと、かけられる軍略の成功率が${n('resistUp', 'pct')}%下がる。`;
+    case 'regen': return `${span('regen')}、番の始めに最大${hp}の${n('regen', 'pct')}%を回復する。`;
+    case 'ward': return '次に受ける軍略を、1度だけ無効にする。味方からの回復も無効になる。';
+    case 'extraAct': return '行動のあと、もう1度動ける。';
+    case 'mounted': return mountedText();
+    case 'routed': return '倒れた兵が、収容した側の陣営で戦う。戦いが終わると失われる。';
+    default: return '';
+  }
+}
+/** 「状態の名前（効き目）」 */
+const withEffect = (id: string): string => { const e = statusEffect(id); return `${(STATUS_NAME as Record<string, string>)[id] ?? id}${e ? `（${e.replace(/。$/, '')}）` : ''}`; };
+
 /** 技の説明 */
 export function skillTip(s: SkillDef): string {
   const shape = s.shape.type === 'around' ? `自分の周り${s.shape.n}マス` : s.shape.type === 'line' ? `向いた方へ直線${s.shape.n}マス` : `1体（射程${s.range[0] === s.range[1] ? s.range[1] : `${s.range[0]}〜${s.range[1]}`}）`;
@@ -106,9 +161,9 @@ export function skillTip(s: SkillDef): string {
   if (s.noCounter) out.push('相手は反撃できない');
   if (s.needsWater) out.push('水の上でしか使えない');
   for (const e of s.effects) {
-    if (e.type === 'status') out.push(`当たると${e.chance}%で${STATUS_NAME[e.status] ?? e.status}`);
+    if (e.type === 'status') out.push(`当たると${e.chance}%で${withEffect(e.status)}`);
     else if (e.type === 'lifesteal') out.push(`与えたダメージの${Math.round(e.rate * 100)}%を回復`);
-    else if (e.type === 'weakenStun') out.push(`当たると${e.chance}%で攻撃・防御ダウンと気絶`);
+    else if (e.type === 'weakenStun') out.push(`当たると${e.chance}%で${withEffect('weaken')}と${withEffect('stun')}`);
     else if (e.type === 'mpHalf') out.push('相手の気力を半分にする');
     else if (e.type === 'heal') out.push('味方の体力を回復する');
     else if (e.type === 'knockback') out.push('相手を1マス押し出す');
@@ -128,8 +183,12 @@ export function tacticTip(t: TacticDef): string {
   const out = [`【${L(t.name)}】`, `${TACTIC_KIND[t.kind] ?? t.kind}軍略。対象：${where}`, `気力を${t.mp}使う`];
   if (t.power) out.push(`威力${t.power}（${T.int()}が高いほど強い）`);
   // 状態の付き方：ダメージの軍略は当たったあと決まった確率で、状態の軍略は必中でなければ知略の比べ合い、強化・弱体は必ず付く
-  if (t.status && typeof t.status === 'object') out.push(`${STATUS_NAME[t.status.status] ?? t.status.status}（${t.status.chance}%）`);
-  else if (t.status) out.push(`${STATUS_NAME[t.status] ?? t.status}${t.kind === 'status' && !t.sure ? '（相手の知略しだいでかかる）' : '（必ずかかる）'}${t.turns ? `、${t.turns}ターン` : ''}`);
+  // 状態は、かかるとどう変わるかを必ず添える（「騎乗」だけでは分からないため）
+  if (t.status && typeof t.status === 'object') out.push(`当たると${t.status.chance}%で${STATUS_NAME[t.status.status] ?? t.status.status}：${statusEffect(t.status.status) || '（効き目は状態の表を参照）'}`);
+  else if (t.status) out.push(`${STATUS_NAME[t.status] ?? t.status}${t.kind === 'status' && !t.sure ? '（相手の知略しだいでかかる）' : '（必ずかかる）'}：${statusEffect(t.status) || '（効き目は状態の表を参照）'}`);
+  if (t.kind === 'cure') out.push('毒・眩暈・気絶・混乱・軍略封じ・寝返りなどの悪い状態を治す');
+  if (t.kind === 'dispel') out.push('かかっている強化（攻撃・防御・機敏・移動の上昇、次の一撃、用心など）と弱化を消す');
+  if (t.kind === 'mpRestore' && t.amount) out.push(`味方の気力を${t.amount}回復する`);
   if (t.atk) out.push(`攻撃${t.atk > 0 ? '+' : ''}${t.atk}%`);
   if (t.def) out.push(`防御${t.def > 0 ? '+' : ''}${t.def}%`);
   if (t.friendlyFire) out.push('味方も巻き込む');
