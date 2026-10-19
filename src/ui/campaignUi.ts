@@ -29,6 +29,7 @@ import { TRAIT_NAME } from './text';
 import { busy, toast } from './busy';
 import { bannerHtml, sceneUrl, seasonBand, setScene } from './scene';
 import { BGM_LEVEL_NAME, bgm, bgmLevel, setBgmLevel } from './bgm';
+import { play } from './sound';
 import { confirmBox } from './confirm';
 import { personalityTip, traitTip, unitTip } from './describe';
 import { initTips } from './tip';
@@ -543,12 +544,20 @@ export class CampaignScreen {
     this.alarm = { from: pb.from, to: pb.prov };
     this.view.focusOn(pb.from, pb.prov);
     this.draw();
+    // 攻めて勝ち、領を取ったら、地図に戻ったあとで祝いの窓を出す（P38）
+    const prevOwner = p.owner, mark = c.log.length;
+    let win: { sum: BattleSummary } | null = null;
+    const won = (sum: BattleSummary | null): BattleSummary | null => {
+      win = side === 0 && sum && c.player && gs.provinces[pb.prov].owner === c.player && prevOwner !== c.player ? { sum } : null;
+      return sum;
+    };
+    const then = (): void => { after(); if (win) this.celebrate(pb, win.sum, mark, prevOwner); };
     box.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
       b.onclick = () => {
         this.alarm = null;
-        if (b.dataset.a === 'auto') { void busy('戦っています…', () => { resolveBattle(c, pb); after(); }); return; }
+        if (b.dataset.a === 'auto') { void busy('戦っています…', () => { won(resolveBattle(c, pb)); then(); }); return; }
         const human = b.dataset.a === 'watch' ? new Set<Side>() : new Set<Side>([side]);
-        void busy('戦場を用意しています…', () => this.host.openBattle(battleFor(c, pb), human, (st) => resolveBattle(c, pb, st), { label: '戦略マップへ', fn: after }, false, side));
+        void busy('戦場を用意しています…', () => this.host.openBattle(battleFor(c, pb), human, (st) => won(resolveBattle(c, pb, st)), { label: '戦略マップへ', fn: then }, false, side));
       };
     });
   }
@@ -566,6 +575,55 @@ export class CampaignScreen {
     this.c.reel = [];
     if (reel.length && reelOn()) this.playReel(reel, () => this.showNews(this.logMark));
     else this.showNews(this.logMark);
+  }
+
+  /**
+   * 勝って領を取ったときの、祝いの演出と報告の窓（P38）。金箔が舞い、勝鬨の文字と、戦いの結果（討ち取った敵将・レベルの上がった兵・失った兵）、
+   * 手に入れたもの（領のようす・予備兵・捕まえた兵・新しく雇える兵種・滅ぼした家）を発表する。地図ではその領を光らせる
+   */
+  private celebrate(pb: PendingBattle, sum: BattleSummary, mark: number, prevOwner: number): void {
+    const c = this.c, gs = c.gs, p = gs.provinces[pb.prov], me = gs.factions[c.player];
+    if (!me) return;
+    const logs = c.log.slice(mark);
+    const prevName = (logs.find((l) => l.key === 'capture')?.vars.from as string | undefined) || (gs.factions[prevOwner]?.name.ja ?? '在地の兵');
+    const beaten = sum.beaten.filter((_n, i) => sum.beatenSides[i] === 1);
+    const ups = sum.levelUps.filter((u) => u.side === 0);
+    const lost = sum.lost.filter((l) => l.side === 0);
+    const fresh = Object.keys(provinceRecruit(c, p.id)).filter((u) => D.byUnit[u] && !isNativeUnit(me, u));
+    const fell = logs.filter((l) => l.key === 'fall').map((l) => String(l.vars.faction));
+    const reserve = logs.filter((l) => l.key === 'reserveTaken').reduce((s, l) => s + Number(l.vars.n ?? 0), 0);
+    const caught = logs.filter((l) => l.key === 'caught').map((l) => `${l.vars.from}の${l.vars.unit}`);
+    const li = (xs: string[]): string => xs.map((x) => `<li>${x}</li>`).join('');
+    const sec = (title: string, xs: string[]): string => (xs.length ? `<h4>${title}</h4><ul>${li(xs)}</ul>` : '');
+    const leaf = Array.from({ length: 28 }, (_v, i) => `<span class="leaf" style="left:${(i * 37) % 100}%;animation-delay:${((i * 0.23) % 2.4).toFixed(2)}s;animation-duration:${(2.6 + (i % 5) * 0.4).toFixed(1)}s"></span>`).join('');
+    const box = document.createElement('div');
+    box.className = 'result victory-box';
+    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory', gs.variant))}
+      <div class="kachidoki">えい、えい、おう！</div>
+      <h2>${esc(p.name.ja)}を攻め取った！</h2>
+      <p class="vsub">${esc(this.date())}　${factionBadge(me.name.ja, me.color)} が ${esc(prevName)} から奪う</p>
+      <div class="vgrid">
+        <div>${sec('戦果', [
+          ...beaten.map((n) => `敵将 <b>${esc(n)}</b> を討ち取った`),
+          ...fell.map((f) => `<b>${esc(f)}</b> を滅ぼした`),
+          ...caught.map((x) => `${esc(x)}を捕まえた`),
+        ]) || '<h4>戦果</h4><ul><li>敵を退けた</li></ul>'}
+        ${sec('手柄を立てた兵', ups.map((u) => `${esc(u.name)} Lv${u.from}→<b>${u.to}</b>`))}
+        ${sec('失った兵', lost.map((l) => `${esc(l.general)}の${esc(l.unit)}`))}</div>
+        <div>${sec('手に入れた領', [
+          `人口${Math.round(p.pop)}・収入${Math.round(p.income)}・城${Math.round(p.fort * 100)}%${p.buildings.length ? `・${p.buildings.map((b) => esc(BM.buildings[b]?.name ?? b)).join('・')}` : ''}`,
+          `入った武将：${pb.atk.map((id) => esc(gs.generals[id]?.name.ja ?? '')).filter(Boolean).join('・')}`,
+          ...(reserve ? [`予備兵 ${reserve}隊を手に入れた`] : []),
+        ])}
+        ${sec('新しく雇える兵種（兵糧2倍）', fresh.map((u) => esc(L(D.byUnit[u].name))))}</div>
+      </div>
+      <p class="cbtns"><button class="primary" data-a="ok">勝鬨をあげる</button></p>`;
+    this.frame().appendChild(box);
+    this.flash = p.id;
+    this.view.focusOn(pb.from, p.id);
+    this.draw();
+    play('win');
+    box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.flash = null; this.selected = p.id; this.refresh(); };
   }
 
   /**

@@ -591,6 +591,32 @@ async function run(tag, ctxOpts) {
     const restored = await page.evaluate((o) => { const gs = window.__campaign.c.gs; return !document.querySelector('.result.reel') && window.__campaign.alarm === null; }, reelOk);
     ok(`[${tag}] すべて飛ばすと、演出が閉じて地図が元に戻る`, restored);
   }
+  // 勝って領を取ったときの祝いの窓（P38）：実際に攻めて、おまかせで勝ったことにする
+  const vic = await page.evaluate(async () => {
+    const cam = await import('/src/strategy/campaign.ts');
+    const s = window.__campaign, c = s.c, gs = c.gs, me = c.player;
+    for (const p of gs.provinces) {
+      if (!p.owner || p.owner === me || p.out || !cam.canAttack(c, me, p.owner)) continue;
+      const from = cam.neighborsOf(c, p.id).find((n) => gs.provinces[n].owner === me && cam.generalsAt(c, n, me).some((g) => !c.moved.has(g.id)));
+      if (from === undefined) continue;
+      const pb = cam.planAttack(c, me, from, p.id, cam.generalsAt(c, from, me).filter((g) => !c.moved.has(g.id)).slice(0, 1).map((g) => g.id));
+      if (!pb) continue;
+      const st = cam.battleFor(c, pb); st.winner = 0;
+      const mark = c.log.length, prev = p.owner;
+      const sum = cam.resolveBattle(c, pb, st);
+      s.mount(); s.celebrate(pb, sum, mark, prev);
+      return p.name.ja;
+    }
+    return null;
+  });
+  if (vic) {
+    await page.waitForSelector('.victory-box');
+    const vt = await page.textContent('.victory-box');
+    ok(`[${tag}] 勝って領を取ると、祝いの窓（勝鬨・攻め取った・戦果・手に入れた領）`, /えい、えい、おう/.test(vt) && /攻め取った/.test(vt) && /手に入れた領/.test(vt), vic);
+    await page.waitForTimeout(900);
+    await shot('victory');
+    await press('.victory-box [data-a="ok"]');
+  }
   // 1か月オート・ずっとオート
   await press('#autoMonth');
   await page.waitForTimeout(700); await idle();

@@ -124,6 +124,9 @@ if (pick) {
   }
 }
 await page.waitForSelector('#next');
+// 攻め取ったときは祝いの窓（P38）が出る
+await page.waitForTimeout(300);
+if (await page.$('.victory-box')) await act('勝鬨をあげる（祝いの窓を閉じる）', () => page.click('.victory-box [data-a="ok"]'));
 await act('やめる', () => page.click('#exit').then(() => page.click('.confirm [data-a="ok"]')));
 console.log('');
 console.log(errors.length ? `ページのエラー：${errors.join(' / ')}` : 'ページのエラーなし');
