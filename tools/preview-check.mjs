@@ -34,7 +34,7 @@ await page.waitForSelector('#next');
 await page.click('#next');
 for (let i = 0; i < 12; i++) {
   await page.waitForTimeout(250);
-  if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break;
+  if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break;
 }
 await page.waitForSelector('#next');
 console.log('戦略：', (await page.textContent('.turn')).replace(/\s+/g, ' ').slice(0, 30));

@@ -609,6 +609,11 @@ export class CampaignScreen {
     this.draw();
     // 攻めて勝ち、領を取ったら、地図に戻ったあとで祝いの窓を出す（P38）
     const prevOwner = p.owner, mark = c.log.length;
+    // 戦いの前の顔ぶれ（結果の窓で使う。P55）
+    const roster = {
+      atk: pb.atk.map((id) => gs.generals[id]).filter(Boolean).map((x) => ({ name: x.name.ja, lv: x.level, troops: x.troops.length })),
+      def: garrison ? [{ name: '守備兵', lv: g.level, troops: g.troops }] : pb.def.map((id) => gs.generals[id]).filter(Boolean).map((x) => ({ name: x.name.ja, lv: x.level, troops: x.troops.length })),
+    };
     let win: { sum: BattleSummary } | null = null;
     const won = (sum: BattleSummary | null): BattleSummary | null => {
       win = side === 0 && sum && c.player && gs.provinces[pb.prov].owner === c.player && prevOwner !== c.player ? { sum } : null;
@@ -620,11 +625,74 @@ export class CampaignScreen {
         this.alarm = null;
         // 攻めるのを中止（P47）：まだ戦も始まっておらず、武将も動いていないので、窓を閉じて地図に戻るだけ
         if (b.dataset.a === 'cancel') { box.remove(); toast('攻めるのを中止しました'); this.mount(); return; }
-        if (b.dataset.a === 'auto') { void busy('戦っています…', () => { won(resolveBattle(c, pb)); then(); }); return; }
+        if (b.dataset.a === 'auto') {
+          void busy('戦っています…', () => {
+            const sum = won(resolveBattle(c, pb));
+            // 攻められた戦いと、攻めて負けた戦いは、結果を詳しく窓で出す（P55）。攻めて勝ったときは祝いの窓
+            if (sum && !win) { this.mount(); this.battleReport(pb, sum, side, mark, prevOwner, roster, after); } else then();
+          });
+          return;
+        }
         const human = b.dataset.a === 'watch' ? new Set<Side>() : new Set<Side>([side]);
         void busy('戦場を用意しています…', () => this.host.openBattle(battleFor(c, pb), human, (st) => won(resolveBattle(c, pb, st)), { label: '戦略マップへ', fn: then }, false, side));
       };
     });
+  }
+
+  /**
+   * 戦いの結果の窓（P55）：攻められた戦い（と、攻めて負けた戦い）を「おまかせ」で決着させたとき。
+   * 勝ち負け、両陣営の顔ぶれ・倒された武将・失った兵・手柄を立てた兵、深手、領の行方（奪われた・一気に取られた領・退いた先）、捕まえた兵
+   */
+  private battleReport(pb: PendingBattle, sum: BattleSummary, side: Side, mark: number, prevOwner: number, roster: { atk: { name: string; lv: number; troops: number }[]; def: { name: string; lv: number; troops: number }[] }, done: () => void): void {
+    const c = this.c, gs = c.gs, p = gs.provinces[pb.prov];
+    const logs = c.log.slice(mark);
+    const iWon = sum.winner === side;
+    const atkF = gs.factions[pb.attacker], defF = gs.factions[pb.defender];
+    const atkName = atkF?.name.ja ?? (logs.find((l) => l.key === 'battle')?.vars.attacker as string) ?? '攻め手';
+    const defName = defF?.name.ja ?? '守備兵';
+    const lostProv = side === 1 && prevOwner === c.player && p.owner !== c.player;
+    const chain = logs.filter((l) => l.key === 'chainCapture').flatMap((l) => String(l.vars.ids).split(',')).map((n) => gs.provinces[Number(n)]).filter((q) => q && q.owner !== c.player);
+    const wounded = logs.filter((l) => l.key === 'wounded').map((l) => `${l.vars.names}（深手・${l.vars.months}か月）`);
+    const caught = logs.filter((l) => l.key === 'caught').map((l) => `${l.vars.from}の${l.vars.unit}`);
+    const fell = logs.filter((l) => l.key === 'fall').map((l) => String(l.vars.faction));
+    // 自分の武将の、いまいる領（退いた先）
+    const mine = (side === 0 ? pb.atk : pb.def).map((id) => gs.generals[id]).filter((x) => x && x.faction === c.player);
+    const whereNow = mine.map((x) => `${x.name.ja}：${gs.provinces[x.prov]?.name.ja ?? '—'}${x.prov !== pb.prov && side === 1 ? 'へ退いた' : ''}`);
+    const li = (xs: string[]): string => xs.map((x) => `<li>${esc(x)}</li>`).join('');
+    const sideBox = (s: 0 | 1): string => {
+      const who = s === 0 ? atkName : defName, list = s === 0 ? roster.atk : roster.def;
+      const beaten = sum.beaten.filter((_n, i) => sum.beatenSides[i] === s);
+      const lost = sum.lost.filter((l) => l.side === s);
+      const ups = sum.levelUps.filter((u) => u.side === s);
+      const by = new Map<string, string[]>();
+      for (const l of lost) by.set(l.general, [...(by.get(l.general) ?? []), l.unit]);
+      return `<div class="side ${s === side ? 'me' : ''}"><h4>${s === 0 ? '攻め手' : '守り手'}　${esc(who)}${sum.winner === s ? '（勝ち）' : '（負け）'}${s === side ? ' <span class="tag">自分</span>' : ''}</h4>
+        <p class="small">顔ぶれ：${list.map((x) => `${esc(x.name)} Lv${x.lv}・兵${x.troops}`).join('、') || '—'}</p>
+        <p class="small"><span class="dim">倒された武将</span>　${beaten.length ? beaten.map(esc).join('、') : 'なし'}</p>
+        <p class="small"><span class="dim">失った兵</span>　${lost.length ? `${lost.length}隊：${[...by].map(([gname, us]) => `${esc(gname)}の${us.map(esc).join('・')}`).join('、')}` : 'なし'}</p>
+        ${ups.length ? `<p class="small"><span class="dim">レベルが上がった</span>　${ups.map((u) => `${esc(u.name)} Lv${u.from}→${u.to}`).join('、')}</p>` : ''}</div>`;
+    };
+    const fate = side === 1
+      ? (lostProv ? [`${p.name.ja}を${atkName}に奪われた`, ...chain.map((q) => `勢いに乗られ、${q.name.ja}も奪われた（守る武将のいない領）`)] : [`${p.name.ja}を守り切った`])
+      : [`${p.name.ja}は${defName}のまま`];
+    const box = document.createElement('div');
+    box.className = `result report ${iWon ? 'won' : 'lost'}`;
+    box.innerHTML = `${bannerHtml(sceneUrl(iWon ? 'victory' : 'defeat', gs.variant))}
+      <h2 class="${iWon ? '' : 'lost'}">${esc(side === 1 ? (iWon ? `${p.name.ja}を守り切った！` : `${p.name.ja}を奪われた`) : `${p.name.ja}攻め：敗れた`)}</h2>
+      <p class="vsub">${esc(this.date())}　${atkF ? factionBadge(atkF.name.ja, atkF.color) : esc(atkName)} が ${esc(gs.provinces[pb.from]?.name.ja ?? '')} から ${esc(p.name.ja)} へ（${defF ? factionBadge(defF.name.ja, defF.color) : esc(defName)}）　${sum.rounds}巡で決着</p>
+      <div class="sides">${sideBox(0)}${sideBox(1)}</div>
+      <h4>領の行方</h4><ul class="small">${li(fate)}</ul>
+      ${whereNow.length ? `<h4>自分の武将</h4><ul class="small">${li(whereNow)}</ul>` : ''}
+      ${wounded.length ? `<h4>深手</h4><ul class="small">${li(wounded)}</ul>` : ''}
+      ${caught.length ? `<h4>捕まえた兵</h4><ul class="small">${li(caught)}</ul>` : ''}
+      ${fell.length ? `<h4>滅んだ家</h4><ul class="small">${li(fell)}</ul>` : ''}
+      <p class="cbtns"><button class="primary" data-a="ok">確かめた</button></p>`;
+    this.frame().appendChild(box);
+    this.flash = p.id;
+    this.view.focusOn(pb.from, p.id);
+    this.draw();
+    play(iWon ? 'win' : 'lose');
+    box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.flash = null; done(); };
   }
 
   /** 攻められた戦いを順に決着させ、すべて終わったら月を締める */

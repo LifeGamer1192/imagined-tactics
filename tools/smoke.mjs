@@ -328,7 +328,7 @@ const date0 = await page.textContent('.turn');
 await page.click('#next');
 for (let i = 0; i < 12; i++) {
   await page.waitForTimeout(250);
-  if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break;
+  if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break;
 }
 await page.waitForSelector('#next');
 const date1 = await page.textContent('.turn');
@@ -356,7 +356,7 @@ await page.click('#closeMenu');
 await page.click('#next');
 for (let i = 0; i < 12; i++) {
   await page.waitForTimeout(250);
-  if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break;
+  if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break;
 }
 await page.waitForSelector('#next');
 check('進めると状態が変わる', (await snap()) !== saved);
@@ -391,7 +391,7 @@ check('書き出したファイルから続けられる', (await snap()) === sav
 await page.click('#next');
 for (let i = 0; i < 12; i++) {
   await page.waitForTimeout(250);
-  if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break;
+  if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break;
 }
 await page.waitForSelector('#next');
 check('読み込んだあとも月を進められる', (await snap()) !== saved);

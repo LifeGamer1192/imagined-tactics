@@ -54,7 +54,7 @@ console.log('戦略の画面（1回あたり ms）', JSON.stringify(await page.e
 t0 = Date.now();
 await page.click('#next');
 await page.waitForTimeout(100);
-for (let i = 0; i < 20; i++) { await idle(); if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else break; await page.waitForTimeout(50); }
+for (let i = 0; i < 20; i++) { await idle(); if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else break; await page.waitForTimeout(50); }
 await idle();
 console.log('月を進める（攻められた戦いはおまかせ）', Date.now() - t0, 'ms');
 await page.click('#exit'); await page.click('.confirm [data-a="ok"]');

@@ -88,7 +88,7 @@ try {
   await page.click('#next');
   for (let i = 0; i < 20; i++) {
     await page.waitForTimeout(250);
-    if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]');
+    if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]');
     else if (await page.$('#next')) break;
   }
   await page.waitForSelector('#next');
