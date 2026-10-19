@@ -13,13 +13,19 @@ await page.waitForSelector('#modeLocal');
 await page.click('#modeLocal');
 await page.waitForSelector('#start');
 await page.click('#start');
-// 手動の戦いは配置の段階から始まるので、配置完了を押してから
+const ok = (name, v, extra = '') => console.log(v ? 'OK ' : 'NG ', name, extra);
+// 手動の戦いは配置の段階から始まる。配置の途中で観戦にしてから手動に戻しても、配置の画面に戻らない（P53）
 await page.waitForSelector('#deployDone');
-await page.click('#deployDone');
-await page.waitForSelector('#end');
+await page.click('#watch');
+await page.waitForTimeout(2500);
+await page.click('#watch');
+await page.waitForTimeout(400);
+const dep = await page.evaluate(() => ({ deploying: window.__app.deploying, done: !!document.querySelector('#deployDone'), acts: window.__app.st.log.filter((l) => l.key === 'act').length, round: window.__app.st.round }));
+ok('配置の途中で観戦→手動にしても、配置の画面にならない（戦いが始まっている）', !dep.deploying && !dep.done, JSON.stringify(dep));
+// 自分の番になるまで待つ
+await page.waitForSelector('#end', { timeout: 60000 });
 await page.waitForSelector('#watch');
 const log = async () => (await page.$$('#log > div')).length;
-const ok = (name, v, extra = '') => console.log(v ? 'OK ' : 'NG ', name, extra);
 ok('手動で始まり、ターン終了のボタンがある', !!(await page.$('#end')));
 // 速さ5の観戦は1秒足らずで決着するので、切り替えの確認は速さ4で行う
 await page.click('[data-speed="4"]');

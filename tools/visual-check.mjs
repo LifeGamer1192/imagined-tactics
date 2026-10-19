@@ -144,8 +144,9 @@ async function run(tag, ctxOpts) {
     }
     if (plan.tac >= 0) {
       await page.evaluate((id) => { const a = window.__app; a.selected = id; a.mode = { type: 'idle' }; a.refresh(); }, plan.tac);
+      // 欄は天気の光などで書き換わることがあるので、見つけた要素ではなく、選び方でもう一度探して押す
       const tb = await page.$('[data-tactic]:not([disabled])');
-      if (tb) { await tb.click(); await page.waitForTimeout(200); ok(`[${tag}] 軍略を選ぶと説明`, !!(await page.$('.minfo'))); await shot('battle_tactic_info'); }
+      if (tb) { await page.click('[data-tactic]:not([disabled])'); await page.waitForTimeout(200); ok(`[${tag}] 軍略を選ぶと説明`, !!(await page.$('.minfo'))); await shot('battle_tactic_info'); }
     }
     await page.evaluate(() => { const a = window.__app; a.mode = { type: 'idle' }; a.selected = null; a.refresh(); });
     // P32：駒を選んでマスに乗せると、そのマスで起きることの説明。待機した駒は「済」（行動済み）

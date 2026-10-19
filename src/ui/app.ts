@@ -826,6 +826,8 @@ export class App {
     this.autoUnits.clear(); clearTimeout(this.autoTimer);
     this.human = on ? new Set() : new Set(this.manual);
     this.selected = null; this.mode = { type: 'idle' }; this.undo = null;
+    // 配置の途中で観戦にしたら、配置を終えて戦いを始める（配置の段階のまま相手が動き出し、手動に戻したときに配置の画面が出てしまわないように。P53）
+    if (this.deploying) { this.startFighting(); return; }
     this.refresh();
     this.maybeAi();
   }

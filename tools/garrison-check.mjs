@@ -180,10 +180,11 @@ const after = await page.evaluate(async (sp) => {
   return { open: !!document.querySelector('.result [data-a="auto"]'), owner: c.gs.provinces[sp.to].owner !== c.player, moved: gens.filter((g) => c.moved.has(g.id)).length, n: gens.length, rel: cam.relation(c, c.player, c.gs.provinces[sp.to].owner) };
 }, spot);
 ok('「攻めるのを中止」で窓が閉じ、戦にならず、武将はまだ動ける', !after.open && after.owner && after.moved === 0 && after.n > 0 && after.rel === relBefore, JSON.stringify({ ...after, relBefore }));
-// もう一度攻める
+// もう一度攻める（攻める窓で地図がその領へ寄ったまま残るので、位置を測り直す。P53 で地図の位置を戻さなくなった）
 await page.click('#selTop');
 await page.click('#attack');
-await page.mouse.click(spot.xy[0], spot.xy[1]);
+const xy2 = await page.evaluate((to) => { const s = window.__campaign, p = s.c.gs.provinces[to], r = document.querySelector('.battle canvas').getBoundingClientRect(), [x, y] = s.view.cam.toScreen(p.cx, p.cy); return [r.x + x, r.y + y]; }, spot.to);
+await page.mouse.click(xy2[0], xy2[1]);
 await page.waitForSelector('.confirm, .result [data-a="auto"]', { timeout: 30000 });
 if (await page.$('.confirm [data-a="ok"]')) { const tx = await page.textContent('.confirm'); if (/開戦/.test(tx)) await page.click('.confirm [data-a="ok"]'); }
 await page.waitForSelector('.result [data-a="watch"]', { timeout: 30000 });

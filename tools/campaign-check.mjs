@@ -92,9 +92,17 @@ for (const vp of [{ width: 1280, height: 800 }, { width: 390, height: 780 }]) {
   await page.click('[data-offer][data-yes]'); await page.click('.confirm [data-a="ok"]');
   ok(tag + '申し込みを受けると停戦になる', (await page.textContent('#log')).includes('停戦した'), offered);
   ok(tag + '難しさと兵糧の上限が出る', /ふつう/.test(await page.textContent('#panel')) && /兵糧\d+／\d+/.test(await page.textContent('#panel')));
+  // 地図を拡大して動かしておく（月を進めても、拡大と位置がそのままか。P53）
+  const cam0 = await page.evaluate(() => { const s = window.__campaign, cam = s.view.cam; cam.zoomAt(cam.vw / 3, cam.vh / 2, 2.5); cam.panBy(-60, 40); return { x: cam.x, y: cam.y, zoom: cam.zoom, month: s.c.gs.month }; });
   await page.click('#next');
-  for (let i = 0; i < 20; i++) { await page.waitForTimeout(200); if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next')) break; }
+  for (let i = 0; i < 60; i++) {
+    await page.waitForTimeout(200);
+    if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]');
+    else if ((await page.$('#next')) && (await page.evaluate((m) => window.__campaign.c.gs.month !== m, cam0.month))) break;
+  }
   ok(tag + '月を進められる', !!(await page.$('#next')));
+  const cam1 = await page.evaluate(() => { const cam = window.__campaign.view.cam; return { x: cam.x, y: cam.y, zoom: cam.zoom }; });
+  ok(tag + '月を進めても、地図の拡大と位置がそのまま', Math.abs(cam1.zoom - cam0.zoom) < 1e-6 && Math.abs(cam1.x - cam0.x) < 1 && Math.abs(cam1.y - cam0.y) < 1, `${JSON.stringify(cam0)} → ${JSON.stringify(cam1)}`);
   const box = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: innerWidth }));
   ok(tag + '横にはみ出さない', box.sw <= box.w, JSON.stringify(box));
   await page.screenshot({ path: `${process.argv[2] ?? '.'}/campaign_${vp.width}.png` });

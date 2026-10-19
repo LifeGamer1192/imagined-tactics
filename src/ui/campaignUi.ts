@@ -191,8 +191,17 @@ export class CampaignScreen {
         <aside><div id="panel"></div><div id="log"></div></aside>
       </div>`;
     const canvas = this.host.root.querySelector('canvas')!;
+    // 月を進めても、戦いから戻っても、地図の拡大と位置はそのまま（中身は最新に描き直す。P53）
+    const prev = this.view?.cam;
+    const keep = prev ? { x: prev.x, y: prev.y, zoom: prev.zoom } : null;
     this.view = new StrategyView(canvas);
     this.view.setState(gs, this.c.world);
+    if (keep) {
+      const cam = this.view.cam;
+      cam.zoom = Math.max(cam.minZoom, Math.min(cam.maxZoom, keep.zoom));
+      cam.x = keep.x; cam.y = keep.y;
+      cam.clamp(); cam.onChange();
+    }
     this.view.cam.attachInput(
       (sx, sy) => { const p = this.view.pick(sx, sy); if (p !== this.hover) { this.hover = p; this.draw(); } },
       (sx, sy) => this.onClick(this.view.pick(sx, sy)),
