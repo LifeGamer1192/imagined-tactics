@@ -5,7 +5,7 @@ import type { GGeneral } from '../convert/model';
 import { D, L } from '../data/db';
 import { biography } from '../strategy/biography';
 import { strengthOf, troopLoad, type Campaign, type CampaignLog } from '../strategy/campaign';
-import { personalityTip, tacticTip, traitTip, unitTip } from './describe';
+import { classTip, commandTip, personalityTip, strengthRank, strengthTip, tacticTip, traitTip, unitTip } from './describe';
 import { T, TRAIT_NAME } from './text';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]!));
@@ -27,16 +27,17 @@ export function profileHtml(c: Campaign, g: GGeneral, fig: string, line: (e: Cam
   };
   const deeds = c.log.filter((e) => Object.values(e.vars).some((v) => v === g.name.ja)).slice(-12).map((e) => esc(line(e)));
   const row = (k: string, v: string | number): string => `<tr><th>${k}</th><td>${v}</td></tr>`;
+  const allStr = Object.values(c.gs.generals).filter((x) => x.faction).map(strengthOf);
   return `<div class="profile">
     <div class="pf-head">${fig}<div>
       <div class="pf-name">${esc(g.name.ja)}${g.isLord ? ' <span class="tag">当主</span>' : ''}</div>
-      <div class="dim">${esc(c.gs.factions[g.faction]?.name.ja ?? '浪人')}・${L(cls.name)} Lv${g.level}・${g.age}歳</div>
+      <div class="dim">${esc(c.gs.factions[g.faction]?.name.ja ?? '浪人')}・<span class="trait" data-tip="${esc(classTip(g.classId))}">${L(cls.name)}</span> Lv${g.level}・${g.age}歳</div>
       <div class="small"><span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span>${g.traits.length ? `　特性：${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}</div>
     </div></div>
     <div class="pf-cols">
       <table class="pf-stats">
         ${row(T.hp(), s.hp + m.hp)}${row(T.mp(), s.mp + m.mp)}${row(T.str(), s.str + m.str)}${row(T.int(), s.int + m.int)}${row(T.agi(), s.agi + m.agi)}
-        ${row('采配', `${troopLoad(g)}／${g.command}（範囲${g.commandRange}）`)}${row('強さ', Math.round(strengthOf(g)))}
+        ${row('<span class="trait" data-tip="' + esc(commandTip(troopLoad(g), g.command, g.commandRange)) + '">采配</span>', `${troopLoad(g)}／${g.command}（範囲${g.commandRange}）`)}${row('<span class="trait" data-tip="' + esc(strengthTip(strengthOf(g), allStr)) + '">強さ</span>', `${Math.round(strengthOf(g))}（${strengthRank(strengthOf(g), allStr).word}）`)}
         ${row('伸び', `${T.str()}${g.growth.str}・${T.int()}${g.growth.int}・${T.agi()}${g.growth.agi}`)}
         ${row('もとの能力', g.ab.map((v, i) => `${AB[i]}${v}`).join('・'))}
       </table>

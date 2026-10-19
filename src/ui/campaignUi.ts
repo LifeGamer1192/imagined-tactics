@@ -31,7 +31,7 @@ import { bannerHtml, sceneUrl, seasonBand, setScene } from './scene';
 import { BGM_LEVEL_NAME, bgm, bgmLevel, setBgmLevel } from './bgm';
 import { play } from './sound';
 import { confirmBox } from './confirm';
-import { personalityTip, traitTip, unitTip } from './describe';
+import { classTip, commandTip, personalityTip, strengthRank, strengthTip, traitTip, unitTip } from './describe';
 import { initTips } from './tip';
 import { personalityLabel, personalityOf, planLabel, PLAN_LABEL, PLAN_TIP } from '../ai/personality';
 import { bindPlan, getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
@@ -805,7 +805,9 @@ export class CampaignScreen {
       const opts = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u))
         .sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))
         .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（采配${D.byUnit[u].cost}・兵糧${recruitCost(u, f, isExclave(c, g.prov))}${isNativeUnit(f, u) ? '' : '・新しい兵種で2倍'}）</option>`).join('');
-      rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button></span>` : '';
+      // 選ぶ前から、いま選ばれている兵種の采配と兵糧、雇ったあとの残りの采配を出す（P51）
+      const first = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u)).sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))[0];
+      rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button><span class="recinfo" data-recinfo="${g.id}">${first ? this.recruitInfo(g, first) : ''}</span></span>` : '';
       // 昇進：武将は役職、兵は兵種。条件を満たした昇進先だけをボタンにする
       const ups: string[] = [];
       for (const p of generalPromotions(g)) {
@@ -831,7 +833,7 @@ export class CampaignScreen {
     const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
     const fig = this.figure(g);
     return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}
-      ${L(cls.name)} Lv${g.level} <span class="dim">強さ${Math.round(strengthOf(g))}${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}
+      <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(cls.name)}</span> Lv${g.level} <span class="dim"><span class="trait" data-tip="${esc(strengthTip(strengthOf(g), this.allStrength()))}">強さ${Math.round(strengthOf(g))}（${strengthRank(strengthOf(g), this.allStrength()).word}）</span>${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}
       ${g.traits.length ? ` ・${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}
       ・<span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span></span><br>
       ${this.commandBar(g)}<span class="troops">${troops}</span> ${own ? this.troopMenuHtml(g.id) : ''}${rec}</span></div>`;
@@ -846,7 +848,25 @@ export class CampaignScreen {
       // 細い区切りには数を書かない（兵の札に「采◯」を添えている）
       return `<span class="seg s${i % 2}" style="width:${w.toFixed(2)}%" title="${esc(`${name}：采配${cost}`)}">${w >= 9 ? cost : ''}</span>`;
     }).join('');
-    return `<div class="cbar" title="${esc(`采配：${used}／${g.command}（残り${Math.max(0, g.command - used)}）`)}"><div class="cbar-track">${segs}</div><span class="cbar-num">采配 ${used}／${g.command}<span class="dim">（残り${Math.max(0, g.command - used)}）</span></span></div>`;
+    return `<div class="cbar" data-tip="${esc(commandTip(used, g.command, g.commandRange))}"><div class="cbar-track">${segs}</div><span class="cbar-num">采配 ${used}／${g.command}<span class="dim">（残り${Math.max(0, g.command - used)}）</span></span></div>`;
+  }
+
+  /** 徴兵の選択の横：必要な采配と兵糧、雇ったあとの残りの采配（P51） */
+  private recruitInfo(g: GGeneral, unitId: string): string {
+    const c = this.c, f = c.gs.factions[g.faction], u = D.byUnit[unitId];
+    if (!u || !f) return '';
+    const left = g.command - troopLoad(g);
+    return `<span data-tip="${esc(unitTip(unitId))}">必要な采配<b>${u.cost}</b>（残り${left}→${left - u.cost}）・兵糧<b>${recruitCost(unitId, f, isExclave(c, g.prov))}</b></span>`;
+  }
+
+  /** 大陸全土の武将の強さ（強さの10段階の評価に使う。描くたびに1度だけ数える） */
+  private strengthCache: { tick: number; at: number; list: number[] } | null = null;
+  private allStrength(): number[] {
+    const now = performance.now();
+    if (this.strengthCache && this.strengthCache.tick === this.c.gs.tick && now - this.strengthCache.at < 500) return this.strengthCache.list;
+    const list = Object.values(this.c.gs.generals).filter((x) => x.faction).map(strengthOf);
+    this.strengthCache = { tick: this.c.gs.tick, at: now, list };
+    return list;
   }
 
   /** 領の人口などの行：偵察度で見える量が変わる */
@@ -1157,6 +1177,13 @@ export class CampaignScreen {
         e.preventDefault();
         const sel = root.querySelector<HTMLSelectElement>(`[data-unit="${b.dataset.recruit}"]`);
         if (sel && recruit(c, b.dataset.recruit!, sel.value)) this.refresh();
+      };
+    });
+    // 徴兵の選択を変えたら、必要な采配と兵糧を書き換える（P51）
+    root.querySelectorAll<HTMLSelectElement>('select[data-unit]').forEach((sel) => {
+      sel.onchange = () => {
+        const g = gs.generals[sel.dataset.unit!], box = root.querySelector<HTMLElement>(`[data-recinfo="${sel.dataset.unit}"]`);
+        if (g && box) box.innerHTML = this.recruitInfo(g, sel.value);
       };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-promo]').forEach((b) => {

@@ -24,7 +24,7 @@ import { css, tint } from '../render/ink';
 import { artUrl } from '../art/art';
 import { bannerHtml, sceneUrl, setScene } from './scene';
 import { confirmBox } from './confirm';
-import { skillTip, statusEffect, tacticTip } from './describe';
+import { classTip, skillTip, statusEffect, tacticTip } from './describe';
 import { initTips } from './tip';
 import { busy } from './busy';
 import { prewarm } from '../render/strategyView';
@@ -239,7 +239,7 @@ export class App {
     const traits = g.traits.map((t) => TRAIT_NAME[t] ?? t).join('・');
     return `<label class="gen"><input type="checkbox" data-side="${side}" data-gen="${g.id}" ${checked}>
       <span><b>${esc(g.name.ja)}</b>${g.isLord ? ' <span class="tag">当主</span>' : ''} <span class="dim">${g.age}歳</span>
-      ${L(c.name)} Lv${g.level}
+      <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(c.name)}</span> Lv${g.level}
       <span class="dim">${T.str()}${g.stats.str + c.mod.str} ${T.int()}${g.stats.int + c.mod.int} ${T.agi()}${g.stats.agi + c.mod.agi}
       ${T.hp()}${g.stats.hp + c.mod.hp} 采配${g.command}／${g.commandRange}${traits ? ` ・${traits}` : ''} ／ 性格：${personalityLabel(personalityOf(g.traits, g.ab))}</span><br>
       <span class="troops">${troops}</span></span></label>`;

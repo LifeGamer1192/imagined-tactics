@@ -4,7 +4,7 @@
 import cfgJson from '../../data/system/convert.json';
 import { AI, AXES, type Axis, type Personality } from '../ai/personality';
 import { D, L } from '../data/db';
-import type { Passive, SkillDef, TacticDef } from '../data/types';
+import type { Passive, SkillDef, TacticDef, UnitDef } from '../data/types';
 import { S } from '../strategy/config';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
 
@@ -211,5 +211,121 @@ export function unitTip(unitId: string, level?: number): string {
   if (u.tactics.length) out.push(`軍略：${u.tactics.map((id) => (D.byTactic[id] ? L(D.byTactic[id].name) : id)).join('・')}`);
   if (u.passives.length) out.push(`特技：${u.passives.map(PASSIVE_TEXT).join('、')}`);
   for (const p of u.promote ?? []) if (D.byUnit[p.to]) out.push(`Lv${p.lv}で${L(D.byUnit[p.to].name)}へ昇格できる`);
+  // 特徴とおすすめの使い方（P51）
+  const f = unitTraits(u);
+  if (f.strong.length || f.weak.length) out.push('', `特徴：${[...f.strong.map((x) => `◎${x}`), ...f.weak.map((x) => `△${x}`)].join('、')}`);
+  out.push(`おすすめ：${unitAdvice(u, f)}`);
   return out.join('\n');
+}
+
+/** 同じ格（下級・中級・上級）の兵種の平均。兵種の能力の高い・低いは、これと比べる */
+const avgCache = new Map<number, Record<string, number>>();
+function tierAvg(tier: number): Record<string, number> {
+  let a = avgCache.get(tier);
+  if (a) return a;
+  const us = D.units.filter((x) => x.tier === tier);
+  a = {};
+  for (const k of ['hp', 'str', 'int', 'agi', 'def', 'move', 'cost'] as const) a[k] = us.reduce((s, x) => s + Number(x[k]), 0) / Math.max(1, us.length);
+  avgCache.set(tier, a);
+  return a;
+}
+
+/** 兵種の特徴：同じ格の平均より目立って高い・低い能力、射程、軍略の種類 */
+function unitTraits(u: UnitDef): { strong: string[]; weak: string[]; ranged: boolean; heal: boolean; caster: boolean; fast: boolean; tough: boolean; hard: boolean; light: boolean } {
+  const a = tierAvg(u.tier), strong: string[] = [], weak: string[] = [];
+  const cmp = (k: 'hp' | 'str' | 'int' | 'agi' | 'def', name: string): void => { const r = Number(u[k]) / Math.max(1, a[k]); if (r >= 1.15) strong.push(`${name}が高い`); else if (r <= 0.85) weak.push(`${name}が低い`); };
+  cmp('hp', T.hp()); cmp('str', T.str()); cmp('int', T.int()); cmp('agi', T.agi()); cmp('def', '防御');
+  const basic = u.skills.map((id) => D.skills.find((s) => s.id === id)).find((s) => s?.basic);
+  const ranged = !!basic && basic.range[1] >= 2;
+  if (ranged) strong.push(`離れた所から攻撃できる（射程${basic!.range[0]}〜${basic!.range[1]}）`);
+  const kinds = new Set(u.tactics.map((id) => D.byTactic[id]?.kind).filter(Boolean));
+  const heal = kinds.has('heal') || kinds.has('revive');
+  if (heal) strong.push('味方を回復できる');
+  if (kinds.has('buff')) strong.push('味方を強くする軍略');
+  if (kinds.has('debuff') || kinds.has('status')) strong.push('敵を弱らせる軍略');
+  const caster = kinds.has('damage');
+  if (caster) strong.push('軍略で攻撃できる');
+  const fast = u.move >= a.move + 1, slow = u.move <= a.move - 1;
+  if (fast) strong.push(`足が速い（移動${u.move}）`); else if (slow) weak.push(`足が遅い（移動${u.move}）`);
+  const light = u.cost <= a.cost * 0.8;
+  if (light) strong.push(`采配が軽く、数をそろえやすい（${u.cost}）`); else if (u.cost >= a.cost * 1.3) weak.push(`采配が重い（${u.cost}）`);
+  if (u.affinity !== 'plain') strong.push(`${AFFINITY_NAME[u.affinity] ?? u.affinity}が得意`);
+  return { strong, weak, ranged, heal, caster, fast, tough: Number(u.hp) >= a.hp * 1.15, hard: u.def >= a.def * 1.15, light };
+}
+
+/** 系統ごとの使いどころ（P51）。能力から決まる使い方に添える */
+const LINE_ADVICE: Record<number, string> = {
+  1: '数をそろえて前に並べ、壁にする。弓や鉄砲など後ろの兵を守り、敵を囲んで削る',
+  2: '前衛のすぐ後ろに置き、ぶつかる直前に味方を強くする。自分は前に出さない',
+  3: '川や海の多い戦場で使う。陸の上ではふつうより弱い',
+  4: '前衛の後ろから強い一撃を撃つ。近づかれると脆いので、前衛で守る',
+  5: '足を活かして回り込み、弱った敵や後ろの兵を突く。正面からのぶつかり合いは避ける',
+  6: '前衛の後ろから撃ち続ける。森・櫓・高い所に置くとさらに強い',
+  7: '大きく動いて回り込み、弱った敵や後ろの兵を狩る。森や山では動きにくい',
+  8: '前衛のすぐ後ろで、傷んだ味方を回復する。狙われないよう前に出さない',
+  9: '最前列で敵の攻撃を受け止め、後ろの兵を守る。門の前や狭い道をふさぐ',
+  10: '城攻めで門・柵を壊す役。戦うより、道を開くのに使う',
+  11: '敵の前衛を正面から崩す攻め手。将の近くの敵や、硬い敵にぶつける',
+  12: '山や森の多い戦場で、地形を活かして戦う。平地ではふつう',
+  13: '平地で正面から突撃する主力。湿地・森・山は避け、開けた所で使う',
+  14: '森や茂みに潜ませ、近づいた敵を叩く。守る戦いで特に強い',
+  15: '固まった敵を火で焼く。味方を巻き込まないよう、敵の群れに向ける',
+  16: '水の多い戦場の主力。川や海の上から攻める',
+  17: '将の近くで味方を支える。軍略で味方を助け、自分は前に出ない',
+  18: '敵の後ろへ近づき、寝返りや混乱で乱す。打たれ弱いので深入りしない',
+};
+
+function unitAdvice(u: UnitDef, f: ReturnType<typeof unitTraits>): string {
+  const line = LINE_ADVICE[u.line];
+  if (line) return `${line}。`;
+  if (f.heal) return '前衛のすぐ後ろで、傷んだ味方を回復する。';
+  if (f.ranged) return '前衛の後ろから撃つ。近づかれないよう守る。';
+  if (f.hard || f.tough) return '最前列で敵の攻撃を受け止める。';
+  if (f.fast) return '回り込んで、弱った敵や後ろの兵を狙う。';
+  return '前に出て敵とぶつかる。';
+}
+
+/** 役職（謀士など）の説明（P51）：攻撃の種類と射程、防御・移動、得意な地形、能力への加減、覚える軍略、なる条件 */
+export function classTip(classId: string): string {
+  const c = D.byClass[classId];
+  if (!c) return '';
+  const tier = ['', '下級', '中級', '上級'][c.tier] ?? '';
+  const out = [`【${L(c.name)}】${tier}の役職${c.unique === 'lord' ? '（当主だけ）' : ''}`];
+  const atk = c.attack.kind === 'bow' ? `飛び道具（射程${c.attack.range[0]}〜${c.attack.range[1]}）` : `近接（射程${c.attack.range[1]}）`;
+  out.push(`通常攻撃：${atk}、威力${c.attack.power}　防御${c.def}　移動${c.move}　得意な地形：${AFFINITY_NAME[c.affinity] ?? c.affinity}`);
+  const mod = (['hp', 'mp', 'str', 'int', 'agi'] as const).filter((k) => c.mod[k]).map((k) => `${T[k]()}${sgn(c.mod[k])}`);
+  if (mod.length) out.push(`能力：${mod.join('・')}`);
+  if (c.tactics.length) out.push(`使える軍略：${c.tactics.map((id) => (D.byTactic[id] ? L(D.byTactic[id].name) : id)).join('・')}`);
+  const role = c.attack.kind === 'bow' ? '後ろから撃つ将' : c.tactics.some((id) => D.byTactic[id]?.kind === 'heal') ? '味方を回復して支える将' : (c.mod.int ?? 0) > (c.mod.str ?? 0) ? '軍略で戦う将（知略が大事）' : '前に出て戦う将（武力が大事）';
+  out.push(`向き：${role}`);
+  const req = Object.entries(c.req).filter(([, v]) => v).map(([k, v]) => `${k === 'lv' ? 'Lv' : k === 'mastery' ? '熟練' : T[k as 'str' | 'int' | 'agi']()}${v}`);
+  if (c.from && D.byClass[c.from]) out.push(`${L(D.byClass[c.from].name)}から昇進${req.length ? `（${req.join('・')}以上）` : ''}`);
+  return out.join('\n');
+}
+
+/** 強さの説明（P51）：何を足した数か、と大陸全土の武将と比べた10段階の評価 */
+export const STRENGTH_WORDS = ['未熟', '頼りない', '物足りない', 'やや劣る', '並', 'やや優れる', '頼もしい', '一流', '当代屈指', '天下無双'];
+export function strengthRank(v: number, all: number[]): { rank: number; word: string; top: number } {
+  const sorted = [...all].sort((a, b) => a - b);
+  const below = sorted.filter((x) => x < v).length;
+  const pct = sorted.length ? below / sorted.length : 0.5;
+  const rank = Math.max(0, Math.min(9, Math.floor(pct * 10)));
+  return { rank, word: STRENGTH_WORDS[rank], top: Math.max(1, Math.round((1 - pct) * 100)) };
+}
+export function strengthTip(v: number, all: number[]): string {
+  const r = strengthRank(v, all);
+  return [`【強さ ${Math.round(v)}】評価：${r.word}（10段階の${r.rank + 1}・大陸全土の武将${all.length}人の上位${r.top}%）`,
+    '武将と率いる兵をまとめた、戦いの強さの目安です。',
+    '＝ レベル×8 ＋（武力＋知略）÷4 ＋ 体力÷20 ＋ 兵ごとに（采配の重さ×0.6 ＋ 兵のレベル×3）',
+    'レベルを上げる・兵を増やす・兵を育てると上がります。勢力どうしの強さの比べ合い（攻めるかどうかの判断）にも使われます。',
+    `評価の段階：${STRENGTH_WORDS.join(' ＜ ')}`].join('\n');
+}
+
+/** 采配の説明（P51） */
+export function commandTip(used: number, max: number, range: number): string {
+  return [`【采配 ${used}／${max}（残り${Math.max(0, max - used)}）】`,
+    '武将が率いられる兵の重さの合計です。兵種ごとに采配の重さ（采◯）があり、合計が最大を超える兵は雇えず、受け取れません。',
+    `バーの右端が最大の采配で、区切りの幅がそれぞれの兵の重さです。`,
+    `采配の範囲（${range}マス）：戦場で、配下の兵が武将からこの距離の外に出ると「采配範囲外」になり、弱くなります。`,
+    '最大の采配は魅力・名声・特性（カリスマなど）で決まり、役職が上がると増えます。'].join('\n');
 }
