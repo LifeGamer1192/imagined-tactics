@@ -2,7 +2,7 @@
 // 諸国巡り、外交の操作、昇進。調整値は data/system/strategy.json。画面には依存しない。
 
 import type { BattleSummary } from '../battle/result';
-import { makeOfficer, makeTroop, newcomer } from '../convert/convert';
+import { advanceClass, makeOfficer, makeTroop, newcomer } from '../convert/convert';
 import type { GGeneral } from '../convert/model';
 import { D } from '../data/db';
 import { gainGeneralExp, generalPromotions, promoteGeneral, promoteTroop, troopPromotions } from '../rules/growth';
@@ -582,9 +582,14 @@ export function raiseToGeneral(c: Campaign, key: string, index: number, name: st
   // 将としての特性は、名前と兵種と月から決まる（戦略の乱数は使わない：先の展開を変えないため）
   const trait = S.officer.leaderTraits[[...`${n}${t.unitId}${c.gs.tick}`].reduce((a, ch) => (a * 31 + ch.codePointAt(0)!) >>> 0, 7) % S.officer.leaderTraits.length];
   const made = makeOfficer(c.gs, id, n, h.faction, h.prov, t.level, [trait]);
-  // 兵のときの特技（同じ種類は重ねない）と軍略を引き継ぐ
+  // 役職は、兵種に近い系統にする（P59。鉄砲・弩は鉄砲足軽頭、素破・間者は乱波、医は僧、など）。レベルで上の役職へ
+  const base = D.byClass[S.officerMap.raiseClass[String(unit.line)] ?? ''];
+  if (base) { const cls = advanceClass(base, t.level, made.stats, []); made.classId = cls.id; made.mastery = { [cls.id]: 0 }; }
+  // 兵のときの技をすべて引き継ぎ（通常攻撃の前に使う。弓の兵は弓のまま）、得意地形も兵種のまま。特技（同じ種類は重ねない）と軍略も引き継ぐ
+  made.unit = t.unitId;
+  made.skills = [...new Set([...unit.skills, ...(t.extraSkills ?? [])])];
   for (const p of unit.passives) if (!made.passives.some((x) => x.type === p.type)) made.passives.push({ ...p });
-  made.learned = [...new Set([...made.learned, ...unit.tactics])];
+  made.learned = [...new Set([...made.learned, ...unit.tactics, ...(t.extraTactics ?? [])])];
   c.moved.add(id);
   note(c, 'raised', { name: n, by: h.general?.name.ja ?? '予備兵', unit: unit.name[c.gs.variant], faction: f.name.ja, trait });
   return made;
@@ -599,11 +604,20 @@ export function lowerProblem(c: Campaign, g: GGeneral): string | null {
   return null;
 }
 
-/** 下げたときの兵種：その勢力がいちばん徴兵しやすい陸の兵（無ければ、ふつうの兵） */
-function lowerUnit(c: Campaign, g: GGeneral): string {
-  const f = c.gs.factions[g.faction], skip = S.garrison.skipLines;
-  const own = f ? Object.keys(f.recruit).filter((u) => !skip.includes(D.byUnit[u].line)).sort((a, b) => f.recruit[b] - f.recruit[a] || a.localeCompare(b)) : [];
-  return own[0] ?? S.officer.unit;
+/**
+ * 下げたときの兵種（P59）：兵から取り立てた武将は、もとの兵種。ほかは、役職の系統に近い兵種の系統から、レベルに合った格の兵種
+ * （Lv10未満は下級、Lv20未満は中級まで、それ以上は上級まで。その家が雇える兵種を先に選ぶ）
+ */
+export function lowerUnit(c: Campaign, g: GGeneral): string {
+  if (g.unit && D.byUnit[g.unit]) return g.unit;
+  let root = D.byClass[g.classId];
+  while (root?.from && D.byClass[root.from]) root = D.byClass[root.from];
+  const line = S.officerMap.lowerLine[root?.id ?? ''] ?? 1;
+  const tier = g.level >= 20 ? 3 : g.level >= 10 ? 2 : 1;
+  const f = c.gs.factions[g.faction];
+  const cands = D.units.filter((u) => u.line === line && u.tier <= tier)
+    .sort((a, b) => Number(!!f?.recruit?.[b.id]) - Number(!!f?.recruit?.[a.id]) || b.tier - a.tier || a.id.localeCompare(b.id));
+  return cands[0]?.id ?? S.officer.unit;
 }
 
 /**
@@ -616,6 +630,12 @@ export function lowerToTroop(c: Campaign, gid: string): boolean {
   const unit = D.byUnit[lowerUnit(c, g)];
   const troop = makeTroop(unit, Math.max(1, g.level));
   troop.name = g.name.ja;
+  // 武将のときの技・軍略を引き継ぐ（P59。兵種に無いものだけ。役職の通常攻撃は兵種の通常攻撃に替わる）
+  const cls = D.byClass[g.classId];
+  const skills = (g.skills ?? []).filter((s) => !unit.skills.includes(s) && !s.startsWith('atk:'));
+  const tactics = [...new Set([...(cls?.tactics ?? []), ...g.learned])].filter((x) => !unit.tactics.includes(x) && D.byTactic[x]);
+  if (skills.length) troop.extraSkills = skills;
+  if (tactics.length) troop.extraTactics = tactics;
   const refund = lowerRefund(g.level);
   toReserve(c, g.prov, [troop, ...g.troops.splice(0)]);
   c.gs.factions[g.faction].supply += refund;

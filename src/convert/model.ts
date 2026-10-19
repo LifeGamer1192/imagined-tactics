@@ -15,6 +15,9 @@ export interface GTroop {
   stats: StatBlock;
   /** 付けた名前（無ければ兵種の名前で呼ぶ） */
   name?: string;
+  /** 武将から下げた兵が引き継いだ技・軍略（兵種の技・軍略に足す。P59） */
+  extraSkills?: string[];
+  extraTactics?: string[];
 }
 
 export interface GGeneral {
@@ -39,6 +42,9 @@ export interface GGeneral {
   exp: number;
   /** 熟練度が上限になった役職から持ち越した軍略 */
   learned: string[];
+  /** 兵から取り立てた武将：もとの兵種（得意地形と、下げるときの兵種に使う）と、引き継いだ技（通常攻撃の前に使う。P59） */
+  unit?: string;
+  skills?: string[];
   /** 役職ごとの熟練度（0〜5） */
   mastery: Record<string, number>;
   /** 今の能力値（役職の補正を足す前） */

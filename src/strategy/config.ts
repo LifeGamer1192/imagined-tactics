@@ -36,6 +36,8 @@ export const S = strategyJson as unknown as {
    */
   history: { choiceMonths: number; refuseOpinion: number; refuseUnrest: number; newRealmSupply: number; newRealmTroopsPerProv: number; newRealmTroopsMin: number; newRealmTroopsMax: number; newRealmFame: number };
   exclave: { incomeMult: number; garrisonLevel: number; garrisonTroops: number; recruitCostMult: number; battleAtkDefPct: number };
+  /** 兵⇔武将の、近い役職・兵種の対応（P59） */
+  officerMap: { raiseClass: Record<string, string>; lowerLine: Record<string, number> };
   officer: { minTroopLevel: number; nameMax: number; unit: string; raiseCostBase: number; raiseCostPerLevel: number; lowerRefund: number; leaderTraits: string[] };
   reserve: { max: number };
   garrison: {

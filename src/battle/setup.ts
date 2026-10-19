@@ -25,9 +25,10 @@ export function generalUnit(g: GGeneral, id: number, side: Side): BUnit {
     ...blank(id, side), kind: 'general', generalId: g.id, leader: id, troopIndex: -1, defId: c.id,
     name: g.name.ja, level: g.level, hp, maxHp: hp, mp, maxMp: mp,
     str: g.stats.str + c.mod.str, int: g.stats.int + c.mod.int, agi: g.stats.agi + c.mod.agi, def: c.def,
-    move: c.move, affinity: c.affinity, commandRange: g.commandRange,
+    // 兵から取り立てた武将（P59）：もとの兵種の得意地形のまま。技は、引き継いだ技を通常攻撃の前に置く（弓の兵は弓で反撃する）
+    move: c.move, affinity: g.unit && D.byUnit[g.unit] ? D.byUnit[g.unit].affinity : c.affinity, commandRange: g.commandRange,
     // 特性の特技・回復・会心は、戦場で特性から付ける（P56。前の版で変換のときに付けたものは外す）
-    passives: withoutOldTraitPassives(g.passives, g.traits), skills: [`atk:${c.id}`], tactics: [...new Set([...c.tactics, ...g.learned])],
+    passives: withoutOldTraitPassives(g.passives, g.traits), skills: [...new Set([...(g.skills ?? []), `atk:${c.id}`])], tactics: [...new Set([...c.tactics, ...g.learned])],
     critPct: 0, healPct: 0, persona: personalityOf(g.traits, g.ab),
   };
 }
@@ -40,7 +41,8 @@ export function troopUnits(g: GGeneral, firstId: number, leader: number, side: S
       name: t.name ?? L(u.name), level: t.level, hp: t.stats.hp, maxHp: t.stats.hp, mp: t.stats.mp, maxMp: t.stats.mp,
       str: t.stats.str, int: t.stats.int, agi: t.stats.agi, def: u.def,
       move: u.move, affinity: u.affinity, commandRange: 0,
-      passives: [...u.passives], skills: [...u.skills], tactics: [...u.tactics],
+      // 武将から下げた兵（P59）：引き継いだ技・軍略も使える
+      passives: [...u.passives], skills: [...new Set([...u.skills, ...(t.extraSkills ?? [])])], tactics: [...new Set([...u.tactics, ...(t.extraTactics ?? [])])],
       critPct: 0, healPct: 0,
     };
   });

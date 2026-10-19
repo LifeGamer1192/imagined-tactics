@@ -516,7 +516,13 @@ export class CampaignScreen {
   /** 兵の名前の札（自分の兵は、つまんで運べる） */
   private chipHtml(key: string, t: GTroop, i: number): string {
     const unit = L(D.byUnit[t.unitId].name);
-    return `<button class="chip ${this.troopMenu?.gid === key && this.troopMenu.i === i ? 'on' : ''}" data-troop="${key}" data-i="${i}" data-tip="${esc(`${unitTip(t.unitId, t.level)}\n\nつまんで別の武将や予備兵へ運ぶと渡せます。欄の外へ落とすと手放すかを聞きます。押すと、名前の変更などの欄が開きます。`)}">${this.icon(t.unitId)}<span class="nm">${esc(t.name ?? unit)}</span><span class="dim">${t.level}</span><span class="tcost">采${D.byUnit[t.unitId].cost}</span></button>`;
+    // 武将から下げた兵が引き継いだ技・軍略（P59）
+    const extra = [...(t.extraSkills ?? []).map((id) => D.skills.find((s) => s.id === id)?.name).filter(Boolean).map((n) => L(n!)), ...(t.extraTactics ?? []).map((id) => D.byTactic[id]?.name).filter(Boolean).map((n) => L(n!))];
+    if (extra.length) return this.chipHtmlBody(key, t, i, unit, `\n引き継いだ技・軍略：${extra.join('・')}`);
+    return this.chipHtmlBody(key, t, i, unit, '');
+  }
+  private chipHtmlBody(key: string, t: GTroop, i: number, unit: string, extraTip: string): string {
+    return `<button class="chip ${this.troopMenu?.gid === key && this.troopMenu.i === i ? 'on' : ''}" data-troop="${key}" data-i="${i}" data-tip="${esc(`${unitTip(t.unitId, t.level)}${extraTip}\n\nつまんで別の武将や予備兵へ運ぶと渡せます。欄の外へ落とすと手放すかを聞きます。押すと、名前の変更などの欄が開きます。`)}">${this.icon(t.unitId)}<span class="nm">${esc(t.name ?? unit)}</span><span class="dim">${t.level}</span><span class="tcost">采${D.byUnit[t.unitId].cost}</span></button>`;
   }
 
   /** 兵の名前の横に添える、小さな兵の絵（絵の無い兵種は名前だけ） */
@@ -1456,7 +1462,7 @@ export class CampaignScreen {
       b.onclick = () => {
         const m = this.troopMenu, t = m ? holderOf(c, m.gid)?.troops[m.i] : null;
         if (!m || !t) return;
-        this.askName('兵を武将にする', t.name ?? '', `新しい武将の名前を決めてください。兵糧を${raiseCost(t.level)}使います。この隊は無くなり、同じ領にLv${t.level}の武将が加わります（兵は連れていません）。兵のときの特技と軍略はそのまま使え、将としての特性を1つ得ます。`, (n) => {
+        this.askName('兵を武将にする', t.name ?? '', `新しい武将の名前を決めてください。兵糧を${raiseCost(t.level)}使います。この隊は無くなり、同じ領にLv${t.level}の武将が加わります（兵は連れていません）。兵のときの技・特技・軍略はすべてそのまま使え（弓の兵なら弓で戦う将に）、得意地形も兵種のまま、役職は兵種に近い系統になります。将としての特性を1つ得ます。`, (n) => {
           const made = raiseToGeneral(c, m.gid, m.i, n);
           if (!made) { toast(n.trim() ? raiseProblem(c, m.gid, m.i) ?? '武将にできません' : '名前を入れてください'); return; }
           this.troopMenu = null;

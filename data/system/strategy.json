@@ -12,6 +12,11 @@
   "recruit": { "minLevel": 1, "maxLevel": 8, "techWeight": 0.7, "prestigeWeight": 0.3 },
   "history": { "choiceMonths": 3, "refuseOpinion": -40, "refuseUnrest": 30, "newRealmSupply": 150, "newRealmTroopsPerProv": 1, "newRealmTroopsMin": 2, "newRealmTroopsMax": 6, "newRealmFame": 4 },
   "exclave": { "incomeMult": 0.4, "garrisonLevel": -2, "garrisonTroops": -1, "recruitCostMult": 1.5, "battleAtkDefPct": -10 },
+  "_officerMap": "P59：兵を武将に取り立てるときの、兵種の系統（line）→ 役職の系統の下級役職（raiseClass）。武将を兵に下げるときの、役職の系統の下級役職 → 兵種の系統（lowerLine）。もとの兵種を覚えている武将は、その兵種に戻る",
+  "officerMap": {
+    "raiseClass": { "1": "ashigaru", "2": "gunbaisha", "3": "nobushi", "4": "teppo_gashira1", "5": "rappa", "6": "ashigaru", "7": "ashigaru", "8": "so", "9": "ashigaru", "10": "ozutsu1", "11": "sohei", "12": "nobushi", "13": "ashigaru", "14": "nobushi", "15": "ozutsu1", "16": "nobushi", "17": "gunbaisha", "18": "rappa" },
+    "lowerLine": { "ashigaru": 1, "nobushi": 14, "rappa": 5, "sohei": 11, "gunbaisha": 17, "so": 8, "naginata": 1, "yumime": 6, "shirabyoshi": 2, "aruki_miko": 18, "onna_gunbaisha": 17, "ama": 8, "teppo_gashira1": 4, "ozutsu1": 15, "kokujin": 1, "karakuri1": 10 }
+  },
   "officer": { "minTroopLevel": 10, "nameMax": 100, "unit": "u01a", "raiseCostBase": 100, "raiseCostPerLevel": 10, "lowerRefund": 0.6667, "leaderTraits": ["brave", "warrior", "charismatic", "wise", "scholar", "pious"] },
   "reserve": { "max": 12 },
   "garrison": {

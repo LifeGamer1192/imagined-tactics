@@ -92,5 +92,6 @@ describe('new terrain: barren land and snowfields', () => {
     // 雪原は騎馬に重く、荒れ地は騎馬に軽い
     expect(D.terrain.moveCost.snowfield.rider!).toBeGreaterThan(D.terrain.moveCost.plain.rider!);
     expect(D.terrain.moveCost.desert.rider!).toBeLessThan(D.terrain.moveCost.desert.plain!);
-  });
+    // 百近い領の戦場を作るので、ほかのテストと並んで重いときに時間切れにならないよう、長めに待つ
+  }, 60000);
 });
