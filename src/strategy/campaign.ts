@@ -552,6 +552,16 @@ export function absorb(c: Campaign, a: number, b: number): boolean {
   return true;
 }
 
+/** 一気に取れる領（P48）：prov に直に隣り合う loser の領のうち、本拠でなく、loser の武将が誰もいない領 */
+export function chainTargets(c: Campaign, prov: number, loser: number): number[] {
+  if (!S.chainCapture.enabled || !loser) return [];
+  const gs = c.gs, f = gs.factions[loser], p = gs.provinces[prov];
+  if (!f || !p) return [];
+  const manned = new Set(Object.values(gs.generals).filter((g) => g.faction === loser).map((g) => g.prov));
+  return (S.chainCapture.bySea ? neighborsOf(c, prov) : p.nb)
+    .filter((n) => { const q = gs.provinces[n]; return q && !q.out && q.owner === loser && n !== f.capital && !manned.has(n); });
+}
+
 function capture(c: Campaign, pb: PendingBattle): void {
   const gs = c.gs, p = gs.provinces[pb.prov];
   const loser = gs.factions[pb.defender];
@@ -566,6 +576,16 @@ function capture(c: Campaign, pb: PendingBattle): void {
     if (g.prov === pb.prov && g.faction && g.faction !== pb.attacker && g.faction !== pb.defender) g.prov = homeFor(c, g.faction, pb.prov);
   }
   if (!loser) return;
+  // 一気に取る（P48）：落とした領に直に隣り合う（陸の隣。海路は数えない）負けた家の領のうち、守る武将のいない領（守備兵だけの領）も手に入れる。
+  // 本拠と、武将（深手・出払い中も含む）のいる領は取らない。予備兵は、その領とともに手に入る
+  const chain = chainTargets(c, pb.prov, loser.id);
+  if (chain.length) {
+    const fa = gs.factions[pb.attacker].name.ja;
+    for (const n of chain) if (reserveOf(c, n).length) note(c, 'reserveTaken', { faction: fa, prov: gs.provinces[n].name.ja, n: reserveOf(c, n).length });
+    handOver(c, chain, pb.attacker);
+    note(c, 'chainCapture', { faction: fa, from: loser.name.ja, provs: chain.map((n) => gs.provinces[n].name.ja).join('・'), ids: chain.join(','), n: chain.length });
+    if (!gs.factions[loser.id]) return;
+  }
   const left = provincesOf(c, loser.id);
   if (!left.length) { eliminate(c, loser, pb.attacker); return; }
   if (loser.capital === pb.prov) loser.capital = left.sort((a, b) => b.pop - a.pop || a.id - b.id)[0].id;

@@ -650,8 +650,11 @@ async function run(tag, ctxOpts) {
   const vic = await page.evaluate(async () => {
     const cam = await import('/src/strategy/campaign.ts');
     const s = window.__campaign, c = s.c, gs = c.gs, me = c.player;
-    for (const p of gs.provinces) {
+    // 一気に取る（P48）が起きる領を先に試す
+    const chainN = (p) => (p.owner && p.owner !== me ? cam.chainTargets(c, p.id, p.owner).length : 0);
+    for (const p of [...gs.provinces].sort((a, b) => chainN(b) - chainN(a))) {
       if (!p.owner || p.owner === me || p.out || !cam.canAttack(c, me, p.owner)) continue;
+      const chain = chainN(p);
       const from = cam.neighborsOf(c, p.id).find((n) => gs.provinces[n].owner === me && cam.generalsAt(c, n, me).some((g) => !c.moved.has(g.id)));
       if (from === undefined) continue;
       const pb = cam.planAttack(c, me, from, p.id, cam.generalsAt(c, from, me).filter((g) => !c.moved.has(g.id)).slice(0, 1).map((g) => g.id));
@@ -660,14 +663,15 @@ async function run(tag, ctxOpts) {
       const mark = c.log.length, prev = p.owner;
       const sum = cam.resolveBattle(c, pb, st);
       s.mount(); s.celebrate(pb, sum, mark, prev);
-      return p.name.ja;
+      return { name: p.name.ja, chain };
     }
     return null;
   });
   if (vic) {
     await page.waitForSelector('.victory-box');
     const vt = await page.textContent('.victory-box');
-    ok(`[${tag}] 勝って領を取ると、祝いの窓（勝利！・攻め取った・戦果・手に入れた領）`, /勝利！/.test(vt) && /攻め取った/.test(vt) && /手に入れた領/.test(vt), vic);
+    ok(`[${tag}] 勝って領を取ると、祝いの窓（勝利！・攻め取った・戦果・手に入れた領）`, /勝利！/.test(vt) && /攻め取った/.test(vt) && /手に入れた領/.test(vt), vic.name);
+    if (vic.chain) ok(`[${tag}] 守る武将のいない隣の領も一気に取り、祝いの窓に出る（P48）`, /一気に取った領/.test(vt), `${vic.chain}領`);
     await page.waitForTimeout(900);
     await shot('victory');
     await press('.victory-box [data-a="ok"]');

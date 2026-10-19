@@ -67,6 +67,7 @@ const factionBadge = (name: string, [r, g, b]: [number, number, number]): string
 const REL_NAME = { self: '自分', ally: '味方', truce: '停戦中', war: '交戦中', neutral: '中立' } as const;
 const LOG_TEXT: Record<string, string> = {
   capture: '{faction}が{prov}を取った',
+  chainCapture: '{faction}は、勢いに乗って{from}の{provs}（守る武将のいない領）も一気に取った',
   fall: '{faction}が滅んだ',
   battle: '{prov}の戦い：{attacker} 対 {defender} → {winner}の勝ち',
   month: '── {date} ──',
@@ -609,6 +610,8 @@ export class CampaignScreen {
     const fell = logs.filter((l) => l.key === 'fall').map((l) => String(l.vars.faction));
     const reserve = logs.filter((l) => l.key === 'reserveTaken').reduce((s, l) => s + Number(l.vars.n ?? 0), 0);
     const caught = logs.filter((l) => l.key === 'caught').map((l) => `${l.vars.from}の${l.vars.unit}`);
+    // 一気に取った領（P48）
+    const chain = logs.filter((l) => l.key === 'chainCapture').flatMap((l) => String(l.vars.ids).split(',')).map((n) => gs.provinces[Number(n)]).filter((q) => q && q.owner === c.player);
     const li = (xs: string[]): string => xs.map((x) => `<li>${x}</li>`).join('');
     const sec = (title: string, xs: string[]): string => (xs.length ? `<h4>${title}</h4><ul>${li(xs)}</ul>` : '');
     const leaf = Array.from({ length: 28 }, (_v, i) => `<span class="leaf" style="left:${(i * 37) % 100}%;animation-delay:${((i * 0.23) % 2.4).toFixed(2)}s;animation-duration:${(2.6 + (i % 5) * 0.4).toFixed(1)}s"></span>`).join('');
@@ -631,6 +634,7 @@ export class CampaignScreen {
           `入った武将：${pb.atk.map((id) => esc(gs.generals[id]?.name.ja ?? '')).filter(Boolean).join('・')}`,
           ...(reserve ? [`予備兵 ${reserve}隊を手に入れた`] : []),
         ])}
+        ${sec('勢いに乗って一気に取った領', chain.map((q) => `<b>${esc(q.name.ja)}</b>（人口${Math.round(q.pop)}・収入${Math.round(q.income)}）`))}
         ${sec('新しく雇える兵種（兵糧2倍）', fresh.map((u) => esc(L(D.byUnit[u].name))))}</div>
       </div>
       <p class="cbtns"><button class="primary" data-a="ok">勝鬨をあげる</button></p>`;

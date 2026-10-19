@@ -16,6 +16,7 @@ export const S = strategyJson as unknown as {
   newUnitCostMult: number;
   /** 敵の兵を捕まえる（P37）：寝返り・敗残兵収容でこちらに付いた兵が、勝った戦いの終わりまでこちらにいたとき、残る見込みと、下がるレベル */
   capture: { chance: number; levelDrop: number };
+  chainCapture: { enabled: boolean; bySea: boolean };
   /** 使者と土産（P34）：外交1あたりの心証の上乗せ（5を超えたぶん）・心証1あたりの兵糧・停戦の基準のゆるみ（上乗せ÷）・土産の選択肢（兵糧） */
   envoy: { perDiplomacy: number; supplyPerOpinion: number; truceRelaxPer: number; gifts: number[] };
   /**
