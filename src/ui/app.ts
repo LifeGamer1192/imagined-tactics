@@ -1,6 +1,6 @@
 // 画面：セーブの読み込み → 編成 → 戦闘 → 結果。
 
-import { autoBattle, nextAiActions, stanceOf } from '../ai/ai';
+import { autoBattle, nextAiActions, planUnit, stanceOf } from '../ai/ai';
 import { personalityLabel, personalityOf } from '../ai/personality';
 import { apply, canAct, canMove, canWithdraw, holder, moveCells, withdraw } from '../battle/engine';
 import { mapFromProvince, seatName } from '../battle/map';
@@ -91,6 +91,9 @@ export class App {
   private aiTimer = 0;
   /** 手動のときに操作する陣営（観戦に切り替えても覚えておく） */
   private manual = new Set<Side>([0]);
+  /** 一部だけおまかせ（P44）：自分の陣営のうち、コンピューターが動かす駒 */
+  private autoUnits = new Set<number>();
+  private autoTimer = 0;
   private watching = false;
   /** おまかせの陣営が動く速さ（0〜4）。1手ごとの間は AI_DELAY */
   private aiSpeed = loadSpeed();
@@ -475,6 +478,7 @@ export class App {
     setScene(null, sceneUrl('setup', this.variant));
     bgm(`battle_${this.variant}`);
     this.st = st; this.human = human;
+    this.autoUnits = new Set(); clearTimeout(this.autoTimer);
     // 観戦で始めたときに手動へ切り替えると、manualSide の陣営（ふつうは攻め手）を操作する
     this.watching = human.size === 0;
     this.manual = human.size ? new Set(human) : new Set<Side>([manualSide]);
@@ -677,6 +681,37 @@ export class App {
     return u.moved && !this.hasAction(u);
   }
 
+  /**
+   * 一部だけおまかせ（P44）：おまかせにした自分の駒を、コンピューターの考え方で1つずつ動かす（演出つき）。
+   * 自分の番の初めと、ほかの駒を動かしたあとに呼ぶ。動かせる駒が無くなったら、全員が終わっていれば番を終える
+   */
+  private runAutoUnits(): void {
+    const st = this.st;
+    clearTimeout(this.autoTimer);
+    if (!st || st.winner !== null || this.deploying || !this.isHumanTurn() || !this.autoUnits.size) return;
+    for (const id of [...this.autoUnits]) if (!st.units[id]?.alive || st.units[id].side !== st.turn) this.autoUnits.delete(id);
+    const u = st.units.find((x) => this.autoUnits.has(x.id) && x.alive && x.side === st.turn && (canAct(st, x) || canMove(st, x)));
+    if (!u) { this.refresh(); this.checkAutoEnd(); return; }
+    let acts = planUnit(st, u);
+    if (!acts.length) acts = canAct(st, u) ? [{ type: 'wait', unit: u.id }] : [];
+    const done = acts.length ? this.perform(acts, FX_SCALE[this.aiSpeed]) : { ok: false, dur: 0 };
+    // 動けなかった駒は待機にして、次へ（止まらないように）
+    if (!done.ok && canAct(st, u)) apply(st, { type: 'wait', unit: u.id });
+    if (!done.ok && !canAct(st, u)) u.moved = true;
+    this.inspect = u.id;
+    this.refresh();
+    if (st.winner !== null) { this.finish(); return; }
+    this.autoTimer = window.setTimeout(() => this.runAutoUnits(), Math.max(AI_DELAY[this.aiSpeed], done.dur));
+  }
+
+  /** おまかせにする駒を足す（その場で動かし始める） */
+  private addAuto(ids: number[]): void {
+    for (const id of ids) this.autoUnits.add(id);
+    this.selected = null; this.mode = { type: 'idle' };
+    toast(`${ids.length}隊をおまかせにしました（「おまかせを外す」で全員手動に戻ります）`);
+    this.runAutoUnits();
+  }
+
   /** 自分の陣営の全員が行動済みになったら、少し置いて自動でターンを終える */
   private checkAutoEnd(): void {
     const st = this.st;
@@ -710,7 +745,9 @@ export class App {
   private maybeAi(): void {
     const st = this.st!;
     clearTimeout(this.aiTimer);
-    if (st.winner !== null || this.human.has(st.turn)) return;
+    // 自分の番：おまかせにした駒だけを動かす（P44）
+    if (st.winner === null && this.human.has(st.turn)) { this.runAutoUnits(); return; }
+    if (st.winner !== null) return;
     const step = () => {
       if (!this.st || this.st !== st || st.winner !== null) return;
       const t0 = performance.now();
@@ -770,6 +807,8 @@ export class App {
   private setWatching(on: boolean): void {
     this.watching = on;
     this.renderCtl();
+    // おまかせを外すと、全員がいったん手動になる（P44）
+    this.autoUnits.clear(); clearTimeout(this.autoTimer);
     this.human = on ? new Set() : new Set(this.manual);
     this.selected = null; this.mode = { type: 'idle' }; this.undo = null;
     this.refresh();
@@ -1040,6 +1079,7 @@ export class App {
         : undefined,
       area: fc.area.size ? fc.area : undefined,
       commandOf: u ? st.units[u.leader] : this.inspect !== null ? st.units[st.units[this.inspect].leader] : undefined,
+      auto: this.autoUnits.size ? this.autoUnits : undefined,
       // 行動済みとして扱う駒（行動した・動けない・移動したあとで使える行動が無い）
       done: !this.deploying && st.winner === null ? new Set(st.units.filter((x) => x.alive && x.side === st.turn && this.unitDone(x)).map((x) => x.id)) : undefined,
     };
@@ -1085,6 +1125,9 @@ export class App {
       const br = act ? breachTargets(st, u) : [];
       if (br.length) actions += `<button data-breach="1" class="${this.mode.type === 'breach' ? 'on' : ''}" data-tip="届く所の門・砦の門・柵を通常攻撃で打って壊します。門と砦の門は、壊すまで攻め手は通れません。石火矢・大筒の系統は2倍、火の攻撃は1.5倍の力で壊します。壊れた門は道に、柵は平地になります。">壊す（門・柵） <small>${br.length}か所</small></button>`;
       // 部隊ごとの退却：初期配置のマスにいる武将だけ
+      // 一部だけおまかせ（P44）
+      actions += `<button id="autoUnit" data-tip="この駒を、コンピューターの考え方で動かします（自分の番の初めに自動で動く）">この駒をおまかせ</button>`;
+      if (u.kind === 'general') actions += `<button id="autoGen" data-tip="この将と配下の兵を、すべてコンピューターの考え方で動かします">この将の配下をすべておまかせ</button>`;
       if (canWithdraw(st, u)) actions += `<button id="withdraw" data-tip="この武将と配下の兵が、戦場から必ず退きます。兵は失わず、深手にもなりません。武将は翌月いっぱい休養になります（守りの出陣だけできる）。自分の側の武将がみな退くと、この戦いは負けです">退却（この部隊）</button>`;
       actions += `<button id="wait" ${act ? '' : 'disabled'} class="${act && this.flashActions ? 'flash' : ''}">待機${act ? '' : `<small class="why">${esc(notAct)}</small>`}</button>`;
       actions += `<button id="cancel">${this.mode.type !== 'idle' ? (this.mode.type === 'breach' ? '壊すのをやめる' : '技・軍略をやめる') : '選択を解く'}</button>`;
@@ -1100,6 +1143,7 @@ export class App {
       ${this.modeInfo()}
       ${cell}
       <div class="foot">
+        ${human && this.autoUnits.size ? `<button id="autoOff" data-tip="おまかせにした駒をやめて、全員を手動に戻します">おまかせを外す（全員手動・${this.autoUnits.size}隊）</button>` : ''}
         ${human ? '<button id="end" class="primary" data-tip="まだ動いていない自分の駒をすべて待機にして、自分の番を終えます">巡を終える（全員待機）</button>' : st.winner === null ? '<span class="dim">相手が行動中…</span>' : ''}
         ${st.winner !== null ? '' : this.allowQuit ? `<button id="quit">${esc(this.battleBack.label)}</button>` : `<button id="auto">おまかせで決着</button>${this.human.size === 1 ? '<button id="retreat" data-tip="この戦いから退きます。負けになり、重い罰があります（押すと説明が出ます）">退く</button>' : ''}`}
       </div>`;
@@ -1109,6 +1153,9 @@ export class App {
     const on = (id: string, fn: () => void) => { const b = this.root.querySelector<HTMLButtonElement>(id); if (b) b.onclick = fn; };
     on('#cancel', () => this.cancel());
     on('#wait', () => { this.act({ type: 'wait', unit: u!.id }); this.refresh(); });
+    on('#autoUnit', () => { if (u) this.addAuto([u.id]); });
+    on('#autoGen', () => { if (u) this.addAuto(st.units.filter((x) => x.alive && x.side === u.side && (x.id === u.id || x.leader === u.id)).map((x) => x.id)); });
+    on('#autoOff', () => { this.autoUnits.clear(); clearTimeout(this.autoTimer); toast('おまかせを外しました（全員手動）'); this.refresh(); });
     on('#withdraw', async () => {
       const g = u!;
       const mine = st.units.filter((x) => x.alive && x.kind === 'general' && x.home === g.home && x.id !== g.id).length;

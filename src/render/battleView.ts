@@ -79,6 +79,8 @@ export interface Highlight {
   selected?: number;
   hover?: number;
   commandOf?: BUnit;
+  /** おまかせにした自分の駒（「任」の印） */
+  auto?: Set<number>;
   /** 行動済みとして扱う駒（無ければ、行動した駒だけ） */
   done?: Set<number>;
 }
@@ -406,6 +408,7 @@ export class BattleView {
     if (has(u, 'silence')) marks.push('乱');
     if (u.side !== u.home) marks.push('返');
     if (outOfCommand(st, u)) marks.push('外');
+    if (this.hl.auto?.has(u.id)) marks.push('任');
     if (marks.length) {
       ctx.font = `700 ${HEX * 0.32}px ${MINCHO}`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

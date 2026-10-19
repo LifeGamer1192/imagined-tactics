@@ -185,6 +185,25 @@ async function run(tag, ctxOpts) {
       await press('.confirm [data-a="no"]');
       await page.evaluate(() => { const a = window.__app; a.selected = null; a.refresh(); });
     }
+    // 一部だけおまかせ（P44）：駒を選んで「この駒をおまかせ」→ その駒が自動で動き「任」が付く。「おまかせを外す」で全員手動
+    const au = await page.evaluate(() => {
+      const a = window.__app, st = a.st;
+      const u = st.units.find((x) => x.alive && x.side === st.turn && !x.acted && !x.moved && x.kind === 'troop');
+      if (!u) return null;
+      a.selected = u.id; a.mode = { type: 'idle' }; a.refresh();
+      return u.id;
+    });
+    if (au !== null) {
+      ok(`[${tag}] 自分の駒には「この駒をおまかせ」が出る`, !!(await page.$('#autoUnit')));
+      await press('#autoUnit');
+      await page.waitForFunction((id) => { const a = window.__app, u = a.st.units[id]; return a.autoUnits.has(id) && (u.acted || u.moved || !u.alive); }, au, { timeout: 8000 }).catch(() => {});
+      const st1 = await page.evaluate((id) => { const a = window.__app, u = a.st.units[id]; return { auto: a.autoUnits.has(id), went: u.acted || u.moved || !u.alive, mark: a.view.hl.auto?.has(id) ?? false }; }, au);
+      ok(`[${tag}] おまかせにした駒が自動で動き、地図に「任」の印`, st1.auto && st1.went && st1.mark, JSON.stringify(st1));
+      await shot('battle_auto_unit');
+      ok(`[${tag}] 「おまかせを外す（全員手動）」が出る`, !!(await page.$('#autoOff')));
+      await press('#autoOff');
+      ok(`[${tag}] おまかせを外すと、全員手動に戻る`, await page.evaluate(() => window.__app.autoUnits.size === 0));
+    }
     // 巡を終える（全員待機）：まだ動ける駒があると、確かめる窓が出る
     ok(`[${tag}] 「巡を終える（全員待機）」のボタンだけがある（全員待機の別ボタンは無い）`, /巡を終える（全員待機）/.test(await page.textContent('#end')) && !(await page.$('#waitAll')));
     await press('#end');
