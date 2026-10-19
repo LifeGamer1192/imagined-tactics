@@ -46,6 +46,10 @@ export interface BUnit {
   tactics: string[];
   critPct: number;
   healPct: number;
+  /** 特性（P56）：状態・弱化の軍略の成功率（％ポイント）、軍略の気力（％）、味方への補助の軍略の気力（％） */
+  statusPct?: number;
+  mpCostPct?: number;
+  supportMpCostPct?: number;
   /** 武将の性格（敵の思考で使う。兵は率いる武将の性格で動く） */
   persona?: Personality;
   statuses: BStatus[];
