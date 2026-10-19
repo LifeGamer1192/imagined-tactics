@@ -136,7 +136,7 @@ ok('断ると申し込みが消え、相手の心証が下がる', after.offers 
 // 6. そのまま月を進められる（申し込みや戦争が残っていても壊れない）
 for (let m = 0; m < 3; m++) {
   await page.click('#next');
-  for (let i = 0; i < 40; i++) { await page.waitForTimeout(150); if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next:not(:disabled)')) break; }
+  for (let i = 0; i < 40; i++) { await page.waitForTimeout(150); if (await page.$('.result.fall [data-a="skip"]')) await page.click('.result.fall [data-a="skip"]'); else if (await page.$('.result.fall [data-a="ok"]')) await page.click('.result.fall [data-a="ok"]'); else if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]'); else if (await page.$('#next:not(:disabled)')) break; }
 }
 ok('外交のあとも3か月進められる', !!(await page.$('#next')));
 ok('ページのエラーなし', errors.length === 0, errors.join(' / '));

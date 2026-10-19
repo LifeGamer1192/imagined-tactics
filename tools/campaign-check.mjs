@@ -97,7 +97,7 @@ for (const vp of [{ width: 1280, height: 800 }, { width: 390, height: 780 }]) {
   await page.click('#next');
   for (let i = 0; i < 60; i++) {
     await page.waitForTimeout(200);
-    if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]');
+    if (await page.$('.result.fall [data-a="skip"]')) await page.click('.result.fall [data-a="skip"]'); else if (await page.$('.result.fall [data-a="ok"]')) await page.click('.result.fall [data-a="ok"]'); else if (await page.$('.result.report [data-a="ok"]')) await page.click('.result.report [data-a="ok"]'); else if (await page.$('.result [data-a="auto"]')) await page.click('.result [data-a="auto"]');
     else if ((await page.$('#next')) && (await page.evaluate((m) => window.__campaign.c.gs.month !== m, cam0.month))) break;
   }
   ok(tag + '月を進められる', !!(await page.$('#next')));

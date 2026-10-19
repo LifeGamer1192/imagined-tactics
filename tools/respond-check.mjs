@@ -94,7 +94,8 @@ if (await page.$('.savemenu')) await page.click('.savemenu button:has-text("閉�
 await act('月を進める', () => page.click('#next'), { settle: 300 });
 // 攻められた戦いをおまかせにすると、結果の窓が出る（P55）。「確かめた」で閉じると次の戦い
 for (let i = 0; i < 12; i++) {
-  if (await page.$('.result.report [data-a="ok"]')) await act(`戦いの結果を確かめる ${i + 1}`, () => page.click('.result.report [data-a="ok"]'));
+  if (await page.$('.result.fall [data-a="ok"]')) await act(`滅亡の窓を閉じる ${i + 1}`, () => page.click('.result.fall [data-a="ok"]'));
+  else if (await page.$('.result.report [data-a="ok"]')) await act(`戦いの結果を確かめる ${i + 1}`, () => page.click('.result.report [data-a="ok"]'));
   else if (await page.$('.result [data-a="auto"]')) await act(`攻められた戦いをおまかせ ${i + 1}`, () => page.click('.result [data-a="auto"]'));
   else break;
 }
