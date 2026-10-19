@@ -1,4 +1,4 @@
-// 特性の効き目（P56）：将と配下のすべての兵に効く。％の増減・2回行動・軍略の気力・普請と徴兵の費用
+// 特性の効き目（P56）：将と配下のすべての兵に効く。％の増減・軍略の気力・普請と徴兵の費用
 import { describe, expect, it } from 'vitest';
 import { createBattle } from '../src/battle/setup';
 import { parseMap } from '../src/battle/map';
@@ -49,10 +49,10 @@ describe('trait effects (P56)', () => {
     gen.forEach((u) => expect(u.passives.some((p) => p.type === 'counterDamage' && p.pct === -20)).toBe(true));
   });
 
-  it('unifier gives every unit two actions; ambitious +1 move; sickly -15% hp', async () => {
+  it('unifier: +10% defense and no double action; ambitious +1 move; sickly -15% hp', async () => {
     const { gs, g, foe } = await world();
     const base = unitsWith(gs, g.id, foe.id, []);
-    unitsWith(gs, g.id, foe.id, ['unifier']).forEach((u) => expect(u.passives.some((p) => p.type === 'doubleAct')).toBe(true));
+    unitsWith(gs, g.id, foe.id, ['unifier']).forEach((u, i) => { expect(u.def).toBe(Math.max(1, Math.round(base[i].def * 1.1))); expect(u.passives.filter((p) => p.type === 'doubleAct').length).toBe(base[i].passives.filter((p) => p.type === 'doubleAct').length); });
     unitsWith(gs, g.id, foe.id, ['ambitious']).forEach((u, i) => expect(u.move).toBe(base[i].move + 1));
     unitsWith(gs, g.id, foe.id, ['sickly']).forEach((u, i) => expect(u.maxHp).toBe(Math.round(base[i].maxHp * 0.85)));
   });

@@ -15,8 +15,6 @@ export interface TraitRule {
   healPct?: number; critPct?: number; counterPct?: number; hitPct?: number; evadePct?: number; resistPct?: number;
   /** 状態・弱化の軍略の成功率（％ポイント）・軍略の気力（％）・味方への補助の軍略の気力（％） */
   statusPct?: number; mpCostPct?: number; supportMpCostPct?: number;
-  /** 1回の番に2回動ける（2回動いたら行動済み） */
-  doubleAct?: boolean;
   /** 戦略：領にこの特性の武将がいると普請の費用に掛ける数・この武将（または当主）が雇うときの兵糧に掛ける数 */
   buildCostMult?: number; recruitCostMult?: number;
   /** 以下は将だけ（変換のときに入る）：采配・采配の範囲・得る経験（％）・忠誠 */
@@ -29,16 +27,15 @@ export const TRAITS = (cfgJson as unknown as { traits: Record<string, TraitRule>
 export interface TraitMods {
   strPct: number; intPct: number; agiPct: number; hpPct: number; mpPct: number; defPct: number; move: number;
   healPct: number; critPct: number; counterPct: number; hitPct: number; evadePct: number; resistPct: number;
-  statusPct: number; mpCostPct: number; supportMpCostPct: number; doubleAct: boolean;
+  statusPct: number; mpCostPct: number; supportMpCostPct: number;
 }
 
 export function traitMods(traits: string[]): TraitMods {
-  const m: TraitMods = { strPct: 0, intPct: 0, agiPct: 0, hpPct: 0, mpPct: 0, defPct: 0, move: 0, healPct: 0, critPct: 0, counterPct: 0, hitPct: 0, evadePct: 0, resistPct: 0, statusPct: 0, mpCostPct: 0, supportMpCostPct: 0, doubleAct: false };
+  const m: TraitMods = { strPct: 0, intPct: 0, agiPct: 0, hpPct: 0, mpPct: 0, defPct: 0, move: 0, healPct: 0, critPct: 0, counterPct: 0, hitPct: 0, evadePct: 0, resistPct: 0, statusPct: 0, mpCostPct: 0, supportMpCostPct: 0 };
   for (const t of traits) {
     const r = TRAITS[t];
     if (!r) continue;
     for (const k of ['strPct', 'intPct', 'agiPct', 'hpPct', 'mpPct', 'defPct', 'move', 'healPct', 'critPct', 'counterPct', 'hitPct', 'evadePct', 'resistPct', 'statusPct', 'mpCostPct', 'supportMpCostPct'] as const) m[k] += r[k] ?? 0;
-    if (r.doubleAct) m.doubleAct = true;
   }
   return m;
 }
@@ -73,7 +70,6 @@ export function applyTraitMods(u: BUnit, m: TraitMods): void {
   if (m.hitPct) u.passives.push({ type: 'hit', pct: m.hitPct });
   if (m.evadePct) u.passives.push({ type: 'evade', pct: m.evadePct });
   if (m.resistPct) u.passives.push({ type: 'tacticResist', pct: m.resistPct });
-  if (m.doubleAct && !u.passives.some((p) => p.type === 'doubleAct')) u.passives.push({ type: 'doubleAct' });
   if (m.statusPct) u.statusPct = (u.statusPct ?? 0) + m.statusPct;
   if (m.mpCostPct) u.mpCostPct = (u.mpCostPct ?? 0) + m.mpCostPct;
   if (m.supportMpCostPct) u.supportMpCostPct = (u.supportMpCostPct ?? 0) + m.supportMpCostPct;

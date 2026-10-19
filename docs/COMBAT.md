@@ -139,7 +139,7 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 ## 10. 武将の特性（hex-sim。2026-10-20・P56）
 
 - 値は `data/system/convert.json` の `traits`。戦場の効き目は、戦闘を作るときに、その将と配下のすべての兵の駒へ当てる（`src/rules/traits.ts`）。
-- 武力・知略・機敏・体力・気力・防御：`round(値 × (1 ＋ ％ ÷ 100))`（最低1）。移動：足す。回復 healPct・会心 critPct：足す。反撃の威力・命中・回避・軍略への耐性：同じ名の特技（counterDamage・hit・evade・tacticResist）として足す。2回行動：特技 doubleAct。
+- 武力・知略・機敏・体力・気力・防御：`round(値 × (1 ＋ ％ ÷ 100))`（最低1）。移動：足す。回復 healPct・会心 critPct：足す。反撃の威力・命中・回避・軍略への耐性：同じ名の特技（counterDamage・hit・evade・tacticResist）として足す。
 - 状態の軍略の成功率 statusPct（6.）、軍略の気力 mpCostPct・supportMpCostPct（8.）。
 - 将だけ：采配・采配の範囲・得る経験・忠誠（変換のときに入る）。
 - **1対1では**：特性を持つ人物（ima-rpg の史実の人物）に使うなら、同じ数を本人だけに当てればよい。ima-rpg の主人公と仲間は特性を持たない。

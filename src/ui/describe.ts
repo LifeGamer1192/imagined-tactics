@@ -75,7 +75,6 @@ export function traitTip(t: string): string {
   add(army, 'move', '移動', ''); add(army, 'healPct', '回復の量'); add(army, 'critPct', '会心', '％ポイント'); add(army, 'counterPct', '反撃の威力');
   add(army, 'hitPct', '命中'); add(army, 'evadePct', '回避'); add(army, 'resistPct', '軍略への耐性');
   add(army, 'statusPct', '状態の軍略の成功率', '％ポイント'); add(army, 'mpCostPct', '軍略の気力'); add(army, 'supportMpCostPct', '味方への補助の軍略の気力');
-  if (r.doubleAct) army.push('1回の番に2回動ける（2回動いたら行動済み）');
   add(self, 'command', '采配', ''); add(self, 'commandRange', '采配の届く範囲', ''); add(self, 'expPct', '得る経験');
   if (typeof r.loyalty === 'number' && r.loyalty) self.push(r.loyalty > 0 ? '主君を裏切りにくい' : '主君を裏切ることがある');
   if (S.people.wound.shortTraits.includes(t)) self.push(`深手が早く治る（${S.people.wound.short}か月）`);
