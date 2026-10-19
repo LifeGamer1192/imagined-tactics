@@ -33,7 +33,8 @@ import { play } from './sound';
 import { confirmBox } from './confirm';
 import { personalityTip, traitTip, unitTip } from './describe';
 import { initTips } from './tip';
-import { personalityLabel, personalityOf } from '../ai/personality';
+import { personalityLabel, personalityOf, planLabel, PLAN_LABEL, PLAN_TIP } from '../ai/personality';
+import { bindPlan, getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
 import { artUrl } from '../art/art';
 
 /** 画面の土台（App）に求めるもの */
@@ -167,6 +168,8 @@ export class CampaignScreen {
 
   constructor(private host: Host, private c: Campaign, private exit: () => void) {
     this.selected = c.player ? c.gs.factions[c.player].capital : -1;
+    // 味方のおまかせの方針（P50）：セーブにあればそれ、無ければ前の設定。切り替えたらセーブにも残す
+    if (c.player) bindPlan(c.autoPlan, (p) => { c.autoPlan = p; });
     // 開発時の動作確認（tools/smoke.mjs）から操作できるようにする
     if (import.meta.env.DEV) (window as unknown as { __campaign?: CampaignScreen }).__campaign = this;
     this.mount();
@@ -382,6 +385,24 @@ export class CampaignScreen {
     const finish = (ok: boolean): void => { const v = input.value; box.remove(); if (ok) done(v); this.refresh(); };
     input.onkeydown = (e) => { if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false); e.stopPropagation(); };
     box.querySelectorAll<HTMLButtonElement>('button').forEach((b) => { b.onclick = () => finish(b.dataset.a === 'ok'); });
+  }
+
+  /** 味方のおまかせの方針を選ぶ窓（P50） */
+  private openPlan(): void {
+    this.host.root.querySelector('.result.ask')?.remove();
+    const box = document.createElement('div');
+    box.className = 'result ask planbox';
+    const draw = (): void => {
+      box.innerHTML = `<h2>おまかせの方針</h2>
+        <p class="small">味方をおまかせで戦わせるとき（攻め・守りの「おまかせ」「観戦」、1か月オート、戦闘中の一部だけおまかせ）は、武将の性格ではなく、ここで選んだ方針で動きます。敵は今までどおり武将の性格で動きます。戦闘の画面でも、いつでも切り替えられます。</p>
+        ${planPickerHtml(getPlan())}
+        <ul class="small dim">${(['push', 'aim', 'mind'] as const).map((k) => `<li>${PLAN_LABEL[k][getPlan()[k] as never]}：${PLAN_TIP[k][getPlan()[k] as never]}</li>`).join('')}</ul>
+        <button class="primary" data-a="ok">閉じる</button>`;
+      wirePlanPicker(box, () => draw());
+      box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };
+    };
+    draw();
+    this.host.root.querySelector('.battle')!.appendChild(box);
   }
 
   /** 兵の持ち主の呼び名（武将の名前か、「予備兵」） */
@@ -1119,6 +1140,7 @@ export class CampaignScreen {
         ${c.player ? `<button id="autoMonth" class="${this.autoOn ? 'on autoing' : ''}" ${c.over ? 'disabled' : ''} data-tip="押すと、自分の勢力の動きもおまかせにして1か月進めます。2度押すと、ずっとおまかせで進みます（どこかを押すと手動に戻ります）。">${this.autoOn ? 'ずっとオート中…（押すと手動）' : '1か月オート'}</button>` : ''}
         ${c.player ? '' : '<button id="run">12か月進める</button>'}
         <span class="dim">勢力${Object.keys(gs.factions).length}・${c.months}か月・${S.difficulty[c.difficulty].name}</span>
+        ${c.player ? `<button id="planBtn" data-tip="味方をおまかせで戦わせるとき（おまかせ・観戦・1か月オート）の動き方。押すと切り替えられます">方針：${esc(planLabel(getPlan()))}</button>` : ''}
         ${c.player ? `<button id="reelBtn" title="月を進めたあと、ほかの国どうしの戦いを1つずつ見せるか">他国の戦い：${reelOn() ? '見る' : '見ない'}</button>` : ''}
         <button id="saves">セーブ</button>
         <button id="bgmBtn" title="曲の音量（押すたびに切・小・中・大）">曲：${BGM_LEVEL_NAME[bgmLevel()]}</button>
@@ -1321,6 +1343,7 @@ export class CampaignScreen {
     });
     on('#bgmBtn', () => { setBgmLevel((bgmLevel() + 1) % BGM_LEVEL_NAME.length); this.refresh(); });
     on('#reelBtn', () => { setReel(!reelOn()); this.refresh(); });
+    on('#planBtn', () => this.openPlan());
     on('#saves', () => { void openSaveMenu(root.querySelector<HTMLElement>('.battle')!, { current: () => snapshot(this.c), onLoad: (s) => { clearTimeout(this.watchTimer); this.runToken++; void busy('読み込んでいます…', () => this.host.loadHexSave(s)); } }); });
     on('#exit', async () => {
       const ok = await confirmBox(this.frame(), { title: '戦略をやめる', body: '<p>題の画面に戻ります。</p><p class="dim small">月が変わるたびに自動の枠へ保存しているので、「つづきから」で今月の初めから続けられます。今月に動かした分は残りません。残したいときは、先に「セーブ」で保存してください。</p>', ok: 'やめる', cancel: '続ける', danger: true });

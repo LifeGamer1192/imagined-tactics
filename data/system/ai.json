@@ -82,6 +82,7 @@
     "hard": { "weights": { "noise": 0.1, "threat": 1.6, "deathRisk": 1.8, "terrain": 1.8, "kill": 1.7, "weakTarget": 2.5, "generalTarget": 1.6, "counter": 1.5, "cohesion": 1.4, "outOfCommand": 1.5, "spacing": 1.3, "hold": 0.8, "status": 1.3, "debuff": 1.3, "heal": 1.3, "screen": 1.6, "guardLeader": 1.8, "guard": 2.5 },
       "smart": { "bestFirst": true, "withdrawHp": 0.4, "withdraw": 40, "terrainAware": true, "surround": 14, "surrounded": 22, "mpThrift": 2.5, "attackerPush": 0.6, "keepPush": 2.5, "leaderKill": 0.5 } }
   },
+  "plan": { "generalTarget": 2.5, "leaderKill": 0.5, "weakTarget": 4, "weakKill": 1.5, "otherWeak": 0.4, "nearAim": 0.35, "cunningTactics": 1.6, "directTactics": 0.4 },
   "castle": { "hold": 90, "approach": 1.0, "guard": 30, "guardRange": 4, "breach": 25, "breachKill": 45, "breachClosed": 1.5 },
   "stance": {
     "retreatHp": 0.3,

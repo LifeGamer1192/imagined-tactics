@@ -3,7 +3,7 @@
 import type { RNG } from '../core/rng';
 import type { Affinity, Passive, StatusId, TacticKind, TerrainKind, Weather } from '../data/types';
 import type { DamageParts, HealParts, HitParts, StatParts, SuccessParts, TacticParts } from '../rules/combat';
-import type { Personality } from '../ai/personality';
+import type { AutoPlan, Personality } from '../ai/personality';
 import type { BattleMap } from './map';
 
 export type Side = 0 | 1;
@@ -167,6 +167,8 @@ export interface BattleState {
   retreat?: Side;
   /** 戦闘の難しさ：自分と戦う相手の陣営（side）の、思考の賢さ（やさしい・ふつう・むずかしい）。数値は変えない */
   aiLevel?: { side: Side; level: 'easy' | 'normal' | 'hard' };
+  /** 味方のおまかせの方針（P50）：陣営ごと。ある陣営は、武将の性格の代わりにこれで動く */
+  autoPlan?: [AutoPlan | null, AutoPlan | null];
 }
 
 export type Action =

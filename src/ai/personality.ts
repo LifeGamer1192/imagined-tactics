@@ -20,6 +20,8 @@ export interface AiConfig {
   /** 天守の取り合い：攻め手が天守にいる値・天守へ近づく重み、守り手が天守を守る値と、その気になる敵の近さ */
   /** 戦闘の難しさ：相手の思考の重みに掛ける数と、構えの決め方（数値の効き目は変えず、考え方の賢さだけを変える） */
   levels: Record<AiLevel, { weights: Record<string, number>; sallyAggression?: number; sallyStrengthRatio?: number; retreatHp?: number; engageDistance?: number; smart?: SmartConfig }>;
+  /** 味方のおまかせの方針（P50）で掛ける重み */
+  plan: { generalTarget: number; leaderKill: number; weakTarget: number; weakKill: number; otherWeak: number; nearAim: number; cunningTactics: number; directTactics: number };
   castle: { hold: number; approach: number; guard: number; guardRange: number; breach: number; breachKill: number; breachClosed: number };
 }
 export type AiLevel = 'easy' | 'normal' | 'hard';
@@ -53,6 +55,46 @@ export interface SmartConfig { bestFirst?: boolean; withdrawHp?: number; withdra
 export const AI = aiJson as unknown as AiConfig;
 
 export const NEUTRAL: Personality = { aggression: 0, caution: 0, discipline: 0, cunning: 0, cruelty: 0, care: 0, honor: 0 };
+
+/**
+ * 味方のおまかせの方針（P50）。自分の陣営のおまかせは、武将の性格を使わず、これで動く（敵は今までどおり性格で動く）。
+ * push：猛攻⇔消極、aim：最寄り狙い⇔将狙い⇔弱った敵狙い、mind：直情⇔知略
+ */
+export interface AutoPlan { push: 'push' | 'wait'; aim: 'near' | 'general' | 'weak'; mind: 'direct' | 'cunning' }
+export const DEFAULT_PLAN: AutoPlan = { push: 'push', aim: 'near', mind: 'direct' };
+export const PLAN_LABEL = {
+  push: { push: '猛攻', wait: '消極' },
+  aim: { near: '最寄り狙い', general: '将狙い', weak: '弱った敵狙い' },
+  mind: { direct: '直情', cunning: '知略' },
+} as const;
+export const PLAN_TIP = {
+  push: { push: '前へ出て攻める。傷ついても退きにくい', wait: '無理に前へ出ず、守りを固めて待つ。傷つくと早めに退く' },
+  aim: { near: 'いちばん近い敵から叩く', general: '敵の将を優先して狙う（将を倒すと配下の兵がみな退く）', weak: '弱った敵・倒せる敵を優先して狙う' },
+  mind: { direct: '技でまっすぐ攻める。軍略（補助・妨害）はあまり使わない', cunning: '軍略（補助・妨害・状態）を進んで使い、策で戦う' },
+} as const;
+/** 方針の名前（「猛攻・最寄り狙い・直情」） */
+export const planLabel = (p: AutoPlan): string => `${PLAN_LABEL.push[p.push]}・${PLAN_LABEL.aim[p.aim]}・${PLAN_LABEL.mind[p.mind]}`;
+/** 方針を、動き方の軸（性格と同じ形）にする */
+export function planPersona(p: AutoPlan): Personality {
+  return {
+    ...NEUTRAL,
+    aggression: p.push === 'push' ? 0.8 : -0.7,
+    caution: p.push === 'push' ? -0.5 : 0.6,
+    discipline: 0.4,
+    cunning: p.mind === 'cunning' ? 0.8 : -0.6,
+    cruelty: p.aim === 'weak' ? 0.8 : p.aim === 'near' ? -0.5 : 0,
+    honor: p.aim === 'general' ? 0.8 : 0,
+    care: 0.3,
+  };
+}
+export function validPlan(p: unknown): AutoPlan {
+  const q = (p ?? {}) as Partial<AutoPlan>;
+  return {
+    push: q.push === 'wait' ? 'wait' : 'push',
+    aim: q.aim === 'general' || q.aim === 'weak' ? q.aim : 'near',
+    mind: q.mind === 'cunning' ? 'cunning' : 'direct',
+  };
+}
 const clamp = (v: number): number => Math.max(-1, Math.min(1, v));
 
 /** 特性と能力（政治・軍事・外交・魅力）から性格を出す */

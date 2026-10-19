@@ -20,7 +20,7 @@ import { MinHeap } from '../core/heap';
 import { RNG, codeToSeed } from '../core/rng';
 import { reach, stepCost } from '../rules/move';
 import { attackPower, basicSkill, disabled, has, moveOf, outOfCommand, skillOf, skillRange, terrainMod } from '../rules/stats';
-import { AI, NEUTRAL, weightsFor, type Personality, type SmartConfig } from './personality';
+import { AI, NEUTRAL, planPersona, weightsFor, type Personality, type SmartConfig } from './personality';
 
 export type Stance = 'advance' | 'engage' | 'hold' | 'retreat';
 export type Role = 'front' | 'ranged' | 'caster' | 'support';
@@ -46,6 +46,9 @@ const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.m
 
 /** ユニットを動かす性格：率いる武将のもの（武将が倒れていれば標準） */
 export function personaOf(st: BattleState, u: BUnit): Personality {
+  // 味方のおまかせの方針（P50）があれば、性格の代わりにそれで動く
+  const plan = st.autoPlan?.[u.side];
+  if (plan) return planPersona(plan);
   const l = st.units[u.leader];
   return (l && l.alive ? l.persona : u.persona) ?? NEUTRAL;
 }
@@ -90,7 +93,7 @@ function baseStance(st: BattleState, u: BUnit): Stance {
   const S = { ...AI.stance, ...(lv?.sallyAggression !== undefined ? { sallyAggression: lv.sallyAggression } : {}), ...(lv?.sallyStrengthRatio !== undefined ? { sallyStrengthRatio: lv.sallyStrengthRatio } : {}), ...(lv?.retreatHp !== undefined ? { retreatHp: lv.retreatHp } : {}), ...(lv?.engageDistance !== undefined ? { engageDistance: lv.engageDistance } : {}) };
   const foes = st.units.filter((x) => x.alive && x.side !== u.side);
   if (!foes.length || !leader || !leader.alive || leader.side !== u.side) return 'engage';
-  const p = leader.persona ?? NEUTRAL;
+  const p = personaOf(st, leader);
   const near = nearestDist(st, leader.pos, foes);
   // 退却：武将の体力が少ない。慎重な武将ほど早く、猛攻の武将ほど粘る
   const thr = clamp(S.retreatHp + p.caution * S.retreatHpCaution + p.aggression * S.retreatHpAggression, 0.05, 0.6);
@@ -179,6 +182,8 @@ function exposure(st: BattleState, u: BUnit, threats: Threat[], margin = 0): num
 
 /** 集中攻撃：相手ごとの、まだ動いていない味方の攻めの見込み（1駒の行動を決めるあいだだけ使う） */
 let focusCache = new Map<number, number>();
+/** 行動を決めている駒の、動く前の位置（最寄り狙いで使う） */
+let planOrigin = -1;
 
 function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: number, w: Record<string, number>, leader: BUnit | null): number {
   const d = Math.min(dmg, t.hp);
@@ -207,6 +212,8 @@ function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: nu
   } else if (roleOf(t) === 'support' || roleOf(t) === 'caster') v *= w.supportTarget;
   // 主君のそばにいる敵を優先して叩く
   if (leader && leader.alive && leader.id !== u.id && st.map.grid.distance(t.pos, leader.pos) <= 1) v += w.guardLeader * chance;
+  // 最寄り狙い（P50）：動く前の位置から近い敵ほど高く見る
+  if (w.nearAim && t.side !== u.side && planOrigin >= 0) v /= 1 + w.nearAim * st.map.grid.distance(planOrigin, t.pos);
   return v;
 }
 
@@ -568,6 +575,19 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   w.leaderKill = lv?.smart?.leaderKill ?? 0;
   w.focus = lv?.smart?.focus ?? 0;
   focusCache = new Map();
+  // 味方のおまかせの方針（P50）：狙う相手
+  const plan = st.autoPlan?.[u.side];
+  w.nearAim = 0;
+  planOrigin = u.pos;
+  if (plan) {
+    const P = AI.plan;
+    if (plan.aim === 'general') { w.generalTarget *= P.generalTarget; w.leaderKill = Math.max(w.leaderKill, P.leaderKill); w.weakTarget *= P.otherWeak; }
+    else if (plan.aim === 'weak') { w.weakTarget *= P.weakTarget; w.kill *= P.weakKill; w.generalTarget = 1; }
+    else { w.nearAim = P.nearAim; w.weakTarget *= P.otherWeak; w.generalTarget = 1; w.supportTarget = 1; }
+    // 直情：軍略（補助・妨害・状態）をあまり使わない。知略：進んで使う
+    const k = plan.mind === 'cunning' ? P.cunningTactics : P.directTactics;
+    w.buff *= k; w.debuff *= k; w.status *= k;
+  }
   // 攻め手は押す（むずかしい）：時間が経つほど、危険と倒される危うさを軽く見る
   if (lv?.smart?.attackerPush && u.home === 0) {
     const k = 1 - lv.smart.attackerPush * Math.min(1, st.round / st.maxRounds * 1.5);

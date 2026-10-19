@@ -1,7 +1,8 @@
 // 画面：セーブの読み込み → 編成 → 戦闘 → 結果。
 
 import { autoBattle, nextAiActions, planUnit, stanceOf } from '../ai/ai';
-import { personalityLabel, personalityOf } from '../ai/personality';
+import { personalityLabel, personalityOf, planLabel, type AutoPlan } from '../ai/personality';
+import { getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
 import { apply, canAct, canMove, canWithdraw, holder, moveCells, withdraw } from '../battle/engine';
 import { mapFromProvince, seatName } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
@@ -97,6 +98,8 @@ export class App {
   private watching = false;
   /** おまかせの陣営が動く速さ（0〜4）。1手ごとの間は AI_DELAY */
   private aiSpeed = loadSpeed();
+  /** おまかせの方針の欄を開いているか（P50） */
+  private planOpen = false;
   /** 記録の細かさ（0 簡易・1 通常・2 詳細）。速さとは別に選ぶ。記録の元データは1つで、表示だけが変わる */
   private logLevel = loadLogLevel();
   private logView = new BattleLogView();
@@ -478,6 +481,8 @@ export class App {
     setScene(null, sceneUrl('setup', this.variant));
     bgm(`battle_${this.variant}`);
     this.st = st; this.human = human;
+    // 味方のおまかせの方針（P50）：自分で動かす陣営は、おまかせのとき方針で動く（国モードの戦いは、戦略の側で付けてある）
+    if (!st.autoPlan && human.size) st.autoPlan = [human.has(0) ? getPlan() : null, human.has(1) ? getPlan() : null];
     this.autoUnits = new Set(); clearTimeout(this.autoTimer);
     // 観戦で始めたときに手動へ切り替えると、manualSide の陣営（ふつうは攻め手）を操作する
     this.watching = human.size === 0;
@@ -783,6 +788,7 @@ export class App {
     if (!box) return;
     if (!this.st || this.st.winner !== null) { box.innerHTML = ''; return; }
     box.innerHTML = `
+      ${this.st.autoPlan?.some(Boolean) ? `<details class="planfold" ${this.planOpen ? 'open' : ''}><summary data-tip="味方をおまかせで動かすときの動き方。押すと開いて切り替えられます">おまかせの方針：<b>${esc(planLabel(getPlan()))}</b></summary>${planPickerHtml(getPlan())}</details>` : ''}
       <button id="watch">${this.watching ? '手動にする' : '観戦にする'}</button>
       <span class="dim">速さ</span>${AI_DELAY.map((_d, i) => `<button data-speed="${i}" class="${i === this.aiSpeed ? 'on' : ''}">${i + 1}</button>`).join('')}
       <span class="vol"><span class="dim">音</span>${VOLUME_NAME.map((name, i) => `<button data-vol="${i}" class="${i === volume() ? 'on' : ''}">${name}</button>`).join('')}</span>
@@ -798,6 +804,15 @@ export class App {
       b.onclick = () => { setVolume(Number(b.dataset.vol)); this.renderCtl(); play('turn'); };
     });
     box.querySelector<HTMLButtonElement>('#watch')!.onclick = () => this.setWatching(!this.watching);
+    // おまかせの方針（P50）：味方の陣営に、すぐ当てる。狭い画面で場所を取らないよう、ふだんは畳んでおく
+    const fold = box.querySelector<HTMLDetailsElement>('.planfold');
+    if (fold) fold.ontoggle = () => { this.planOpen = fold.open; };
+    wirePlanPicker(box, (p) => {
+      const st = this.st;
+      if (st?.autoPlan) st.autoPlan = st.autoPlan.map((x) => (x ? p : null)) as [AutoPlan | null, AutoPlan | null];
+      toast(`おまかせの方針：${planLabel(p)}`);
+      this.renderCtl(); this.refresh();
+    });
     box.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
       b.onclick = () => { this.aiSpeed = Number(b.dataset.speed); saveSpeed(this.aiSpeed); this.renderCtl(); };
     });
@@ -973,9 +988,11 @@ export class App {
   private personaLine(u: BUnit): string {
     const st = this.st!;
     const leader = st.units[u.leader];
-    if (!leader?.persona) return '';
+    const plan = st.autoPlan?.[u.side];
     const STANCE = { advance: '前進', engage: '交戦', hold: '守備', retreat: '退却' } as const;
-    const stance = st.winner === null && leader.alive ? ` ／ 構え：${STANCE[stanceOf(st, u)]}` : '';
+    const stance = st.winner === null && leader?.alive ? ` ／ 構え：${STANCE[stanceOf(st, u)]}` : '';
+    if (plan) return `<div class="dim">おまかせの方針：${planLabel(plan)}${stance}<br><span class="small">（味方のおまかせは、性格ではなく方針で動く）</span></div>`;
+    if (!leader?.persona) return '';
     return `<div class="dim">性格：${personalityLabel(leader.persona)}${u.kind === 'troop' ? '（率いる武将）' : ''}${stance}</div>`;
   }
 

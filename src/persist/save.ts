@@ -45,6 +45,7 @@ export interface HexSave {
     scoutMissions?: Campaign['scoutMissions'];
     offices?: Campaign['offices'];
     resting?: Campaign['resting'];
+    autoPlan?: Campaign['autoPlan'];
   };
 }
 
@@ -67,7 +68,7 @@ export function snapshot(c: Campaign): HexSave {
       gs, player: c.player, months: c.months, over: c.over, moved: [...c.moved],
       log: c.log.slice(-LOG_KEEP), rng: [c.rng.seed0, c.rng.state],
       items: c.items, sieges: c.sieges, away: c.away, difficulty: c.difficulty, offers: c.offers, wounded: c.wounded, reserve: c.reserve, built: c.built, relocations: c.relocations, history: c.history,
-      training: c.training, trainedThisMonth: c.trainedThisMonth, trainBonus: c.trainBonus, scout: c.scout, scoutMissions: c.scoutMissions, offices: c.offices, resting: c.resting,
+      training: c.training, trainedThisMonth: c.trainedThisMonth, trainBonus: c.trainBonus, scout: c.scout, scoutMissions: c.scoutMissions, offices: c.offices, resting: c.resting, autoPlan: c.autoPlan,
     },
   };
 }
@@ -86,7 +87,7 @@ export function restore(s: HexSave): Campaign {
     gs: k.gs, world: data.world, player: k.player, months: k.months, over: k.over,
     moved: new Set(k.moved), log: [...k.log], rng: RNG.restore(k.rng[0], k.rng[1]),
     items: k.items ?? {}, sieges: k.sieges ?? {}, away: k.away ?? {}, difficulty: k.difficulty ?? 'normal', offers: k.offers ?? [], wounded: k.wounded ?? {}, reserve: k.reserve ?? {}, built: k.built ?? {}, relocations: k.relocations ?? {}, history: k.history ?? { done: [] },
-    training: k.training ?? {}, trainedThisMonth: k.trainedThisMonth ?? [], trainBonus: k.trainBonus ?? {}, scout: k.scout, scoutMissions: k.scoutMissions ?? [], offices: k.offices ?? {}, resting: k.resting ?? {},
+    training: k.training ?? {}, trainedThisMonth: k.trainedThisMonth ?? [], trainBonus: k.trainBonus ?? {}, scout: k.scout, scoutMissions: k.scoutMissions ?? [], offices: k.offices ?? {}, resting: k.resting ?? {}, autoPlan: k.autoPlan,
   };
   // 偵察度の無い古いセーブは、隣の領から始める
   if (!c.scout) initScout(c);

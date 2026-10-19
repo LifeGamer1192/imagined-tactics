@@ -11,7 +11,7 @@ import { makeGarrison, makeTroop } from '../convert/convert';
 import type { GFaction, GGeneral, GProvince, GTroop, GameStart } from '../convert/model';
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
-import { NEUTRAL, personalityOf, type Personality } from '../ai/personality';
+import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
 import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated } from './events';
@@ -75,6 +75,8 @@ export interface Campaign {
   offices?: { chancellor?: string };
   /** 部隊ごとの退却のあと、休養している武将 → 休養の終わる月（tick。この月まで動けない） */
   resting?: Record<string, number>;
+  /** 味方のおまかせの方針（P50）。自分の勢力の戦いをおまかせにしたとき、これで動く */
+  autoPlan?: AutoPlan;
   /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */
   reel?: ReelBattle[];
   /** 訓練（P30）：武将 → 1か月訓練かずっと訓練か */
@@ -477,6 +479,11 @@ export function battleFor(c: Campaign, pb: PendingBattle): BattleState {
   if (cut[0] !== 1 || cut[1] !== 1) st.supplyMult = cut;
   // 戦闘の難しさ：自分の勢力と戦う相手の陣営だけ、思考の賢さが変わる（相手どうしの戦いは、ふつう）
   if (c.player && (pb.attacker === c.player || pb.defender === c.player)) st.aiLevel = { side: pb.attacker === c.player ? 1 : 0, level: c.difficulty };
+  // 味方のおまかせの方針（P50）：自分の陣営は、武将の性格の代わりに方針で動く
+  if (c.player && (pb.attacker === c.player || pb.defender === c.player)) {
+    const plan = c.autoPlan ?? DEFAULT_PLAN;
+    st.autoPlan = pb.attacker === c.player ? [plan, null] : [null, plan];
+  }
   return st;
 }
 
