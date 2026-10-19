@@ -119,7 +119,8 @@ describe('siege maps', () => {
         if (p.id < 4) expect(mapToText(mapFromProvince(w, p.id, { capital: true, walls: true }))).toBe(mapToText(m));
       }
     }
-  });
+    // すべての領の城の戦場を作るので、ほかのテストと並んで重いときに時間切れにならないよう、長めに待つ
+  }, 60000);
 
   it('weaker places get a fort or a camp instead of a castle', async () => {
     const w = (await loadFixture('sengoku_fid5_1575')).world;

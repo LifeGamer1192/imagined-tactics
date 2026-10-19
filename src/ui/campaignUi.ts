@@ -471,6 +471,52 @@ export class CampaignScreen {
     box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };
   }
 
+  /**
+   * 滅亡の窓（P60）：滅んだ家の歴史と経緯。起った（書き留め始めた）ときと滅んだときのようす、領・武将・兵の移り変わり（図）、
+   * いちばん栄えたとき、出来事の年表、最後の当主と、滅ぼした家、浪人になった武将の数
+   */
+  private fallWindow(fid: number): void {
+    const c = this.c, gs = c.gs, r = c.realms?.[fid];
+    if (!r?.fell) { this.refresh(); return; }
+    const yr = (y: number): string => (y < 0 ? `前${-y + 1}年` : `${y}年`);
+    const mine = fid === c.player;
+    const s = r.samples.length ? r.samples : [r.start];
+    const peak = s.reduce((a, b) => (b.provs > a.provs ? b : a), s[0]);
+    const peakGens = s.reduce((a, b) => (b.gens > a.gens ? b : a), s[0]);
+    const months = (r.fell.year - r.start.year) * 12 + (r.fell.month - r.start.month);
+    const span = months >= 12 ? `${Math.floor(months / 12)}年${months % 12 ? `${months % 12}か月` : ''}` : `${months}か月`;
+    // 領と武将の移り変わりの図（折れ線）
+    const W = 300, H = 70, maxP = Math.max(1, ...s.map((x) => x.provs)), maxG = Math.max(1, ...s.map((x) => x.gens));
+    const pts = (k: 'provs' | 'gens', mx: number): string => s.map((x, i) => `${(s.length > 1 ? (i / (s.length - 1)) * W : W / 2).toFixed(1)},${(H - (x[k] / mx) * (H - 6) - 3).toFixed(1)}`).join(' ');
+    const [cr, cg, cb] = r.color;
+    const chart = `<svg class="fall-chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts('gens', maxG)}" fill="none" stroke="rgba(200,190,170,0.8)" stroke-width="1.5" stroke-dasharray="4 3"/><polyline points="${pts('provs', maxP)}" fill="none" stroke="rgb(${cr},${cg},${cb})" stroke-width="2.5"/></svg>
+      <div class="dim small">実線：領（最大${maxP}）　点線：武将（最大${maxG}）　${yr(s[0].year)}${s[0].month}月 → ${yr(r.fell.year)}${r.fell.month}月</div>`;
+    const ev = r.events.slice(-24).map((e) => `<li><span class="um">${yr(e.year)}${e.month}月</span>${esc(e.text)}</li>`).join('');
+    const left = (c.fallen ?? []).length;
+    const box = document.createElement('div');
+    box.className = 'result fall';
+    box.innerHTML = `${bannerHtml(sceneUrl('defeat', gs.variant))}
+      <div class="fall-title">${esc(r.name)}、滅亡</div>
+      <p class="vsub">${esc(yr(r.fell.year))}${r.fell.month}月　${r.fell.by ? `${esc(r.fell.by)}に滅ぼされる` : '領をすべて失う'}${mine ? '　<b>あなたの家</b>' : ''}</p>
+      <div class="u-stats">
+        <div><b>${esc(span)}</b><span>見届けた年月</span></div>
+        <div><b>${r.start.provs} → 0</b><span>領</span></div>
+        <div><b>${peak.provs}</b><span>最も栄えた時の領（${esc(yr(peak.year))}${peak.month}月）</span></div>
+        <div><b>${r.start.gens} → ${r.fell.ronin}</b><span>武将（最多${peakGens.gens}）</span></div>
+        <div><b>${r.start.troops} → ${s[s.length - 1].troops}</b><span>兵</span></div>
+      </div>
+      ${chart}
+      <h4>経緯</h4>
+      <ul class="small fall-events">${ev || '<li>目立った出来事は書き留められていない</li>'}</ul>
+      <p class="small">最後の当主：<b>${esc(r.fell.lord || '（当主はすでにいない）')}</b>。${r.fell.ronin ? `残っていた武将${r.fell.ronin}人は、浪人となって野に散った。` : '仕える武将は、もう残っていなかった。'}</p>
+      <p class="u-end">${mine ? 'あなたの家の物語は、ここで幕を閉じた。' : `こうして${esc(r.name)}の名は、歴史の中に消えていった。`}</p>
+      <p class="cbtns"><button class="primary" data-a="ok">${left ? `次へ（あと${left}家）` : '閉じる'}</button>${left ? ` <button data-a="skip">残りの滅亡を飛ばす</button>` : ''}</p>`;
+    this.frame().appendChild(box);
+    play('lose');
+    box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };
+    box.querySelector<HTMLButtonElement>('[data-a="skip"]')?.addEventListener('click', () => { c.fallen = []; box.remove(); this.refresh(); });
+  }
+
   /** 味方のおまかせの方針を選ぶ窓（P50） */
   private openPlan(): void {
     this.host.root.querySelector('.result.ask')?.remove();
@@ -1265,8 +1311,14 @@ export class CampaignScreen {
     const c = this.c, gs = c.gs;
     bgm(`map_${gs.variant}`);
     this.draw();
+    // 滅亡の窓（P60）：ほかの窓が閉じてから、滅んだ家を1つずつ（ずっとオートの間は出さない）
+    const busyWin = (): boolean => !!this.frame().querySelector('.result, .confirm, .reel-cover');
+    if (c.player && c.fallen?.length && !this.autoOn && !busyWin()) {
+      const fid = c.fallen.shift()!;
+      window.setTimeout(() => { if (!busyWin()) this.fallWindow(fid); else (c.fallen ??= []).unshift(fid); }, 250);
+    }
     // 天下統一（P57）：ほかの窓（祝い・結果・知らせ）が閉じてから、1度だけ年表の窓を出す
-    if (c.over === 'win' && c.player && !c.unified && !this.frame().querySelector('.result, .confirm, .reel-cover')) {
+    else if (c.over === 'win' && c.player && !c.unified && !busyWin()) {
       c.unified = true;
       this.stopAuto();
       window.setTimeout(() => this.unifyWindow(), 300);

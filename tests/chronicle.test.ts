@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { BattleState } from '../src/battle/types';
 import { convert, generalsOf } from '../src/convert/convert';
 import { restore, snapshot } from '../src/persist/save';
-import { battleFor, generalsAt, newCampaign, planAttack, resolveBattle } from '../src/strategy/campaign';
+import { battleFor, endMonth, finishMonth, generalsAt, newCampaign, planAttack, resolveBattle } from '../src/strategy/campaign';
 import { spanText, startChronicle } from '../src/strategy/chronicle';
 import { loadFixture } from './helpers';
 
@@ -37,5 +37,22 @@ describe('chronicle of the player house', () => {
     const back = restore(JSON.parse(JSON.stringify(snapshot(c))));
     expect(back.chronicle).toEqual(c.chronicle);
     expect(back.feats).toEqual(c.feats);
+  });
+
+  it('keeps every house history; a fallen house has its last state and events (P60)', async () => {
+    const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
+    const f = Object.values(gs.factions).sort((a, b) => generalsOf(gs, b.id).length - generalsOf(gs, a.id).length)[0];
+    const c = newCampaign(gs, save.world, f.id);
+    const mimura = Object.values(gs.factions).find((x) => x.name.ja === '三村家')!;
+    for (let m = 0; m < 8 && gs.factions[mimura.id]; m++) { for (const pb of endMonth(c)) resolveBattle(c, pb); finishMonth(c); }
+    const r = c.realms![mimura.id];
+    expect(gs.factions[mimura.id]).toBeUndefined();
+    expect(r.fell?.by).toBe('毛利家');
+    expect(c.fallen).toContain(mimura.id);
+    expect(r.samples.length).toBeGreaterThan(1);
+    expect(r.events.some((e) => e.text.includes('毛利家に仕える'))).toBe(true);
+    expect(r.events.some((e) => e.text.startsWith('【史実】'))).toBe(true);
+    const back = restore(JSON.parse(JSON.stringify(snapshot(c))));
+    expect(back.realms![mimura.id].fell).toEqual(r.fell);
   });
 });

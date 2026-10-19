@@ -12,7 +12,7 @@ import type { GFaction, GGeneral, GProvince, GTroop, GameStart } from '../conver
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { TRAITS } from '../rules/traits';
-import { addFeats, chronFromLog, type ChronEntry, type Feat } from './chronicle';
+import { addFeats, chronFromLog, realmEvent, realmFell, realmFromLog, sampleRealms, type ChronEntry, type Feat, type RealmHist } from './chronicle';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
@@ -85,6 +85,10 @@ export interface Campaign {
   feats?: Record<string, Feat>;
   /** 天下統一の窓を出したか（P57） */
   unified?: boolean;
+  /** 家ごとの歩み（P60）：家の番号 → 月ごとの領・武将・兵の数と出来事 */
+  realms?: Record<number, RealmHist>;
+  /** 滅んだが、まだ滅亡の窓を出していない家（P60） */
+  fallen?: number[];
   /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */
   reel?: ReelBattle[];
   /** 訓練（P30）：武将 → 1か月訓練かずっと訓練か */
@@ -161,7 +165,7 @@ export function homeFor(c: Campaign, f: number, from: number): number {
   return gs.factions[f].capital;
 }
 
-export const note = (c: Campaign, key: string, vars: Record<string, string | number> = {}): void => { const e = { key, vars }; c.log.push(e); chronFromLog(c, e); };
+export const note = (c: Campaign, key: string, vars: Record<string, string | number> = {}): void => { const e = { key, vars }; c.log.push(e); chronFromLog(c, e); realmFromLog(c, e); };
 
 // ---------------------------------------------------------------- 調べる
 
@@ -532,6 +536,8 @@ export function battleSupply(c: Campaign, pb: PendingBattle): [number, number] {
 
 function eliminate(c: Campaign, f: GFaction, by: number): void {
   const gs = c.gs;
+  // 滅亡の窓（P60）：家を消す前に、最後のようすを書き留める
+  realmFell(c, f.id, gs.factions[by]?.name.ja ?? '');
   note(c, 'fall', { faction: f.name.ja, by: gs.factions[by]?.name.ja ?? '' });
   const freed = Object.values(gs.generals).filter((g) => g.faction === f.id);
   for (const g of freed) { g.faction = 0; g.prov = -1; g.isLord = false; delete c.away[g.id]; }
@@ -580,6 +586,9 @@ export function handOver(c: Campaign, provs: number[], to: number): number[] {
 export function absorb(c: Campaign, a: number, b: number): boolean {
   const gs = c.gs, fa = gs.factions[a], fb = gs.factions[b];
   if (!fa || !fb || a === b) return false;
+  // 家ごとの歩み（P60）：併せられた家の武将の行き先
+  const moving = Object.values(gs.generals).filter((g) => g.faction === b);
+  if (moving.length) realmEvent(c, fb.name.ja, `武将${moving.length}人（${moving.slice(0, 4).map((g) => g.name.ja).join('・')}${moving.length > 4 ? 'ほか' : ''}）は${fa.name.ja}に仕える`);
   for (const g of Object.values(gs.generals)) {
     if (g.faction !== b) continue;
     g.faction = a;
@@ -1062,6 +1071,8 @@ export const supplyCap = (f: GFaction): number => Math.max(S.supply.capMin, f.in
 /** 攻められた戦いがすべて決着したあとに呼ぶ：収入と暦 */
 export function finishMonth(c: Campaign): void {
   const gs = c.gs;
+  // 家ごとの歩み（P60）：月の終わりのようすを書き留める
+  sampleRealms(c);
   // 空になった予備兵の欄は片づける（予備兵は領に付いたまま。領を奪われても残り、奪った側のものになる）
   for (const k of Object.keys(c.reserve)) if (!c.reserve[Number(k)].length) delete c.reserve[Number(k)];
   refreshIncome(c);

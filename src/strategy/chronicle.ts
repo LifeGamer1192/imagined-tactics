@@ -79,6 +79,95 @@ export function addFeats(c: Campaign, ids: string[], won: boolean, foesBeaten: n
   }
 }
 
+// ---------------------------------------------------------------- 家ごとの歩み（P60：滅亡の窓に使う）
+
+/** 月ごとの家のようす：領・武将・兵の数 */
+export interface RealmSample { year: number; month: number; provs: number; gens: number; troops: number }
+export interface RealmHist {
+  name: string; color: [number, number, number];
+  start: RealmSample;
+  samples: RealmSample[];
+  events: { year: number; month: number; text: string }[];
+  /** 滅んだときのこと */
+  fell?: { year: number; month: number; by: string; lord: string; ronin: number };
+}
+// セーブが大きくなりすぎないよう、月ごとの記録は120件まで（超えたら1つおきに間引く）、出来事は80件まで
+const SAMPLE_MAX = 120, EVENT_MAX = 80;
+
+function sampleOf(c: Campaign, fid: number): RealmSample {
+  const gens = Object.values(c.gs.generals).filter((g) => g.faction === fid);
+  return { ...dateOf(c), provs: c.gs.provinces.filter((p) => p.owner === fid && !p.out).length, gens: gens.length, troops: gens.reduce((s, g) => s + g.troops.length, 0) };
+}
+
+/** 毎月の終わりに、すべての家のようすを書き留める（長くなったら1つおきに間引く） */
+export function sampleRealms(c: Campaign): void {
+  const h = (c.realms ??= {});
+  for (const f of Object.values(c.gs.factions)) {
+    const s = sampleOf(c, f.id);
+    const r = (h[f.id] ??= { name: f.name.ja, color: f.color, start: s, samples: [], events: [] });
+    r.name = f.name.ja; r.color = f.color;
+    r.samples.push(s);
+    if (r.samples.length > SAMPLE_MAX) r.samples = r.samples.filter((_x, i) => i % 2 === 0 || i === r.samples.length - 1);
+  }
+}
+
+export function realmEvent(c: Campaign, name: string, text: string): void {
+  const f = Object.values(c.gs.factions).find((x) => x.name.ja === name);
+  const h = (c.realms ??= {});
+  const r = f ? (h[f.id] ??= { name: f.name.ja, color: f.color, start: sampleOf(c, f.id), samples: [], events: [] }) : Object.values(h).find((x) => x.name === name);
+  if (!r) return;
+  r.events.push({ ...dateOf(c), text });
+  if (r.events.length > EVENT_MAX) r.events.splice(1, r.events.length - EVENT_MAX);
+}
+
+/** 記録の1件から、家ごとの歩みへ写す（note から呼ぶ） */
+export function realmFromLog(c: Campaign, e: CampaignLog): void {
+  const s = (k: string): string => String(e.vars[k] ?? '');
+  switch (e.key) {
+    case 'capture':
+      realmEvent(c, s('faction'), `${s('prov')}を${s('from') || '在地の兵'}から攻め取る`);
+      if (s('from')) realmEvent(c, s('from'), `${s('prov')}を${s('faction')}に奪われる`);
+      break;
+    case 'chainCapture':
+      realmEvent(c, s('faction'), `勢いに乗り、${s('from')}の${s('provs')}も取る`);
+      realmEvent(c, s('from'), `${s('faction')}に${s('provs')}も一気に取られる`);
+      break;
+    case 'fall': realmEvent(c, s('by'), `${s('faction')}を滅ぼす`); break;
+    case 'war': realmEvent(c, s('a'), `${s('b')}に戦を仕掛ける`); realmEvent(c, s('b'), `${s('a')}に攻めかかられる`); break;
+    case 'alliance': realmEvent(c, s('a'), `${s('b')}と同盟`); realmEvent(c, s('b'), `${s('a')}と同盟`); break;
+    case 'truce': realmEvent(c, s('a'), `${s('b')}と停戦`); realmEvent(c, s('b'), `${s('a')}と停戦`); break;
+    case 'vassal': realmEvent(c, s('faction'), `${s('lord')}に従属する`); realmEvent(c, s('lord'), `${s('faction')}を従える`); break;
+    case 'capitalMoved': realmEvent(c, s('faction'), `本拠を${s('prov')}へ移す`); break;
+    case 'succeed': case 'newLord': realmEvent(c, s('faction'), `${s('name')}が当主となる`); break;
+    case 'defect': realmEvent(c, s('from'), `${s('name')}が${s('to')}へ寝返る`); realmEvent(c, s('to'), `${s('name')}が寝返ってくる`); break;
+    case 'death': realmEvent(c, s('faction'), `${s('name')}が世を去る（${s('age')}歳）`); break;
+    // 史実の出来事は、本文に名が出てくる家すべての歩みに書く
+    case 'history': case 'historyChoice': {
+      const text = s('text') || s('result');
+      // 史実の出来事は家を併せたあとに記録されるので、滅んだ家の名も探す
+      const names = new Set([...Object.values(c.gs.factions).map((f) => f.name.ja), ...Object.values(c.realms ?? {}).map((r) => r.name)]);
+      if (text) for (const n of names) {
+        // 本文では「三村」のように「家」を付けずに呼ぶことがある
+        const short = n.replace(/家$/, '');
+        if (text.includes(n) || (short.length >= 2 && text.includes(short))) realmEvent(c, n, `【史実】${text}`);
+      }
+      break;
+    }
+  }
+}
+
+/** 家が滅んだときに、最後のようすを書き留める（eliminate から、家を消す前に呼ぶ） */
+export function realmFell(c: Campaign, fid: number, by: string): void {
+  const f = c.gs.factions[fid];
+  if (!f) return;
+  const h = (c.realms ??= {});
+  const r = (h[fid] ??= { name: f.name.ja, color: f.color, start: sampleOf(c, fid), samples: [], events: [] });
+  const gens = Object.values(c.gs.generals).filter((g) => g.faction === fid);
+  r.samples.push({ ...dateOf(c), provs: 0, gens: gens.length, troops: gens.reduce((s, g) => s + g.troops.length, 0) });
+  r.fell = { ...dateOf(c), by, lord: c.gs.generals[f.lordId]?.name.ja ?? '', ronin: gens.length };
+  (c.fallen ??= []).push(fid);
+}
+
 /** 統一までの年月（「◯年◯か月」） */
 export function spanText(c: Campaign): string {
   const s = c.chronicle?.[0], e = dateOf(c);
