@@ -410,7 +410,7 @@ export class CampaignScreen {
   /** 兵の名前の札（自分の兵は、つまんで運べる） */
   private chipHtml(key: string, t: GTroop, i: number): string {
     const unit = L(D.byUnit[t.unitId].name);
-    return `<button class="chip ${this.troopMenu?.gid === key && this.troopMenu.i === i ? 'on' : ''}" data-troop="${key}" data-i="${i}" data-tip="${esc(`${unitTip(t.unitId, t.level)}\n\nつまんで別の武将や予備兵へ運ぶと渡せます。欄の外へ落とすと手放すかを聞きます。押すと、名前の変更などの欄が開きます。`)}">${this.icon(t.unitId)}<span class="nm">${esc(t.name ?? unit)}</span><span class="dim">${t.level}</span></button>`;
+    return `<button class="chip ${this.troopMenu?.gid === key && this.troopMenu.i === i ? 'on' : ''}" data-troop="${key}" data-i="${i}" data-tip="${esc(`${unitTip(t.unitId, t.level)}\n\nつまんで別の武将や予備兵へ運ぶと渡せます。欄の外へ落とすと手放すかを聞きます。押すと、名前の変更などの欄が開きます。`)}">${this.icon(t.unitId)}<span class="nm">${esc(t.name ?? unit)}</span><span class="dim">${t.level}</span><span class="tcost">采${D.byUnit[t.unitId].cost}</span></button>`;
   }
 
   /** 兵の名前の横に添える、小さな兵の絵（絵の無い兵種は名前だけ） */
@@ -777,7 +777,7 @@ export class CampaignScreen {
       // 武将のいる領で雇える兵種から（P37）。初めから雇えた兵種でなければ、兵糧が2倍
       const opts = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u))
         .sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))
-        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（兵糧${recruitCost(u, f, isExclave(c, g.prov))}${isNativeUnit(f, u) ? '' : '・新しい兵種で2倍'}）</option>`).join('');
+        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（采配${D.byUnit[u].cost}・兵糧${recruitCost(u, f, isExclave(c, g.prov))}${isNativeUnit(f, u) ? '' : '・新しい兵種で2倍'}）</option>`).join('');
       rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button></span>` : '';
       // 昇進：武将は役職、兵は兵種。条件を満たした昇進先だけをボタンにする
       const ups: string[] = [];
@@ -804,10 +804,22 @@ export class CampaignScreen {
     const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
     const fig = this.figure(g);
     return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}
-      ${L(cls.name)} Lv${g.level} <span class="dim">強さ${Math.round(strengthOf(g))} 采配${troopLoad(g)}/${g.command}${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}
+      ${L(cls.name)} Lv${g.level} <span class="dim">強さ${Math.round(strengthOf(g))}${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}
       ${g.traits.length ? ` ・${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}
       ・<span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span></span><br>
-      <span class="troops">${troops}</span> ${own ? this.troopMenuHtml(g.id) : ''}${rec}</span></div>`;
+      ${this.commandBar(g)}<span class="troops">${troops}</span> ${own ? this.troopMenuHtml(g.id) : ''}${rec}</span></div>`;
+  }
+
+  /** 采配バー（P45）：右端が最大の采配。兵ごとの区切りに、その兵が使う采配。横に「采配 使用／最大（残り）」 */
+  private commandBar(g: GGeneral): string {
+    const max = Math.max(1, g.command), used = troopLoad(g);
+    const segs = g.troops.map((t, i) => {
+      const cost = D.byUnit[t.unitId].cost, name = t.name ?? L(D.byUnit[t.unitId].name);
+      const w = Math.min(100, (cost / max) * 100);
+      // 細い区切りには数を書かない（兵の札に「采◯」を添えている）
+      return `<span class="seg s${i % 2}" style="width:${w.toFixed(2)}%" title="${esc(`${name}：采配${cost}`)}">${w >= 9 ? cost : ''}</span>`;
+    }).join('');
+    return `<div class="cbar" title="${esc(`采配：${used}／${g.command}（残り${Math.max(0, g.command - used)}）`)}"><div class="cbar-track">${segs}</div><span class="cbar-num">采配 ${used}／${g.command}<span class="dim">（残り${Math.max(0, g.command - used)}）</span></span></div>`;
   }
 
   /** 領の人口などの行：偵察度で見える量が変わる */

@@ -577,6 +577,12 @@ async function run(tag, ctxOpts) {
     await press('.confirm [data-a="no"]');
     await page.evaluate(() => { const s = window.__campaign; s.picked.clear(); s.order = 'none'; s.refresh(); });
   }
+  // 采配バー（P45）：武将の欄に、兵ごとの采配と「采配 使用／最大」
+  await page.evaluate(() => { const s = window.__campaign; s.selected = s.c.gs.factions[s.c.player].capital; s.refresh(); document.querySelector('#panel').scrollTop = 0; document.querySelector('.cbar')?.scrollIntoView({ block: 'center' }); });
+  await page.waitForTimeout(150);
+  ok(`[${tag}] 武将の欄に采配バー（兵ごとの采配と、采配 使用／最大）`, !!(await page.$('.gen .cbar .seg')) && /采配 \d+／\d+/.test(await page.textContent('.gen .cbar')));
+  ok(`[${tag}] 徴兵の選択肢に、必要な采配が書いてある`, !!(await page.$('select[data-unit]')) ? /采配\d+/.test(await page.textContent('select[data-unit]')) : true);
+  await shot('command_bar');
   ok(`[${tag}] 領の画面の国名は、国の色の札`, !!(await page.$('#panel .fac')));
   ok(`[${tag}] 断ると欄が消え、記録に残る`, !(await page.$('[data-hchoice="vc:0"]')) && await page.evaluate(() => window.__campaign.c.log.some((e) => e.key === 'historyChoice')));
   // 月送りの演出（P31）：ほかの国どうしの戦いを、矢印・顔ぶれ・小さな戦場・結果で見せる。飛ばすボタン2つ
