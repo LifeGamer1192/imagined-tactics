@@ -1100,7 +1100,7 @@ export class App {
       ${this.modeInfo()}
       ${cell}
       <div class="foot">
-        ${human ? `<button id="end" class="primary">ターン終了</button><button id="waitAll" ${st.units.some((x) => x.alive && x.side === st.turn && canAct(st, x)) ? '' : 'disabled'} data-tip="まだ動いていない自分の兵を、すべて待機にします（そのあと「ターン終了」を押します）">全員待機</button>` : st.winner === null ? '<span class="dim">相手が行動中…</span>' : ''}
+        ${human ? '<button id="end" class="primary" data-tip="まだ動いていない自分の駒をすべて待機にして、自分の番を終えます">巡を終える（全員待機）</button>' : st.winner === null ? '<span class="dim">相手が行動中…</span>' : ''}
         ${st.winner !== null ? '' : this.allowQuit ? `<button id="quit">${esc(this.battleBack.label)}</button>` : `<button id="auto">おまかせで決着</button>${this.human.size === 1 ? '<button id="retreat" data-tip="この戦いから退きます。負けになり、重い罰があります（押すと説明が出ます）">退く</button>' : ''}`}
       </div>`;
     this.root.querySelectorAll<HTMLButtonElement>('[data-skill]').forEach((b) => { b.onclick = () => { this.mode = { type: 'skill', id: b.dataset.skill! }; this.autoTarget(); this.showInfo(); }; });
@@ -1132,16 +1132,15 @@ export class App {
       this.view?.clearFx(t.id);
       this.refresh();
     });
-    on('#end', () => this.endTurn());
-    on('#waitAll', async () => {
-      const left = st.units.filter((x) => x.alive && x.side === st.turn && canAct(st, x));
-      if (!left.length) return;
-      const ok = await confirmBox(this.root.querySelector('.battle')!, { title: '全員待機', body: `<p>まだ動いていない${left.length}隊を、すべて待機にします。待機した隊は、このターンはもう動けません。</p>`, ok: '全員待機' });
-      if (!ok || this.st !== st) return;
-      for (const x of left) if (x.alive && canAct(st, x)) apply(st, { type: 'wait', unit: x.id });
-      this.selected = null; this.mode = { type: 'idle' }; this.undo = null;
-      this.refresh();
-      this.checkAutoEnd();
+    // 巡を終える（全員待機）：まだ動ける駒があれば確かめてから、残りを待機にして番を終える（「ターン終了」と「全員待機」をまとめた。P42）
+    on('#end', async () => {
+      const left = st.units.filter((x) => x.alive && x.side === st.turn && !this.unitDone(x));
+      if (left.length) {
+        const ok = await confirmBox(this.root.querySelector('.battle')!, { title: '巡を終える（全員待機）', body: `<p>まだ動ける駒が${left.length}隊あります（${left.slice(0, 6).map((x) => esc(x.name)).join('・')}${left.length > 6 ? ' ほか' : ''}）。すべて待機にして、この番を終えます。</p>`, ok: '巡を終える' });
+        if (!ok || this.st !== st || st.winner !== null || !this.isHumanTurn()) return;
+      }
+      for (const x of st.units) if (x.alive && x.side === st.turn && canAct(st, x)) apply(st, { type: 'wait', unit: x.id });
+      this.endTurn();
     });
     const frame = this.root.querySelector('.battle')!;
     on('#quit', async () => {

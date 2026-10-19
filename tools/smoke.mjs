@@ -149,10 +149,10 @@ await clickCell(await battle(() => window.__app.st.units.find((x) => x.side === 
 await page.mouse.click(...(await cellXY(0)), { button: 'right' });
 check('右クリックで選択を外せる', await battle(() => window.__app.selected === null));
 
-// ターン終了 → 相手（おまかせ）が動く → 自分の番に戻る
-await page.click('#end');
+// 巡を終える（全員待機） → 相手（おまかせ）が動く → 自分の番に戻る（まだ動ける駒があれば確かめる窓が出る）
+await page.click('#end').then(async () => { await page.waitForTimeout(150); if (await page.$('.confirm [data-a="ok"]')) await page.click('.confirm [data-a="ok"]'); });
 await page.waitForFunction(() => window.__app.st.turn === 0 && window.__app.st.round === 2, null, { timeout: 60000 });
-check('ターン終了で相手が動き、自分の番に戻る', true, `2巡目・ログ${await battle(() => window.__app.st.log.length)}件`);
+check('巡を終える（全員待機）で相手が動き、自分の番に戻る', true, `2巡目・ログ${await battle(() => window.__app.st.log.length)}件`);
 check('相手の行動がログに出る', (await page.textContent('#log')).includes('の番'));
 
 // 攻撃：射程に入るまで近づき、技を選んで対象をクリックする（予測の表示も確かめる）

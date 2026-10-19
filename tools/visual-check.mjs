@@ -76,7 +76,7 @@ async function run(tag, ctxOpts) {
     await page.waitForSelector('#deployDone'); await idle();
     await page.waitForTimeout(300);
     ok(`[${tag}] 自分で戦うと配置の段階から始まる（見出し「配置」と配置完了のボタン、ターン終了は無い）`,
-      /配置/.test(await page.textContent('#panel .turn')) && (await page.isVisible('#deployDone')) && !(await page.$('#end')) && !(await page.$('#waitAll')) && !(await page.$('#quit')));
+      /配置/.test(await page.textContent('#panel .turn')) && (await page.isVisible('#deployDone')) && !(await page.$('#end')) && !(await page.$('#quit')));
     await shot('battle_deploy');
     // 配置：自分の駒を押してから青いマスを押すと動く（画面の上で本当に押す）
     const dp = await page.evaluate(() => {
@@ -185,10 +185,11 @@ async function run(tag, ctxOpts) {
       await press('.confirm [data-a="no"]');
       await page.evaluate(() => { const a = window.__app; a.selected = null; a.refresh(); });
     }
-    // 全員待機の窓
-    await press('#waitAll');
+    // 巡を終える（全員待機）：まだ動ける駒があると、確かめる窓が出る
+    ok(`[${tag}] 「巡を終える（全員待機）」のボタンだけがある（全員待機の別ボタンは無い）`, /巡を終える（全員待機）/.test(await page.textContent('#end')) && !(await page.$('#waitAll')));
+    await press('#end');
     await page.waitForSelector('.confirm');
-    await shot('battle_waitall_confirm');
+    await shot('battle_endturn_confirm');
     await press('.confirm [data-a="no"]');
     // 方位の印と、番の交代の帯（「開戦」は始めの1回だけ）
     ok(`[${tag}] 戦場に方位の印`, !!(await page.$('.compass .needle')));

@@ -139,8 +139,10 @@ for (const [tag, name] of LIST) {
       ok('「選択を解く」で、選択が外れる', await page.evaluate(() => window.__app.selected === null));
     }
     await page.tap('#end');
+await page.waitForTimeout(200);
+if (await page.$('.confirm [data-a="ok"]')) await page.tap('.confirm [data-a="ok"]');
     await page.waitForFunction(() => window.__app.st.winner !== null || (window.__app.st.turn === 0 && window.__app.st.round >= 2), null, { timeout: 90000 });
-    ok('「ターン終了」で相手が動き、自分の番に戻る', true);
+    ok('「巡を終える（全員待機）」で相手が動き、自分の番に戻る', true);
     await shot('3_battle');
     await page.tap('#quit'); await page.tap('.confirm [data-a="ok"]');
     await page.waitForSelector('#start');

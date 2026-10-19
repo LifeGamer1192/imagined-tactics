@@ -67,7 +67,8 @@ const [cx, cy] = await center('.battle canvas');
 await act('戦場をクリック', () => page.mouse.click(cx - 300, cy));
 await act('記録を詳細にする', () => page.click('[data-log]:last-of-type'));
 await act('速さを5にする', () => page.click('[data-speed="4"]'));
-await act('ターン終了', () => page.click('#end'), { settle: 1500 });
+await act('巡を終える（全員待機）', () => page.click('#end'), { settle: 300 });
+if (await page.$('.confirm [data-a="ok"]')) await act('巡を終えるを確かめる', () => page.click('.confirm [data-a="ok"]'), { settle: 1500 });
 // 速さ5の観戦は1秒足らずで決着するので、切り替えを試す前に遅くしておく
 await act('速さを1にする', () => page.click('[data-speed="0"]'));
 await act('観戦にする', () => page.click('#watch'), { settle: 800 });
