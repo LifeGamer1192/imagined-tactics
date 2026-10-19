@@ -83,7 +83,22 @@ export interface Highlight {
   auto?: Set<number>;
   /** 行動済みとして扱う駒（無ければ、行動した駒だけ） */
   done?: Set<number>;
+  /** 調べている敵の駒の、次の番に動ける所と攻撃が届く所（P49） */
+  reach?: { move: Set<number>; hit: Set<number> };
 }
+
+/** 将ごとの色（P49）：同じ将の配下の駒に、同じ色の印を付ける */
+export const GEN_COLORS: RGB[] = [[214, 160, 23], [46, 134, 171], [162, 59, 114], [59, 139, 90], [224, 122, 31], [108, 92, 231], [120, 120, 120]];
+/** 陣営ごとに、将を何番目として数えるか（駒の id 順）。印の数と色はこれで決まる */
+export function generalIndex(st: BattleState): Map<number, number> {
+  const out = new Map<number, number>(), n = [0, 0];
+  for (const u of st.units) if (u.kind === 'general') out.set(u.id, n[u.home]++);
+  return out;
+}
+export const genColor = (i: number): RGB => GEN_COLORS[i % GEN_COLORS.length];
+/** 強化（よい状態）と弱化・状態異常（悪い状態） */
+export const GOOD_STATUS = new Set(['atkNext', 'sureNext', 'atkUp', 'defUp', 'agiUp', 'moveUp', 'resistUp', 'regen', 'ward', 'extraAct', 'mounted']);
+export const BAD_STATUS = new Set(['poison', 'daze', 'stun', 'confuse', 'silence', 'defect', 'weaken', 'atkDown', 'intDown', 'grounded']);
 
 export class BattleView {
   readonly cam: Camera;
@@ -97,6 +112,8 @@ export class BattleView {
   /** 進行中の演出。終わったものは描くときに取り除く */
   private fx: Fx[] = [];
   private raf = 0;
+  /** 描いている間の、将の番号（generalIndex） */
+  private genIdx: Map<number, number> | null = null;
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.cam = new Camera(canvas);
@@ -342,6 +359,20 @@ export class BattleView {
   /** 駒を (x, y) に描く。fade は薄れ具合（1 = そのまま）、hp は見せる体力（演出の途中は、当たる前の値） */
   private drawUnit(ctx: CanvasRenderingContext2D, u: BUnit, x: number, y: number, fade = 1, hp = u.hp): void {
     const st = this.st!;
+    // 強化・弱化（P49）：駒のまわりに、よい状態は緑青の光、悪い状態は朱の点線の輪
+    const good = u.alive && u.statuses.some((s) => GOOD_STATUS.has(s.id)), bad = u.alive && u.statuses.some((s) => BAD_STATUS.has(s.id));
+    if (good || bad) {
+      const rr = (u.kind === 'general' ? HEX * 0.6 : HEX * 0.5) + 6;
+      ctx.save();
+      ctx.globalAlpha = fade;
+      if (good) {
+        const gr = ctx.createRadialGradient(x, y, rr - 8, x, y, rr + 6);
+        gr.addColorStop(0, css([60, 200, 150], 0)); gr.addColorStop(0.55, css([60, 200, 150], 0.85)); gr.addColorStop(1, css([60, 200, 150], 0));
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, rr + 6, 0, Math.PI * 2); ctx.fill();
+      }
+      if (bad) { ctx.setLineDash([4, 3]); ctx.lineWidth = 2.5; ctx.strokeStyle = css([150, 40, 120], 0.95); ctx.beginPath(); ctx.arc(x, y, rr - (good ? 0 : 2), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]); }
+      ctx.restore();
+    }
     const general = u.kind === 'general';
     const r = general ? HEX * 0.6 : HEX * 0.5;
     const side = SIDE_RGB[u.side];
@@ -401,6 +432,25 @@ export class BattleView {
     }
     ctx.restore();
     if (!u.alive) return;
+    // どの将の配下か（P49）：左下に将の色の丸と番号。将は自分の番号
+    const gi = this.genIdx?.get(u.kind === 'general' ? u.id : u.leader);
+    if (gi !== undefined) {
+      const bx2 = x - r * 0.78, by2 = y + r * 0.62, br = HEX * 0.17;
+      ctx.beginPath(); ctx.arc(bx2, by2, br, 0, Math.PI * 2);
+      ctx.fillStyle = css(genColor(gi)); ctx.fill();
+      ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(250,246,236,0.95)'; ctx.stroke();
+      ctx.font = `700 ${HEX * 0.24}px ${MINCHO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff'; ctx.fillText(String(gi + 1), bx2, by2 + 0.5);
+    }
+    // 強化・弱化の印（P49）：右下に ▲（よい状態の数）・▼（悪い状態の数）
+    const nGood = u.statuses.filter((s) => GOOD_STATUS.has(s.id)).length, nBad = u.statuses.filter((s) => BAD_STATUS.has(s.id)).length;
+    if (nGood || nBad) {
+      ctx.font = `700 ${HEX * 0.28}px ${MINCHO}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(250,246,236,0.95)';
+      let tx = x + r * 0.45;
+      const put = (t: string, col: string) => { ctx.strokeText(t, tx, y + r * 0.62); ctx.fillStyle = col; ctx.fillText(t, tx, y + r * 0.62); tx += ctx.measureText(t).width + 1; };
+      if (nGood) put(`▲${nGood > 1 ? nGood : ''}`, css(VERDIGRIS));
+      if (nBad) put(`▼${nBad > 1 ? nBad : ''}`, css([150, 40, 120]));
+    }
     // 状態の印
     const marks: string[] = [];
     if (has(u, 'poison')) marks.push('毒');
@@ -443,9 +493,39 @@ export class BattleView {
         ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke();
       }
     };
-    // 采配範囲：紙を少し明るくする
+    this.genIdx = generalIndex(st);
+    // 調べている敵の駒の届く所（P49）：動ける所は薄い朱、攻撃だけ届く所は朱の斜線ぎみの薄塗り
+    if (this.hl.reach) {
+      shade(this.hl.reach.hit, css(VERMILION, 0.1), css(VERMILION, 0.35));
+      shade(this.hl.reach.move, css(VERMILION, 0.2), css(VERMILION, 0.55));
+    }
+    // 采配範囲（P49）：将の色で紙を明るくし、外周を太い点線で囲み、「采配範囲」と書く
     const c = this.hl.commandOf;
-    if (c && c.alive) shade(new Set(g.range(c.pos, c.commandRange)), 'rgba(255,252,240,0.28)', 'rgba(0,0,0,0)');
+    if (c && c.alive) {
+      const col = genColor(this.genIdx.get(c.id) ?? 0);
+      const cells = new Set(g.range(c.pos, c.commandRange).filter((i) => st.map.terrain[i] !== 'void'));
+      shade(cells, css(col, 0.13), 'rgba(0,0,0,0)');
+      this.outline(ctx, cells, css(col, 0.95), 3.5, [9, 5]);
+      // 配下の駒へ、将から線を引く
+      ctx.save(); ctx.lineWidth = 2; ctx.setLineDash([3, 4]); ctx.strokeStyle = css(col, 0.85);
+      const [gx, gy] = g.center(c.pos, HEX);
+      for (const t of st.units) {
+        if (!t.alive || t.kind !== 'troop' || t.leader !== c.id) continue;
+        const [tx, ty] = g.center(t.pos, HEX);
+        ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(tx, ty); ctx.stroke();
+      }
+      ctx.restore();
+      // 範囲のいちばん上の端に名札
+      let top = c.pos, ty0 = Infinity;
+      for (const i of cells) { const yy = g.center(i, HEX)[1]; if (yy < ty0) { ty0 = yy; top = i; } }
+      const [lx, ly] = g.center(top, HEX);
+      ctx.save();
+      ctx.font = `700 ${HEX * 0.32}px ${MINCHO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const label = `${c.name}の采配範囲`;
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(250,246,236,0.95)'; ctx.strokeText(label, lx, ly - HEX * 0.95);
+      ctx.fillStyle = css(col); ctx.fillText(label, lx, ly - HEX * 0.95);
+      ctx.restore();
+    }
     shade(this.hl.move, css(INDIGO, 0.22), css(INDIGO, 0.7));
     shade(this.hl.target, css(VERMILION, 0.26), css(VERMILION, 0.85));
     shade(this.hl.area, css(OCHRE, 0.4), css([150, 105, 30], 0.9));
@@ -572,6 +652,31 @@ export class BattleView {
     applyPaper(ctx, cv.width, cv.height, 0.18);
     // 演出が残っていれば、次のコマも描く
     this.kick();
+  }
+
+  /** マスの集まりの外周だけを線で描く（となりが集まりの外である辺） */
+  private outline(ctx: CanvasRenderingContext2D, cells: Set<number>, color: string, width: number, dash: number[] = []): void {
+    const g = this.st!.map.grid, D3 = Math.sqrt(3) * HEX;
+    ctx.save();
+    ctx.beginPath();
+    for (const i of cells) {
+      const [x, y] = g.center(i, HEX);
+      for (let k = 0; k < 6; k++) {
+        // 辺 k（角 k と角 k+1 の間）の向こうのマス
+        const a = Math.PI / 3 * k + Math.PI / 6;
+        const nb = g.pick(x + Math.cos(a) * D3, y + Math.sin(a) * D3, HEX);
+        if (nb >= 0 && cells.has(nb)) continue;
+        const a0 = Math.PI / 3 * k, a1 = Math.PI / 3 * (k + 1);
+        ctx.moveTo(x + HEX * Math.cos(a0), y + HEX * Math.sin(a0));
+        ctx.lineTo(x + HEX * Math.cos(a1), y + HEX * Math.sin(a1));
+      }
+    }
+    ctx.setLineDash(dash); ctx.lineWidth = width; ctx.lineCap = 'round'; ctx.strokeStyle = color;
+    // 下に白い縁を敷いて、どの地形の上でも見えるようにする
+    const main = ctx.strokeStyle;
+    ctx.strokeStyle = 'rgba(250,246,236,0.85)'; ctx.lineWidth = width + 2.5; ctx.stroke();
+    ctx.strokeStyle = main; ctx.lineWidth = width; ctx.stroke();
+    ctx.restore();
   }
 
   /** マスの中心（演出を組み立てる側で使う） */

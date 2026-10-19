@@ -158,7 +158,11 @@ export function skillTip(s: SkillDef): string {
   out.push(`地上の相手：${MARK[s.vsGround] ?? s.vsGround}、騎馬の相手：${MARK[s.vsRider] ?? s.vsRider}`);
   out.push(s.afterMove ? '動いたあとでも使える' : '動く前にしか使えない');
   if (s.counter) out.push('反撃にも使う');
-  if (s.noCounter) out.push('相手は反撃できない');
+  // 反撃を受けるか（P49）
+  if (s.noCounter) out.push('反撃：受けない（相手は反撃できない技）');
+  else if (s.shape.type !== 'single') out.push('反撃：受けない（範囲の技には反撃できない）');
+  else if (s.range[0] >= 2) out.push(`反撃：相手の通常攻撃が距離${s.range[0]}以上に届くときだけ受ける（近くしか届かない相手からは受けない）`);
+  else out.push('反撃：受けることがある（相手の通常攻撃が届く距離なら。相手が動けない・寝返り中なら受けない）');
   if (s.needsWater) out.push('水の上でしか使えない');
   for (const e of s.effects) {
     if (e.type === 'status') out.push(`当たると${e.chance}%で${withEffect(e.status)}`);

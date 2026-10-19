@@ -17,13 +17,13 @@ import { convert, generalsOf, variantOf } from '../convert/convert';
 import type { GGeneral, GameStart } from '../convert/model';
 import { D, L, setVariant } from '../data/db';
 import type { SkillDef, TacticDef, Variant } from '../data/types';
-import { BattleView, SIDE_COLOR, TERRAIN_NAME } from '../render/battleView';
+import { BAD_STATUS, BattleView, generalIndex, genColor, GOOD_STATUS, SIDE_COLOR, TERRAIN_NAME } from '../render/battleView';
 import type { CrestSpec } from '../render/crest';
-import { tint } from '../render/ink';
+import { css, tint } from '../render/ink';
 import { artUrl } from '../art/art';
 import { bannerHtml, sceneUrl, setScene } from './scene';
 import { confirmBox } from './confirm';
-import { skillTip, tacticTip } from './describe';
+import { skillTip, statusEffect, tacticTip } from './describe';
 import { initTips } from './tip';
 import { busy } from './busy';
 import { prewarm } from '../render/strategyView';
@@ -33,8 +33,8 @@ import {
   canUseSkill, canUseTactic, forecastSkill, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
   tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
-import { stepCost, unitAt } from '../rules/move';
-import { affinityOf, agility, attackPower, basicSkill, defense, FIELD, has, intellect, moveOf, outOfCommand, skillOf, supplyMultOf, terrainMod } from '../rules/stats';
+import { reach, stepCost, unitAt } from '../rules/move';
+import { affinityOf, agility, attackPower, basicSkill, defense, disabled, FIELD, has, intellect, moveOf, outOfCommand, skillOf, skillRange, supplyMultOf, terrainMod } from '../rules/stats';
 import { AFFINITY_NAME, kindName, STATUS_NAME, T, TRAIT_NAME } from './text';
 import { BattleLogView, loadLogLevel, LOG_LEVEL_NAME, saveLogLevel } from './battleLog';
 import { SEASON_NAME, seasonOf, skyEffects, skyLabel } from '../battle/weather';
@@ -883,25 +883,90 @@ export class App {
 
   // ------------------------------------------------------------ 表示
 
+  /**
+   * 調べている敵の駒（選んだ・乗せた）が、次の番に動ける所と攻撃の届く所（P49）。
+   * 自分の駒を選んでいるときは出さない（動かす操作の邪魔になるため）
+   */
+  private enemyReach(): { move: Set<number>; hit: Set<number> } | undefined {
+    const st = this.st;
+    if (!st || this.deploying || this.sel()) return undefined;
+    const id = this.inspect ?? unitAt(st, this.hoverCell)?.id;
+    const e = id !== undefined && id !== null ? st.units[id] : null;
+    if (!e || !e.alive || this.human.has(e.side) || disabled(e)) return undefined;
+    const g = st.map.grid;
+    const move = new Set(reach(st, e, moveOf(e)).cells);
+    move.add(e.pos);
+    const hit = new Set<number>();
+    for (const sid of e.skills) {
+      const s = skillOf(sid);
+      if (s.noDamage) continue;
+      const [min, max] = skillRange(st, e, s);
+      const from = s.afterMove ? move : new Set([e.pos]);
+      for (const c of from) for (const t of g.range(c, max, min)) if (!move.has(t) && st.map.terrain[t] !== 'void') hit.add(t);
+    }
+    move.delete(e.pos);
+    return { move, hit };
+  }
+
+  /** 状態の名前と効き目（小窓用） */
+  private statusChip(id: string, turns: number): string {
+    const good = GOOD_STATUS.has(id), name = `${STATUS_NAME[id as keyof typeof STATUS_NAME] ?? id}${turns > 0 ? `(${turns})` : ''}`;
+    return `<span class="st ${good ? 'good' : BAD_STATUS.has(id) ? 'bad' : ''}" data-tip="${esc(`${good ? '▲よい状態' : '▼悪い状態'}：${name}\n${statusEffect(id)}`)}">${good ? '▲' : '▼'}${esc(name)}</span>`;
+  }
+
   private unitCard(u: BUnit): string {
     const st = this.st!;
     const bar = (v: number, max: number, cls: string) => `<div class="bar ${cls}"><i style="width:${max ? Math.round(100 * v / max) : 0}%"></i><span>${v}/${max}</span></div>`;
-    const statuses = u.statuses.map((s) => `${STATUS_NAME[s.id]}${s.turns > 0 ? `(${s.turns})` : ''}`);
-    if (outOfCommand(st, u)) statuses.push('采配範囲外');
+    const statuses = u.statuses.map((s) => this.statusChip(s.id, s.turns));
+    // 采配範囲外（P49）：その影響を書く
+    if (outOfCommand(st, u)) {
+      const oc = D.status.outOfCommand;
+      statuses.push(`<span class="st bad" data-tip="${esc(`率いる武将の采配範囲の外にいます。武将の近くへ戻ると元に戻ります。`)}">▼采配範囲外（攻撃・防御${oc.atkDefPct}%、軍略で受けるダメージ+${oc.tacticDamagePct}%）</span>`);
+    }
     const sm = supplyMultOf(st, u);
-    if (sm !== 1) statuses.push(`飛び地（攻撃・防御${Math.round((sm - 1) * 100)}%）`);
+    if (sm !== 1) statuses.push(`<span class="st bad">▼飛び地（攻撃・防御${Math.round((sm - 1) * 100)}%）</span>`);
     const g = u.kind === 'general' ? this.gs!.generals[u.generalId] : null;
-    const leader = u.kind === 'troop' ? st.units[u.leader] : null;
+    const leaderId = u.kind === 'general' ? u.id : u.leader;
+    const leader = st.units[leaderId];
+    const gi = generalIndex(st).get(leaderId);
+    const dot = gi !== undefined ? `<span class="gdot" style="background:${css(genColor(gi))}">${gi + 1}</span>` : '';
+    // 配下（将なら率いる兵の一覧、兵なら率いる将）
+    const men = u.kind === 'general' ? st.units.filter((t) => t.kind === 'troop' && t.leader === u.id) : [];
+    const menLine = u.kind === 'general'
+      ? `<div class="men">${dot}配下 ${men.filter((t) => t.alive).length}／${men.length}隊：${men.map((t) => `<span class="${t.alive ? '' : 'gone'}${t.alive && outOfCommand(st, t) ? ' out' : ''}">${esc(t.name)}${t.alive ? '' : '（倒れた）'}${t.alive && outOfCommand(st, t) ? '（範囲外）' : ''}</span>`).join('、') || 'なし'}</div>`
+      : `<div class="men">${dot}${esc(leader?.name ?? '')}の配下${leader && !leader.alive ? '（将は倒れた）' : ''}</div>`;
+    // 技・軍略（名前に乗せると説明）
+    const skills = u.skills.map(skillOf).map((s) => {
+      const [a, b] = skillRange(st, u, s);
+      return `<span class="sk" data-tip="${esc(skillTip(s))}">${esc(L(s.name))}<small>${s.power ? `威${s.power}` : ''}${a === b ? ` 射${b}` : ` 射${a}-${b}`}${s.mp ? ` 気${s.mp}` : ''}</small></span>`;
+    });
+    const tactics = u.tactics.map((id) => D.byTactic[id]).filter(Boolean).map((t) => `<span class="sk tac" data-tip="${esc(tacticTip(t))}">${esc(L(t.name))}<small>気${t.mp}</small></span>`);
+    const enemy = !this.human.has(u.side) && this.human.size > 0;
     return `<div class="card" style="border-color:${SIDE_COLOR[u.side]}">
-      <div><b>${esc(u.name)}</b> <span class="dim">${u.kind === 'general' ? kindName(u) : `${esc(leader?.name ?? '')}の兵`} Lv${u.level}</span></div>
+      <div><b>${esc(u.name)}</b> <span class="dim">${u.kind === 'general' ? kindName(u) : '兵'} Lv${u.level}${enemy ? '　<b class="foe">敵</b>' : ''}</span></div>
+      ${menLine}
       ${bar(u.hp, u.maxHp, 'hp')}${u.maxMp ? bar(u.mp, u.maxMp, 'mp') : ''}
       <div class="stats">攻撃${Math.round(attackPower(st, u))} 防御${Math.round(defense(st, u))} ${T.int()}${intellect(u)} ${T.agi()}${agility(u)}
-        移動${moveOf(u)} ${AFFINITY_NAME[affinityOf(u)]}${u.kind === 'general' ? ` 采配範囲${u.commandRange}` : ''}</div>
+        移動${moveOf(u)} ${AFFINITY_NAME[affinityOf(u)]}${u.kind === 'general' ? ` 采配範囲${u.commandRange}` : ''}${u.acted && u.side === st.turn ? '（行動済み）' : ''}</div>
+      <div class="skl">${[...skills, ...tactics].join('')}</div>
       <div class="dim">${TERRAIN_NAME[st.map.terrain[u.pos]]}（命中・回避 ${terrainMod(st, u) >= 0 ? '+' : ''}${terrainMod(st, u)}${this.terrainNote(u)}）</div>
       ${g?.traits.length ? `<div class="dim">${g.traits.map((t) => TRAIT_NAME[t] ?? t).join('・')}</div>` : ''}
       ${this.personaLine(u)}
-      ${statuses.length ? `<div class="status">${statuses.join('・')}</div>` : ''}
+      ${statuses.length ? `<div class="status">${statuses.join(' ')}</div>` : ''}
+      ${enemy && st.winner === null ? '<div class="dim small">地図の薄い朱は、この敵が次の番に動ける所、さらに薄い朱は攻撃が届く所</div>' : ''}
     </div>`;
+  }
+
+  /** 駒に乗せたとき（何も選んでいないとき）の短い説明（P49） */
+  private unitBrief(t: BUnit): string {
+    const st = this.st!;
+    const enemy = !this.human.has(t.side) && this.human.size > 0;
+    const sts = t.statuses.map((s) => `${GOOD_STATUS.has(s.id) ? '▲' : '▼'}${STATUS_NAME[s.id as keyof typeof STATUS_NAME] ?? s.id}`);
+    if (outOfCommand(st, t)) sts.push('▼采配範囲外');
+    const lead = t.kind === 'troop' ? `${st.units[t.leader]?.name ?? ''}の配下` : kindName(t);
+    const basic = basicSkill(t);
+    const rng = basic ? skillRange(st, t, basic) : null;
+    return `<div class="cellinfo"><b style="color:${SIDE_COLOR[t.side]}">${enemy ? '敵　' : ''}${esc(t.name)}</b> Lv${t.level}・${esc(lead)}<br>体力 ${t.hp}／${t.maxHp}${t.maxMp ? `・気力 ${t.mp}／${t.maxMp}` : ''}・攻撃${Math.round(attackPower(st, t))}・防御${Math.round(defense(st, t))}・移動${moveOf(t)}${rng ? `・射程${rng[0] === rng[1] ? rng[1] : `${rng[0]}〜${rng[1]}`}` : ''}${sts.length ? `<br>${sts.map(esc).join(' ')}` : ''}<br><span class="dim">押すと詳しく出ます</span></div>`;
   }
 
   /** 性格と、いまの構え（おまかせの陣営がどう動こうとしているか） */
@@ -946,7 +1011,13 @@ export class App {
     const st = this.st!, cell = this.hoverCell;
     if (cell < 0 || st.map.terrain[cell] === 'void') return '';
     const u = this.sel();
-    if (u && this.isHumanTurn() && !this.deploying) return this.cellInfo(u, cell);
+    if (u && this.isHumanTurn() && !this.deploying) {
+      // 敵の駒に乗せていれば、その敵の短い説明も添える（P49）
+      const foe = unitAt(st, cell);
+      return this.cellInfo(u, cell) + (foe && foe.alive && foe.side !== u.side ? this.unitBrief(foe) : '');
+    }
+    const on = unitAt(st, cell);
+    if (on && on.alive) return this.unitBrief(on);
     const hs = st.structures?.[cell];
     return `<div class="dim">マス：${TERRAIN_NAME[st.map.terrain[cell]]}${hs ? `（耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}）` : ''}</div>`;
   }
@@ -966,7 +1037,7 @@ export class App {
     const tm = terrainMod(st, u), note = this.terrainNote(u), out = u.kind === 'troop' && outOfCommand(st, u);
     u.pos = from;
     lines.push(`命中・回避 ${tm >= 0 ? '+' : ''}${tm}${note}`);
-    if (out) lines.push('采配範囲の外になる（弱くなる）');
+    if (out) lines.push(`采配範囲の外になる（攻撃・防御${D.status.outOfCommand.atkDefPct}%、軍略で受けるダメージ+${D.status.outOfCommand.tacticDamagePct}%）`);
     const hs = st.structures?.[cell];
     if (hs) lines.push(`造り：耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}`);
     if (st.hold && cell === st.hold.cell) lines.push(`${seatName(k)}（要のマス）：攻め手が${st.hold.need}巡いれば攻め手の勝ち`);
@@ -1079,6 +1150,7 @@ export class App {
         : undefined,
       area: fc.area.size ? fc.area : undefined,
       commandOf: u ? st.units[u.leader] : this.inspect !== null ? st.units[st.units[this.inspect].leader] : undefined,
+      reach: this.enemyReach(),
       auto: this.autoUnits.size ? this.autoUnits : undefined,
       // 行動済みとして扱う駒（行動した・動けない・移動したあとで使える行動が無い）
       done: !this.deploying && st.winner === null ? new Set(st.units.filter((x) => x.alive && x.side === st.turn && this.unitDone(x)).map((x) => x.id)) : undefined,
