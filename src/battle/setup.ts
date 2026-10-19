@@ -91,7 +91,7 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
       const leader = generalUnit(gen, st.units.length, side);
       // 特性の効き目（P56）：将と、配下のすべての兵に当てる
       const mods = traitMods(gen.traits);
-      applyTraitMods(leader, mods);
+      applyTraitMods(leader, mods, gen.traits);
       const zone = map.spawn[side];
       let anchor: number;
       if (map.depth && map.lateral && zone.length) {
@@ -116,7 +116,7 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
         if (p < 0 || g.distance(p, leader.pos) > 3) { const q = nearest(t, leader.pos, all); if (q >= 0) p = q; }
         if (p < 0) continue;
         t.id = st.units.length; t.pos = p; taken.add(p);
-        applyTraitMods(t, mods);
+        applyTraitMods(t, mods, gen.traits);
         st.units.push(t);
       }
     });

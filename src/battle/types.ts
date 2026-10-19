@@ -50,6 +50,8 @@ export interface BUnit {
   statusPct?: number;
   mpCostPct?: number;
   supportMpCostPct?: number;
+  /** 戦いの始めに特性で変わった能力の書き留め（P58）。stat：能力の名前の鍵、value：「+12%」など、traits：効いた特性の id */
+  traitFx?: { stat: string; from?: number; to?: number; value: string; traits: string[] }[];
   /** 武将の性格（敵の思考で使う。兵は率いる武将の性格で動く） */
   persona?: Personality;
   statuses: BStatus[];

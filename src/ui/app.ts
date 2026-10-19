@@ -35,6 +35,7 @@ import {
   tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { reach, stepCost, unitAt } from '../rules/move';
+import { statRows } from '../rules/statNotes';
 import { affinityOf, agility, attackPower, basicSkill, defense, disabled, FIELD, has, intellect, moveOf, outOfCommand, skillOf, skillRange, supplyMultOf, terrainMod } from '../rules/stats';
 import { AFFINITY_NAME, kindName, STATUS_NAME, T, TRAIT_NAME } from './text';
 import { BattleLogView, loadLogLevel, LOG_LEVEL_NAME, saveLogLevel } from './battleLog';
@@ -965,6 +966,7 @@ export class App {
       ${bar(u.hp, u.maxHp, 'hp')}${u.maxMp ? bar(u.mp, u.maxMp, 'mp') : ''}
       <div class="stats">攻撃${Math.round(attackPower(st, u))} 防御${Math.round(defense(st, u))} ${T.int()}${intellect(u)} ${T.agi()}${agility(u)}
         移動${moveOf(u)} ${AFFINITY_NAME[affinityOf(u)]}${u.kind === 'general' ? ` 采配範囲${u.commandRange}` : ''}${u.acted && u.side === st.turn ? '（行動済み）' : ''}</div>
+      ${this.modsHtml(u)}
       <div class="skl">${[...skills, ...tactics].join('')}</div>
       <div class="dim">${TERRAIN_NAME[st.map.terrain[u.pos]]}（命中・回避 ${terrainMod(st, u) >= 0 ? '+' : ''}${terrainMod(st, u)}${this.terrainNote(u)}）</div>
       ${g?.traits.length ? `<div class="dim">${g.traits.map((t) => TRAIT_NAME[t] ?? t).join('・')}</div>` : ''}
@@ -974,12 +976,30 @@ export class App {
     </div>`;
   }
 
+  /**
+   * 能力の変化（P58）：いま変わっている能力ごとに、元の値 → いまの値と、原因・変化の値・残りのターンをすべて書く。
+   * 戦いの始めに特性で変わったぶん（戦いの終わりまで）も書く
+   */
+  private modsHtml(u: BUnit): string {
+    const st = this.st!;
+    const STAT: Record<string, string> = { str: T.str(), int: T.int(), agi: T.agi(), def: '防御', hp: `最大${T.hp()}`, mp: `最大${T.mp()}`, move: '移動', heal: '回復の量', crit: '会心', counter: '反撃の威力', hit: '命中', evade: '回避', resist: '軍略への耐性', status: '状態の軍略の成功率', mpCost: '軍略の気力', supportCost: '味方への補助の気力' };
+    const rows = statRows(st, u, (id) => STATUS_NAME[id] ?? id).map((r) => {
+      const arrow = r.base !== r.now ? `${r.base} → <b class="${r.now > r.base ? 'up' : 'down'}">${r.now}</b>` : '';
+      return `<li><span class="mk">${esc(r.key)}</span>${arrow ? ` ${arrow}` : ''}：${r.causes.map((c) => `${esc(c.why)} <b>${esc(c.value)}</b>${c.turns ? `<span class="dim">（${esc(c.turns)}）</span>` : ''}`).join('、')}</li>`;
+    });
+    const fx = (u.traitFx ?? []).map((f) => `<li><span class="mk">${esc(STAT[f.stat] ?? f.stat)}</span>${f.from !== undefined ? ` ${f.from} → <b class="${(f.to ?? 0) >= f.from ? 'up' : 'down'}">${f.to}</b>` : ''}：特性（${f.traits.map((t) => esc(TRAIT_NAME[t] ?? t)).join('・') || '率いる将'}） <b>${esc(f.value)}</b><span class="dim">（戦いの終わりまで）</span></li>`);
+    if (!rows.length && !fx.length) return '';
+    return `<details class="mods" open><summary>能力の変化（${rows.length + fx.length}）</summary><ul>${rows.join('')}${fx.join('')}</ul></details>`;
+  }
+
   /** 駒に乗せたとき（何も選んでいないとき）の短い説明（P49） */
   private unitBrief(t: BUnit): string {
     const st = this.st!;
     const enemy = !this.human.has(t.side) && this.human.size > 0;
     const sts = t.statuses.map((s) => `${GOOD_STATUS.has(s.id) ? '▲' : '▼'}${STATUS_NAME[s.id as keyof typeof STATUS_NAME] ?? s.id}`);
     if (outOfCommand(st, t)) sts.push('▼采配範囲外');
+    // 能力の変化（P58）：短く、原因と値と残りのターン
+    for (const r of statRows(st, t, (id) => STATUS_NAME[id] ?? id)) sts.push(`${r.key}${r.base !== r.now ? ` ${r.base}→${r.now}` : ''}（${r.causes.map((c) => `${c.why}${c.value}${c.turns ? `・${c.turns}` : ''}`).join('、')}）`);
     const lead = t.kind === 'troop' ? `${st.units[t.leader]?.name ?? ''}の配下` : kindName(t);
     const basic = basicSkill(t);
     const rng = basic ? skillRange(st, t, basic) : null;

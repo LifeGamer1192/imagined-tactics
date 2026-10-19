@@ -55,15 +55,29 @@ export function withoutOldTraitPassives(passives: Passive[], traits: string[]): 
 
 const pct = (v: number, p: number): number => Math.max(1, Math.round(v * (1 + p / 100)));
 
-/** 駒に特性の効き目を当てる（戦闘を作るときに1度だけ） */
-export function applyTraitMods(u: BUnit, m: TraitMods): void {
-  if (m.strPct) u.str = pct(u.str, m.strPct);
-  if (m.intPct) u.int = pct(u.int, m.intPct);
-  if (m.agiPct) u.agi = pct(u.agi, m.agiPct);
-  if (m.defPct) u.def = pct(u.def, m.defPct);
-  if (m.hpPct) { u.maxHp = pct(u.maxHp, m.hpPct); u.hp = u.maxHp; }
-  if (m.mpPct && u.maxMp > 0) { u.maxMp = pct(u.maxMp, m.mpPct); u.mp = u.maxMp; }
-  if (m.move) u.move = Math.max(1, u.move + m.move);
+/**
+ * 駒に特性の効き目を当てる（戦闘を作るときに1度だけ）。traits を渡すと、何がどう変わったかを u.traitFx に書き留める（P58）
+ */
+export function applyTraitMods(u: BUnit, m: TraitMods, traits: string[] = []): void {
+  const fx: NonNullable<BUnit['traitFx']> = [];
+  const who = (k: keyof TraitRule): string[] => traits.filter((t) => TRAITS[t]?.[k]);
+  const note = (stat: string, k: keyof TraitRule, v: number, unit: string, from?: number, to?: number): void => {
+    if (v) fx.push({ stat, from, to, value: `${v > 0 ? '+' : ''}${v}${unit}`, traits: who(k) });
+  };
+  const scale = (stat: 'str' | 'int' | 'agi' | 'def', k: keyof TraitRule, p: number): void => {
+    if (!p) return;
+    const from = u[stat];
+    u[stat] = pct(from, p);
+    note(stat, k, p, '%', from, u[stat]);
+  };
+  scale('str', 'strPct', m.strPct); scale('int', 'intPct', m.intPct); scale('agi', 'agiPct', m.agiPct); scale('def', 'defPct', m.defPct);
+  if (m.hpPct) { const from = u.maxHp; u.maxHp = pct(u.maxHp, m.hpPct); u.hp = u.maxHp; note('hp', 'hpPct', m.hpPct, '%', from, u.maxHp); }
+  if (m.mpPct && u.maxMp > 0) { const from = u.maxMp; u.maxMp = pct(u.maxMp, m.mpPct); u.mp = u.maxMp; note('mp', 'mpPct', m.mpPct, '%', from, u.maxMp); }
+  if (m.move) { const from = u.move; u.move = Math.max(1, u.move + m.move); note('move', 'move', m.move, '', from, u.move); }
+  note('heal', 'healPct', m.healPct, '%'); note('crit', 'critPct', m.critPct, '');
+  note('counter', 'counterPct', m.counterPct, '%'); note('hit', 'hitPct', m.hitPct, '%'); note('evade', 'evadePct', m.evadePct, '%'); note('resist', 'resistPct', m.resistPct, '%');
+  note('status', 'statusPct', m.statusPct, ''); note('mpCost', 'mpCostPct', m.mpCostPct, '%'); note('supportCost', 'supportMpCostPct', m.supportMpCostPct, '%');
+  if (fx.length) u.traitFx = fx;
   u.healPct += m.healPct;
   u.critPct += m.critPct;
   if (m.counterPct) u.passives.push({ type: 'counterDamage', pct: m.counterPct });
