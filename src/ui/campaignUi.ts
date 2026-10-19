@@ -22,6 +22,7 @@ import {
   acceptOffer, allianceProblem, awayAt, breakAlliance, callProblem, callToArms, declineOffer, playerEnemies, proposeAlliance, proposeTruce, lowerProblem, lowerRefund, lowerToTroop, questProblem, raiseCost, raiseProblem, raiseToGeneral, renameGeneral, renameTroop, startQuest, troopUpgrades, truceProblem, upgradeTroop, woundedAt,
 } from '../strategy/events';
 import { generalPromotions, promoteGeneral } from '../rules/growth';
+import { changeTable, changeText, generalChange, troopChange, type ChangeRow } from './classChange';
 import { MAX_GENERALS } from '../battle/setup';
 import { snapshot, type HexSave } from '../persist/save';
 import { openSaveMenu, writeSlot } from './saveMenu';
@@ -385,6 +386,23 @@ export class CampaignScreen {
     const finish = (ok: boolean): void => { const v = input.value; box.remove(); if (ok) done(v); this.refresh(); };
     input.onkeydown = (e) => { if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false); e.stopPropagation(); };
     box.querySelectorAll<HTMLButtonElement>('button').forEach((b) => { b.onclick = () => finish(b.dataset.a === 'ok'); });
+  }
+
+  /** 役職・兵種を進めたときの祝いの窓（P52）：紙吹雪、大きな「昇格！」、前と後の能力の比べ表 */
+  private celebrateChange(title: string, sub: string, rows: ChangeRow[], img: string | null): void {
+    const leaf = Array.from({ length: 34 }, (_v, i) => `<span class="leaf" style="left:${(i * 29) % 100}%;animation-delay:${((i * 0.19) % 2.2).toFixed(2)}s;animation-duration:${(2.4 + (i % 5) * 0.35).toFixed(1)}s"></span>`).join('');
+    const box = document.createElement('div');
+    box.className = 'result victory-box cc-box';
+    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory', this.c.gs.variant))}
+      <div class="kachidoki">昇格！</div>
+      ${img ? `<div class="cc-fig"><img src="${img}" alt=""></div>` : ''}
+      <h2 class="wrap">${esc(title)}</h2>
+      <p class="vsub">${esc(sub)}</p>
+      ${changeTable(rows)}
+      <p class="cbtns"><button class="primary" data-a="ok">見事！</button></p>`;
+    this.frame().appendChild(box);
+    play('win');
+    box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };
   }
 
   /** 味方のおまかせの方針を選ぶ窓（P50） */
@@ -793,8 +811,11 @@ export class CampaignScreen {
     const icon = (unitId: string): string => { const url = artUrl(`unit/${c.gs.variant}/${unitId}`); return url ? `<img class="uicon" src="${url}" alt="" draggable="false">` : ''; };
     // 自分の武将の兵は、つまんで別の武将の欄へ運ぶと渡せる。武将の欄の外へ落とすと、手放すかを聞く。
     // （指で触る画面ではつまんで運べないので、押すと渡す・手放すの欄が開く動きも残してある）
+    // 兵種を進める（P52）：進められる兵は、兵の札のすぐ隣に「▲進む先」のボタン
+    const upBtn = (t: GTroop, i: number): string => troopUpgrades(g, i, c.items).filter((p) => p.ok).map((p) =>
+      `<button class="upbtn" data-up-ask="${g.id}" data-i="${i}" data-to="${p.to}" data-tip="${esc(`${L(D.byUnit[t.unitId].name)} → ${L(D.byUnit[p.to].name)} に進めると：\n${changeText(troopChange(t, p.to))}\n\n押すと、確かめる窓が出ます（進めたら戻れません）`)}">▲${esc(L(D.byUnit[p.to].name))}</button>`).join('');
     const troops = g.troops.map((t, i) => own
-      ? this.chipHtml(g.id, t, i)
+      ? this.chipHtml(g.id, t, i) + upBtn(t, i)
       : `<span class="tname" data-tip="${esc(unitTip(t.unitId, t.level))}">${icon(t.unitId)}<span class="nm">${esc(t.name ?? L(D.byUnit[t.unitId].name))}</span><span class="dim">${t.level}</span></span>`).join(own ? '' : '、') || '<span class="dim">兵なし</span>';
     const moved = c.moved.has(g.id);
     const check = own ? `<input type="checkbox" data-pick="${g.id}" ${this.picked.has(g.id) ? 'checked' : ''} ${moved ? 'disabled' : ''}>` : '';
@@ -808,16 +829,8 @@ export class CampaignScreen {
       // 選ぶ前から、いま選ばれている兵種の采配と兵糧、雇ったあとの残りの采配を出す（P51）
       const first = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u)).sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))[0];
       rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button><span class="recinfo" data-recinfo="${g.id}">${first ? this.recruitInfo(g, first) : ''}</span></span>` : '';
-      // 昇進：武将は役職、兵は兵種。条件を満たした昇進先だけをボタンにする
+      // 昇進：武将の役職は役職名の隣、兵の兵種は兵の札の隣にボタンを出す（P52）
       const ups: string[] = [];
-      for (const p of generalPromotions(g)) {
-        if (p.ok) ups.push(`<button data-promo="${g.id}" data-to="${p.to.id}">昇進：${L(p.to.name)}</button>`);
-      }
-      g.troops.forEach((t, i) => {
-        for (const p of troopUpgrades(g, i, c.items)) {
-          if (p.ok) ups.push(`<button data-up="${g.id}" data-i="${i}" data-to="${p.to}">${L(D.byUnit[t.unitId].name)} → ${L(D.byUnit[p.to].name)}</button>`);
-        }
-      });
       if (!g.isLord && !(g.id in c.away)) ups.push(`<button data-lower="${g.id}" title="武将ではなくなり、この領の予備兵1隊になります。兵糧が${lowerRefund(g.level)}戻ります">兵にする</button>`);
       // 訓練：1か月訓練（行動済みになる）と、ずっと訓練（切り替え。その月ほかの命令で動いたときは訓練しない）
       const tp = trainProblem(c, g), always = c.training?.[g.id] === 'always', tm = trainMult(c, g);
@@ -833,7 +846,7 @@ export class CampaignScreen {
     const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
     const fig = this.figure(g);
     return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}
-      <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(cls.name)}</span> Lv${g.level} <span class="dim"><span class="trait" data-tip="${esc(strengthTip(strengthOf(g), this.allStrength()))}">強さ${Math.round(strengthOf(g))}（${strengthRank(strengthOf(g), this.allStrength()).word}）</span>${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}
+      <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(cls.name)}</span>${own ? generalPromotions(g).filter((p) => p.ok).map((p) => `<button class="upbtn" data-promo-ask="${g.id}" data-to="${p.to.id}" data-tip="${esc(`${L(cls.name)} → ${L(p.to.name)} に昇進すると：\n${changeText(generalChange(g, p.to.id))}\n\n押すと、確かめる窓が出ます（昇進したら戻れません）`)}">▲${esc(L(p.to.name))}</button>`).join('') : ''} Lv${g.level}<span class="dim"><span class="trait" data-tip="${esc(strengthTip(strengthOf(g), this.allStrength()))}">強さ${Math.round(strengthOf(g))}（${strengthRank(strengthOf(g), this.allStrength()).word}）</span>${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}
       ${g.traits.length ? ` ・${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}
       ・<span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span></span><br>
       ${this.commandBar(g)}<span class="troops">${troops}</span> ${own ? this.troopMenuHtml(g.id) : ''}${rec}</span></div>`;
@@ -1186,11 +1199,38 @@ export class CampaignScreen {
         if (g && box) box.innerHTML = this.recruitInfo(g, sel.value);
       };
     });
-    root.querySelectorAll<HTMLButtonElement>('[data-promo]').forEach((b) => {
-      b.onclick = () => { if (promoteGeneral(gs.generals[b.dataset.promo!], b.dataset.to!)) this.refresh(); };
+    // 役職・兵種を進める（P52）：比べ表と「戻れない」の警告を出して確かめ、進めたら大げさに祝う
+    root.querySelectorAll<HTMLButtonElement>('[data-promo-ask]').forEach((b) => {
+      b.onclick = async () => {
+        const g = gs.generals[b.dataset.promoAsk!], to = b.dataset.to!;
+        if (!g) return;
+        const from = L(D.byClass[g.classId].name), next = L(D.byClass[to].name), rows = generalChange(g, to);
+        const ok = await confirmBox(this.frame(), {
+          title: `${esc(g.name.ja)}を ${esc(next)} に昇進させる`, banner: sceneUrl('setup', gs.variant),
+          body: `<p><b>${esc(from)}</b> → <b>${esc(next)}</b></p><p class="warn">⚠ 昇進すると、元の役職には戻れません。</p>${changeTable(rows)}<p class="small">${esc(classTip(to)).replace(/\n/g, '<br>')}</p>`,
+          ok: '昇進させる', cancel: 'やめる',
+        });
+        if (!ok || !promoteGeneral(g, to)) return;
+        this.refresh();
+        this.celebrateChange(`${g.name.ja}、${next}に昇進！`, `${from} → ${next}`, rows, null);
+      };
     });
-    root.querySelectorAll<HTMLButtonElement>('[data-up]').forEach((b) => {
-      b.onclick = () => { if (upgradeTroop(c, b.dataset.up!, Number(b.dataset.i), b.dataset.to!)) this.refresh(); };
+    root.querySelectorAll<HTMLButtonElement>('[data-up-ask]').forEach((b) => {
+      b.onclick = async () => {
+        const g = gs.generals[b.dataset.upAsk!], i = Number(b.dataset.i), to = b.dataset.to!, t = g?.troops[i];
+        if (!g || !t) return;
+        const from = L(D.byUnit[t.unitId].name), next = L(D.byUnit[to].name), rows = troopChange(t, to), name = t.name ?? from;
+        const rule = D.byUnit[t.unitId].promote.find((p) => p.to === to);
+        const useItem = rule?.item ? `昇進の品「${esc(D.items[rule.item]?.jp ?? rule.item)}」を1つ使います。` : rule?.lv && t.level < rule.lv ? '昇進の品を1つ使います（レベルが足りないため）。' : '';
+        const ok = await confirmBox(this.frame(), {
+          title: `${esc(name)}を ${esc(next)} に進める`, banner: sceneUrl('setup', gs.variant),
+          body: `<p>${this.icon(t.unitId)}<b>${esc(from)}</b> → ${this.icon(to)}<b>${esc(next)}</b>（${esc(g.name.ja)}の兵・Lv${t.level}）</p><p class="warn">⚠ 進めると、元の兵種には戻れません。${useItem}</p>${changeTable(rows)}<p class="small">${esc(unitTip(to)).replace(/\n/g, '<br>')}</p>`,
+          ok: '進める', cancel: 'やめる',
+        });
+        if (!ok || !upgradeTroop(c, g.id, i, to)) return;
+        this.refresh();
+        this.celebrateChange(`${name}、${next}に昇格！`, `${from} → ${next}（${g.name.ja}の兵）`, rows, artUrl(`unit/${gs.variant}/${to}`) ?? null);
+      };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-quest]').forEach((b) => {
       b.onclick = async () => {

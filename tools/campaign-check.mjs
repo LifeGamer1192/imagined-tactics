@@ -66,10 +66,20 @@ for (const vp of [{ width: 1280, height: 800 }, { width: 390, height: 780 }]) {
     s.selected = f.capital; s.refresh();
     return lord.troops.map((t) => t.unitId).join(',');
   });
-  const up = await page.$('[data-up]');
-  if (up) await up.click();
+  // 兵の札の隣の「▲◯◯」→ 比べ表と「戻れません」の確かめる窓 → 進める → 祝いの窓（P52）
+  const up = await page.$('[data-up-ask]');
+  let asked = '', party = '';
+  if (up) {
+    await up.click();
+    await page.waitForSelector('.confirm');
+    asked = await page.textContent('.confirm');
+    await page.click('.confirm [data-a="ok"]');
+    await page.waitForSelector('.cc-box');
+    party = await page.textContent('.cc-box');
+    await page.click('.cc-box [data-a="ok"]');
+  }
   const after = await page.evaluate(() => { const c = window.__campaign.c; return c.gs.generals[c.gs.factions[c.player].lordId].troops.map((t) => t.unitId).join(','); });
-  ok(tag + '兵の昇進のボタンで兵種が変わる', !!up && before !== after, `${before} → ${after}`);
+  ok(tag + '兵の札の隣の昇進のボタンで、確かめる窓（比べ表・戻れない）を経て兵種が変わり、祝いの窓が出る', !!up && before !== after && /戻れません/.test(asked) && /進めたあと/.test(asked) && /昇格！/.test(party), `${before} → ${after}`);
   // 相手からの申し込み：停戦の申し込みを入れて、「受ける」を押す
   const offered = await page.evaluate(() => {
     const s = window.__campaign, c = s.c, me = c.player;
