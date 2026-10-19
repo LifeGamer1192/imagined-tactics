@@ -400,6 +400,20 @@ export class StrategyView {
     ctx.strokeStyle = style.borderInk; ctx.lineWidth = 1.4 / zoom;
     ctx.setLineDash(style.borderDash.map((d) => d / zoom)); ctx.stroke(this.nationBorders);
     ctx.setLineDash([]);
+    // 自分の国の境（P54）：一目で分かるよう、内側に自分の色の太い帯、外に白い縁どりと濃い墨の太線を引く
+    const mine = this.hl.player ? this.geo.get(this.hl.player) : undefined;
+    if (mine && gs.factions[this.hl.player!]) {
+      const col = this.color(this.hl.player!);
+      ctx.save();
+      ctx.clip(mine.path);
+      ctx.strokeStyle = css(col, 0.55); ctx.lineWidth = 16 / zoom; ctx.stroke(mine.border);
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(255,250,235,0.95)'; ctx.lineWidth = 7 / zoom; ctx.stroke(mine.border);
+      ctx.strokeStyle = css(col.map((v) => Math.round(v * 0.55)) as RGB, 1); ctx.lineWidth = 3.6 / zoom; ctx.stroke(mine.border);
+      ctx.setLineDash([6 / zoom, 5 / zoom]);
+      ctx.strokeStyle = 'rgba(255,250,235,0.9)'; ctx.lineWidth = 1.2 / zoom; ctx.stroke(mine.border);
+      ctx.setLineDash([]);
+    }
     // 占領中の領（持ち主と押さえている勢力が違う）：押さえている勢力の色の斜線
     for (const p of gs.provinces) {
       if (!p.controller || p.controller === p.owner || !gs.factions[p.controller] || !this.provPath[p.id]) continue;
