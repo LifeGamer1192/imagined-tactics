@@ -290,6 +290,14 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .card .skl .sk.tac { background: rgba(90,120,200,0.16); border-color: rgba(120,150,220,0.45); }
     .card .skl .sk small { opacity: 0.75; margin-left: 3px; }
     .card .foe { color: #ff9a8a; }
+    .plan { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; width: 100%; margin-bottom: 4px; }
+    .plan .pgrp { display: inline-flex; border: 1px solid rgba(201,162,39,0.45); border-radius: 4px; overflow: hidden; }
+    .plan .pgrp button { border-radius: 0; margin: 0; border: none; border-right: 1px solid rgba(201,162,39,0.25); padding: 3px 8px; }
+    .plan .pgrp button:last-child { border-right: none; }
+    .planbox .plan { justify-content: center; margin: 8px 0; }
+    .planfold { width: 100%; font-size: 13px; }
+    .planfold summary { cursor: pointer; padding: 2px 0; }
+    .planfold .plan > .dim:first-child { display: none; }
     .actions { display: flex; flex-direction: column; gap: 4px; }
     .actions button { text-align: left; }
     #forecast { min-height: 2.5em; font-size: 13px; color: #e9c98a; }
@@ -456,7 +464,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-CT50t3Jw.js"></script>
+  <script type="module" crossorigin src="./assets/index-VntBz8QL.js"></script>
 </head>
 <body>
   <div id="app"></div>
