@@ -96,8 +96,9 @@ ok('兵の名前を変えられる', (await page.evaluate((id) => window.__campa
 // 兵を武将にする：レベルの足りない兵は選べず、足りる兵は名前を決めて取り立てる
 await page.evaluate((id) => { const s = window.__campaign; s.c.gs.generals[id].troops[0].level = 1; s.refresh(); }, setup.to);
 await page.click(tchip);
-ok('レベルの足りない兵は、武将にできない', await page.$eval('[data-raise]', (b) => b.disabled && /レベル\d+以上/.test(b.title)));
+ok('レベルの足りない兵（Lv10未満）には、「武将にする」が出ない', !(await page.$('[data-raise]')));
 await page.evaluate((id) => { const s = window.__campaign; s.c.gs.generals[id].troops[0].level = 12; s.refresh(); }, setup.to);
+if (!(await page.$('[data-raise]'))) await page.click(tchip);
 const sup0 = await page.evaluate(() => { const c = window.__campaign.c; return c.gs.factions[c.player].supply; });
 const gens0 = await page.evaluate(() => Object.keys(window.__campaign.c.gs.generals).length), tt0 = await count(setup.to);
 await page.click('[data-raise]');
