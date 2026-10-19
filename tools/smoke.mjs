@@ -298,7 +298,10 @@ const atk = await page.evaluate(() => {
   return 'ok';
 });
 if (atk === 'ok') {
-  await page.waitForSelector('.result [data-a="play"]');
+  // 戦をしていない国の領なら、開戦の確認の窓（P41）が出るので「開戦して攻める」を押す
+await page.waitForSelector('.confirm, .result [data-a="auto"]', { timeout: 30000 });
+if (await page.$('.confirm [data-a="ok"]')) { const tx = await page.textContent('.confirm'); if (/開戦/.test(tx)) await page.click('.confirm [data-a="ok"]'); }
+await page.waitForSelector('.result [data-a="play"]');
   await shot(page, '10_campaign_attack');
   await page.click('.result [data-a="play"]');
   await page.waitForSelector('#deployDone');

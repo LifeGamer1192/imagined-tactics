@@ -163,6 +163,9 @@ await page.click('#selTop');
 await page.click('#attack');
 await page.mouse.click(spot.xy[0], spot.xy[1]);
 // 守備兵が相手のときは、「自分で戦う」「観戦」「おまかせ」を選ぶ窓が出る（P29 で自分で戦うを足した）
+// 戦をしていない国の領なら、開戦の確認の窓（P41）が出るので「開戦して攻める」を押す
+await page.waitForSelector('.confirm, .result [data-a="auto"]', { timeout: 30000 });
+if (await page.$('.confirm [data-a="ok"]')) { const tx = await page.textContent('.confirm'); if (/開戦/.test(tx)) await page.click('.confirm [data-a="ok"]'); }
 await page.waitForSelector('.result [data-a="watch"]', { timeout: 30000 });
 const ask = await page.textContent('.result');
 ok('守備兵が相手だと、「自分で戦う」「観戦」「おまかせ」を選べる', !!(await page.$('.result [data-a="auto"]')) && !!(await page.$('.result [data-a="play"]')) && /守備兵（Lv\d+・\d+隊）/.test(ask));

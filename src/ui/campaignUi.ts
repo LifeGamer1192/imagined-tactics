@@ -512,6 +512,20 @@ export class CampaignScreen {
       if (!(await pending)) { this.order = 'none'; this.refresh(); return; }
       from = Number(sel?.value ?? from);
     }
+    // 戦をしていない国の領へ攻めるときは、開戦してよいかを確かめる（P41）
+    const owner = gs.factions[gs.provinces[prov].owner];
+    if (owner && relation(c, c.player, owner.id) === 'neutral') {
+      const allies = Object.values(gs.factions).filter((x) => x.id !== owner.id && x.id !== c.player && relation(c, x.id, owner.id) === 'ally').map((x) => esc(x.name.ja));
+      const ok = await confirmBox(this.frame(), {
+        title: `${esc(owner.name.ja)}と開戦して攻める`, danger: true, banner: sceneUrl('setup', gs.variant),
+        body: `<p>${factionBadge(owner.name.ja, owner.color)} とは、いま戦をしていません（中立）。${esc(gs.provinces[prov].name.ja)}へ攻め込むと、<b>${esc(owner.name.ja)}と戦</b>になります。</p>
+          <ul class="small"><li>停戦するまで、互いに領を攻め合えるようになる（${esc(owner.name.ja)}からも攻めてくる）</li>
+          <li>${esc(owner.name.ja)}の心証が大きく下がる</li>
+          ${allies.length ? `<li>${esc(owner.name.ja)}の味方（${allies.join('・')}）の心証も下がる</li>` : ''}</ul>`,
+        ok: '開戦して攻める', cancel: 'やめる',
+      });
+      if (!ok) { this.order = 'none'; this.refresh(); return; }
+    }
     const pb = planAttack(c, c.player, from, prov, gens.map((g) => g.id));
     this.order = 'none'; this.picked.clear();
     if (pb) { void busy('攻め込んでいます…', () => this.fight(pb, 0, () => this.mount())); return; }
@@ -599,7 +613,7 @@ export class CampaignScreen {
     const box = document.createElement('div');
     box.className = 'result victory-box';
     box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory', gs.variant))}
-      <div class="kachidoki">えい、えい、おう！</div>
+      <div class="kachidoki">勝利！</div>
       <h2>${esc(p.name.ja)}を攻め取った！</h2>
       <p class="vsub">${esc(this.date())}　${factionBadge(me.name.ja, me.color)} が ${esc(prevName)} から奪う</p>
       <div class="vgrid">

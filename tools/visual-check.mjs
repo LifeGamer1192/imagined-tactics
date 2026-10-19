@@ -591,6 +591,28 @@ async function run(tag, ctxOpts) {
     const restored = await page.evaluate((o) => { const gs = window.__campaign.c.gs; return !document.querySelector('.result.reel') && window.__campaign.alarm === null; }, reelOk);
     ok(`[${tag}] すべて飛ばすと、演出が閉じて地図が元に戻る`, restored);
   }
+  // 戦をしていない国の領へ攻めるときは、開戦の確認の窓（P41）
+  const neutral = await page.evaluate(async () => {
+    const cam = await import('/src/strategy/campaign.ts');
+    const s = window.__campaign, c = s.c, gs = c.gs, me = c.player;
+    for (const p of gs.provinces) {
+      if (!p.owner || p.owner === me || p.out || cam.relation(c, me, p.owner) !== 'neutral') continue;
+      const from = cam.neighborsOf(c, p.id).find((n) => gs.provinces[n].owner === me);
+      const g = Object.values(gs.generals).find((x) => x.faction === me && !c.moved.has(x.id) && !x.isLord && !(x.id in c.away) && !(x.id in c.wounded));
+      if (from === undefined || !g) continue;
+      g.prov = from; s.picked = new Set([g.id]); s.selected = from; s.order = 'attack'; s.refresh();
+      s.onClick(p.id);
+      return p.name.ja;
+    }
+    return null;
+  });
+  if (neutral) {
+    await page.waitForSelector('.confirm');
+    ok(`[${tag}] 戦をしていない国の領へ攻めると、開戦の確認の窓が出る`, /開戦して攻める/.test(await page.textContent('.confirm')) && /戦をしていません/.test(await page.textContent('.confirm')), neutral);
+    await shot('war_confirm');
+    await press('.confirm [data-a="no"]');
+    await page.evaluate(() => { const s = window.__campaign; s.picked.clear(); s.order = 'none'; s.refresh(); });
+  }
   // 勝って領を取ったときの祝いの窓（P38）：実際に攻めて、おまかせで勝ったことにする
   const vic = await page.evaluate(async () => {
     const cam = await import('/src/strategy/campaign.ts');
@@ -612,7 +634,7 @@ async function run(tag, ctxOpts) {
   if (vic) {
     await page.waitForSelector('.victory-box');
     const vt = await page.textContent('.victory-box');
-    ok(`[${tag}] 勝って領を取ると、祝いの窓（勝鬨・攻め取った・戦果・手に入れた領）`, /えい、えい、おう/.test(vt) && /攻め取った/.test(vt) && /手に入れた領/.test(vt), vic);
+    ok(`[${tag}] 勝って領を取ると、祝いの窓（勝利！・攻め取った・戦果・手に入れた領）`, /勝利！/.test(vt) && /攻め取った/.test(vt) && /手に入れた領/.test(vt), vic);
     await page.waitForTimeout(900);
     await shot('victory');
     await press('.victory-box [data-a="ok"]');
