@@ -561,7 +561,8 @@ async function run(tag, ctxOpts) {
   ok(`[${tag}] 領の画面の国名は、国の色の札`, !!(await page.$('#panel .fac')));
   ok(`[${tag}] 断ると欄が消え、記録に残る`, !(await page.$('[data-hchoice="vc:0"]')) && await page.evaluate(() => window.__campaign.c.log.some((e) => e.key === 'historyChoice')));
   // 月送りの演出（P31）：ほかの国どうしの戦いを、矢印・顔ぶれ・小さな戦場・結果で見せる。飛ばすボタン2つ
-  const reelOk = await page.evaluate(() => {
+  const reelOk = await page.evaluate(async () => {
+    const cam = await import('/src/strategy/campaign.ts');
     const s = window.__campaign, c = s.c, gs = c.gs;
     for (const p of gs.provinces) {
       if (!p.owner || p.owner === c.player || p.out) continue;
@@ -569,9 +570,12 @@ async function run(tag, ctxOpts) {
       if (!q) continue;
       const side = (f) => Object.values(gs.generals).filter((g) => g.faction === f).slice(0, 2).map((g) => ({ name: g.name.ja, lv: g.level, troops: g.troops.length }));
       const owners = [p.owner, q.owner];
+      // 3巡ごとの駒の並び（P43）：攻め手・守り手の配置場所に駒を置き、巡ごとに少しずつ寄せる
+      const map = cam.provinceMap(c, p.id, q.id);
+      const frames = map ? [1, 4, 7].map((round, k) => ({ round, units: [...map.spawn[0].slice(0, 5).map((pos) => ({ pos, side: 0, general: false, hp: 1 - k * 0.2 })), ...map.spawn[1].slice(0, 5 - k).map((pos) => ({ pos, side: 1, general: false, hp: 1 }))] })) : undefined;
       window.__reelDone = false;
       s.playReel([
-        { from: q.id, prov: p.id, attacker: q.owner, defender: p.owner, atk: side(q.owner), def: side(p.owner), winner: 0, captured: true },
+        { from: q.id, prov: p.id, attacker: q.owner, defender: p.owner, atk: side(q.owner), def: side(p.owner), winner: 0, captured: true, map, frames, detail: true, rounds: 7, beaten: [{ name: '試しの守将', side: 1 }], lost: [1, 3] },
         { from: p.id, prov: q.id, attacker: p.owner, defender: q.owner, atk: side(p.owner), def: side(q.owner), winner: 1, captured: false },
       ], () => { window.__reelDone = true; });
       return owners;
@@ -583,9 +587,12 @@ async function run(tag, ctxOpts) {
     const rt = await page.textContent('.result.reel');
     ok(`[${tag}] 他国の戦いの演出：攻め手・守り手・飛ばすボタン`, /攻め手/.test(rt) && /守り手/.test(rt) && /この戦いを飛ばす/.test(rt) && /この月をすべて飛ばす/.test(rt), rt.slice(0, 50));
     ok(`[${tag}] 他国の戦いの演出：地図に矢印、小さな戦場`, await page.evaluate(() => !!window.__campaign.alarm) && !!(await page.$('.reel-map')));
+    await page.waitForFunction(() => /巡目/.test(document.querySelector('.reel-round')?.textContent ?? ''), null, { timeout: 4000 }).catch(() => {});
+    ok(`[${tag}] 他国の戦いの演出：駒の並びを巡ごとに描き直す（◯巡目）`, /巡目/.test(await page.textContent('.reel-round').catch(() => '') ?? ''));
     await shot('reel');
     await page.waitForFunction(() => /の勝ち/.test(document.querySelector('.reel-result')?.textContent ?? ''), null, { timeout: 5000 });
     ok(`[${tag}] 他国の戦いの演出：結果が出て、移った領が光る`, await page.evaluate(() => window.__campaign.flash !== null));
+    ok(`[${tag}] 様子の分かる領の戦いは、結果の詳細（巡の数・失った兵・倒された武将）が出る`, /巡で決着/.test(await page.textContent('.reel-detail').catch(() => '') ?? '') && /試しの守将/.test(await page.textContent('.reel-detail').catch(() => '') ?? ''));
     await shot('reel_result');
     await press('[data-r="all"]');
     await page.waitForFunction(() => window.__reelDone === true, null, { timeout: 3000 });

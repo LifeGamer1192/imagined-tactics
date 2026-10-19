@@ -680,6 +680,11 @@ export class CampaignScreen {
       const out = box.querySelector('.reel-result');
       out?.classList.remove('dim');
       if (out) out.innerHTML = `<b>${esc(facName(winner))}の勝ち</b>${b.captured ? `　${esc(gs.provinces[b.prov].name.ja)}は${esc(facName(b.attacker))}のものになった` : '　領は守られた'}`;
+      // 様子の分かる領の戦いは、結果の詳細も報告する（P43）
+      if (out && b.detail) {
+        const fell = (side: 0 | 1): string => (b.beaten ?? []).filter((x) => x.side === side).map((x) => esc(x.name)).join('・');
+        out.innerHTML += `<div class="reel-detail small">${b.rounds ?? '?'}巡で決着。失った兵：攻め手${b.lost?.[0] ?? 0}隊・守り手${b.lost?.[1] ?? 0}隊${fell(1) ? `<br>倒された守り手の武将：${fell(1)}` : ''}${fell(0) ? `<br>倒された攻め手の武将：${fell(0)}` : ''}</div>`;
+      } else if (out) out.innerHTML += '<div class="reel-detail small dim">（様子の分からない領なので、くわしいことは分からない）</div>';
       timer = window.setTimeout(() => { this.flash = null; i++; show(); }, quick ? 0 : 1500);
     };
     const show = (): void => {
@@ -695,13 +700,24 @@ export class CampaignScreen {
         <h2>${esc(facName(b.attacker))}が${esc(p.name.ja)}へ攻め込んだ</h2>
         <p class="where"><span class="from">${esc(from?.name.ja ?? '')}</span> から <span class="to">${esc(p.name.ja)}</span> へ${bySea(gs, b.from, b.prov) ? '<b>（海路）</b>' : ''}</p>
         <p class="reel-result dim">戦っています…</p>
-        <div class="reel-body">${map ? `<img class="reel-map" src="${map}" alt="この戦いの戦場" draggable="false">` : ''}
+        <div class="reel-body">${map ? `<div class="reel-mapbox"><img class="reel-map" src="${map}" alt="この戦いの戦場" draggable="false"><div class="reel-round small dim"></div></div>` : ''}
           <div class="reel-sides"><p>${badge(b.attacker)} 攻め手：${people(b.atk)}</p><p>${badge(b.defender)} 守り手：${people(b.def)}</p>
 </div></div>
         <p class="cbtns"><button data-r="one">この戦いを飛ばす</button> <button data-r="all">この月をすべて飛ばす</button></p>`;
       box.querySelector<HTMLButtonElement>('[data-r="one"]')!.onclick = () => result(b, true);
       box.querySelector<HTMLButtonElement>('[data-r="all"]')!.onclick = finish;
-      timer = window.setTimeout(() => result(b, false), 1800);
+      // 3巡ごとの駒の並びを、順に描き直して見せる（P43）。並びが無ければ、少し待って結果へ
+      const frames = b.frames ?? [];
+      const img = box.querySelector<HTMLImageElement>('.reel-map'), lab = box.querySelector<HTMLElement>('.reel-round');
+      let f = 0;
+      const step = (): void => {
+        if (stopped || f >= frames.length || !b.map) { result(b, false); return; }
+        try { if (img) img.src = mapPreviewUrl(b.map, 10, frames[f].units); } catch { /* 描けなくても続ける */ }
+        if (lab) lab.textContent = f === frames.length - 1 ? `決着（${frames[f].round}巡目）` : `${frames[f].round}巡目`;
+        f++;
+        timer = window.setTimeout(step, f === 1 ? 900 : 650);
+      };
+      if (frames.length && b.map) step(); else timer = window.setTimeout(() => result(b, false), 1800);
     };
     show();
   }

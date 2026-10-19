@@ -1,7 +1,7 @@
 // 戦略パート（docs/13_実装計画 の P11）：領の取り合い。1ターン＝1か月。画面には依存しない。
 
 import cfgJson from '../../data/system/convert.json';
-import { autoBattle } from '../ai/ai';
+import { autoBattle, runAiTurn } from '../ai/ai';
 import { BM, mapFromProvince, type BattleMap, type ProvinceLook } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
 import { createBattle, MAX_GENERALS } from '../battle/setup';
@@ -17,7 +17,7 @@ export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
 import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated } from './events';
 import { historyMonth } from './history';
 import { trainMonth } from './training';
-import { initScout, scoutMonth } from './scouting';
+import { initScout, scoutMonth, scoutTier } from './scouting';
 
 const SUPPLY = (cfgJson as unknown as { supply: { recruitCostMult: number } }).supply;
 export const MAX_TROOPS = (cfgJson as unknown as { troops: { maxPerGeneral: number } }).troops.maxPerGeneral;
@@ -97,7 +97,12 @@ export interface ReelBattle {
   from: number; prov: number; attacker: number; defender: number;
   atk: { name: string; lv: number; troops: number }[]; def: { name: string; lv: number; troops: number }[];
   winner: 0 | 1; captured: boolean;
+  /** 戦場と、3巡ごとの駒の並び（P43） */
+  map?: BattleMap; frames?: ReelFrame[];
+  /** 様子の分かる領の戦いなら、結果の詳細（巡の数・倒された武将・失った兵の数［攻め手, 守り手］） */
+  detail?: boolean; rounds?: number; beaten?: { name: string; side: 0 | 1 }[]; lost?: [number, number];
 }
+export interface ReelFrame { round: number; units: { pos: number; side: 0 | 1; general: boolean; hp: number }[] }
 
 /**
  * 史実の領の動きのうち、自分の家にかかわるもの。
@@ -629,12 +634,32 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
   const reel: ReelBattle | null = c.player && pb.attacker !== c.player && pb.defender !== c.player
     ? { from: pb.from, prov: pb.prov, attacker: pb.attacker, defender: pb.defender, atk: side(pb.atk), def: side(pb.def), winner: 0, captured: false }
     : null;
-  const battle = st ?? autoBattle(battleFor(c, pb));
+  let battle: BattleState;
+  if (!st && reel) {
+    // 他国の戦いの演出（P43）：3巡ごとに駒の並びを書き留めながら、おまかせで戦わせる（autoBattle と同じ進め方）
+    battle = battleFor(c, pb);
+    const snap = (b: BattleState): ReelFrame => ({ round: b.round, units: b.units.filter((u) => u.alive).map((u) => ({ pos: u.pos, side: u.side, general: u.kind === 'general', hp: u.hp / u.maxHp })) });
+    reel.map = battle.map;
+    reel.frames = [snap(battle)];
+    for (let guard = 0; guard < 200 && battle.winner === null; guard++) {
+      runAiTurn(battle);
+      if (battle.winner === null && battle.turn === 0 && (battle.round - 1) % 3 === 0) reel.frames.push(snap(battle));
+    }
+    reel.frames.push(snap(battle));
+  } else battle = st ?? autoBattle(battleFor(c, pb));
   if (battle.winner === null) throw new Error('戦闘がまだ終わっていません');
   // 敵の兵を捕まえる（P37）：結果を当てる前に、捕まえる兵を写しておく（当てると、寝返ったままの兵は失われるため）
   const caught = catchTroops(c, pb, battle);
   const sum = applyBattleResult(c.gs, battle);
-  if (reel) { reel.winner = sum.winner; (c.reel ??= []).push(reel); }
+  if (reel) {
+    reel.winner = sum.winner;
+    // ある程度様子の分かる領（偵察度が「名前まで」以上）の戦いは、結果の詳細も報告する
+    reel.detail = scoutTier(c, pb.prov) !== 'none' && scoutTier(c, pb.prov) !== 'rough' || scoutTier(c, pb.from) === 'full' || scoutTier(c, pb.from) === 'names';
+    reel.rounds = sum.rounds;
+    reel.beaten = sum.beaten.map((n, i) => ({ name: n, side: sum.beatenSides[i] as 0 | 1 }));
+    reel.lost = [sum.lost.filter((l) => l.side === 0).length, sum.lost.filter((l) => l.side === 1).length];
+    (c.reel ??= []).push(reel);
+  }
   note(c, 'battle', {
     attacker: c.gs.factions[pb.attacker].name.ja, defender: c.gs.factions[pb.defender]?.name.ja ?? '在地の兵',
     prov: c.gs.provinces[pb.prov].name.ja, winner: battle.sideNames[sum.winner],

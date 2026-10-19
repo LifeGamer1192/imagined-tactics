@@ -21,6 +21,13 @@ describe('month reel of other houses’ battles', () => {
         expect(b.def.length).toBeGreaterThan(0);
         expect(gs.provinces[b.from]).toBeTruthy();
         if (b.captured) expect(b.winner).toBe(0);
+        // 3巡ごとの駒の並び（初め・3巡ごと・決着）と、結果の詳細（P43）
+        expect(b.map).toBeTruthy();
+        expect(b.frames!.length).toBeGreaterThanOrEqual(2);
+        expect(b.frames![0].units.length).toBeGreaterThan(0);
+        expect(b.rounds).toBeGreaterThan(0);
+        expect(b.lost!.length).toBe(2);
+        expect(typeof b.detail).toBe('boolean');
       }
       finishMonth(c);
     }
