@@ -983,7 +983,7 @@ export class CampaignScreen {
       ${h.general ? `<button data-give="${rk}" ${rp ? 'disabled' : ''}>予備兵にする</button>${why(rp)}` : ''}
       <button data-dismiss="1">手放す</button>
       <button data-tname="1">名前を変える</button>
-      <button data-raise="1" ${raise ? `disabled title="${esc(raise)}"` : ''}>武将にする（兵糧${raiseCost(t.level)}）</button>${why(raise)}
+      ${t.level >= S.officer.minTroopLevel ? `<button data-raise="1" ${raise ? `disabled title="${esc(raise)}"` : ''}>武将にする（兵糧${raiseCost(t.level)}）</button>${why(raise)}` : ''}
       <button data-tclose="1">やめる</button>
       <div class="udesc small">${esc(unitTip(t.unitId, t.level))}</div></div>`;
   }
