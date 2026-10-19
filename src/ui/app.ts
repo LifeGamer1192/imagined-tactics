@@ -3,7 +3,7 @@
 import { autoBattle, nextAiActions, stanceOf } from '../ai/ai';
 import { personalityLabel, personalityOf } from '../ai/personality';
 import { apply, canAct, canMove, canWithdraw, holder, moveCells, withdraw } from '../battle/engine';
-import { mapFromProvince } from '../battle/map';
+import { mapFromProvince, seatName } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
 import { newCampaign, S, traitsOf, type Difficulty } from '../strategy/campaign';
 import { CampaignScreen } from './campaignUi';
@@ -896,7 +896,7 @@ export class App {
       .map((s) => `${esc(st.sideNames[s])}は飛び地で戦う（攻撃・防御${Math.round(((st.supplyMult![s]) - 1) * 100)}%）`);
     // 天守の取り合い
     const hd = st.hold;
-    const keep = hd ? [`天守：攻め手が${hd.need}巡押さえ続けるか、時間切れのとき押さえていれば攻め手の勝ち（いま${hd.count}／${hd.need}${holder(st) ? `・${esc(holder(st)!.name)}が押さえている` : ''}）`] : [];
+    const keep = hd ? [`${seatName(st.map.terrain[hd.cell])}：攻め手が${hd.need}巡押さえ続けるか、時間切れのとき押さえていれば攻め手の勝ち（いま${hd.count}／${hd.need}${holder(st) ? `・${esc(holder(st)!.name)}が押さえている` : ''}）`] : [];
     const lines = [...fx, ...cut, ...keep];
     return `<div class="sky ${lit ? 'flash' : ''} ${sky.night ? 'night' : ''}" id="sky" style="${url ? `--sky-bg:url('${url}')` : ''}">${when}天気：<b>${label}</b>${lines.length ? `<small>${lines.join('<br>')}</small>` : ''}</div>`;
   }
@@ -930,7 +930,7 @@ export class App {
     if (out) lines.push('采配範囲の外になる（弱くなる）');
     const hs = st.structures?.[cell];
     if (hs) lines.push(`造り：耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}`);
-    if (st.hold && cell === st.hold.cell) lines.push(`天守：攻め手が${st.hold.need}巡いれば攻め手の勝ち`);
+    if (st.hold && cell === st.hold.cell) lines.push(`${seatName(k)}（要のマス）：攻め手が${st.hold.need}巡いれば攻め手の勝ち`);
     return `<div class="cellinfo"><b>${TERRAIN_NAME[k]}</b>　${lines.map(esc).join('<br>')}</div>`;
   }
 

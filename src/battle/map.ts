@@ -21,7 +21,7 @@ export interface BattleMap {
   north?: [number, number];
   /** 以下は領から作った戦場だけ：守り手の拠点（城・砦・陣）のマス */
   seat?: number;
-  /** 城の戦場だけ：攻め手が天守（seat）を何巡押さえれば勝ちか（2〜4） */
+  /** 攻め手が要のマス（seat：城なら天守、砦なら砦の本丸、陣なら本陣）を何巡押さえれば勝ちか。城は2〜4、ほかは holdOther */
   holdTurns?: number;
   /** 攻め手が入ってきた辺（EDGES の番号）と、その方角の名前（東・南東…） */
   edge?: number;
@@ -86,6 +86,11 @@ const DESERT = new Set([2, 13, 10]), B_GLACIER = 11;
 const HIGH = 0.62;
 const PER_POP = (convertJson as unknown as { supply: { perPop: number } }).supply.perPop;
 
+/** 要のマスの呼び名：城は天守、砦は砦の本丸、陣は本陣（そのほか：本陣） */
+export function seatName(kind: string | undefined): string {
+  return kind === 'castle' ? '天守' : kind === 'fort' ? '砦の本丸' : '本陣';
+}
+
 /** 戦場の作り方と普請の調整値（data/system/battlemap.json） */
 export const BM = battlemapJson as unknown as {
   fort: { fort: number; castle: number; siege: number; outworks: number; keep: number };
@@ -98,6 +103,8 @@ export const BM = battlemapJson as unknown as {
   buildings: Record<string, { name: string; text: string; income?: number; coastal?: boolean }>;
   structures: Record<'gate' | 'fortgate' | 'palisade', { hp: number; def: number; rubble: TerrainKind; closed: boolean }> & { siegeLines: number[]; siegeMult: number; fireMult: number };
   lookout: { fortFrom: number };
+  /** 城の無い戦場で、攻め手が要のマス（砦の本丸・本陣）を何巡押さえれば勝ちか */
+  holdOther: number;
   build: { costs: Record<string, number>; fortStep: number; fortMax: number; fortCostBase: number; fortCostPerFort: number; aiChance: number; aiSupplyMonths: number };
 };
 
@@ -472,7 +479,7 @@ export function mapFromProvince(w: HWorld, provId: number, opts: ProvinceLook = 
     features: [...new Set(features)],
     seat, edge, edgeName: E.name, depth, lateral, north: [0, -1],
     // 天守を落とすのに要る巡：2。城壁があれば +1、城がとても強ければ +1（4まで）
-    holdTurns: terrain[seat] === 'castle' ? Math.min(4, 2 + (siege ? 1 : 0) + (fort >= BM.fort.keep ? 1 : 0)) : undefined,
+    holdTurns: terrain[seat] === 'castle' ? Math.min(4, 2 + (siege ? 1 : 0) + (fort >= BM.fort.keep ? 1 : 0)) : BM.holdOther,
   };
 }
 

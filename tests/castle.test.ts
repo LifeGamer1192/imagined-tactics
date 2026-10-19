@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { autoBattle } from '../src/ai/ai';
 import { endTurn } from '../src/battle/engine';
-import { mapFromProvince } from '../src/battle/map';
+import { mapFromProvince , BM } from '../src/battle/map';
 import { createBattle } from '../src/battle/setup';
 import type { BattleState } from '../src/battle/types';
 import { convert, generalsOf } from '../src/convert/convert';
@@ -30,10 +30,13 @@ describe('taking the castle', () => {
     expect((await castleBattle({ fort: 0.6 })).hold?.need).toBe(2);
     expect((await castleBattle({ fort: 0.85, walls: true })).hold?.need).toBe(3);
     expect((await castleBattle({ fort: 0.95, walls: true })).hold?.need).toBe(4);
-    // 砦や陣の戦場には天守が無い
+    // 砦や陣の戦場は、要のマス（砦の本丸・本陣）を holdOther 巡押さえれば勝ち（P39）
     const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
     const p = gs.provinces.find((x) => !x.out && Object.values(gs.factions).every((f) => f.capital !== x.id))!;
-    expect(mapFromProvince(save.world, p.id, { fort: 0.4 }).holdTurns).toBeUndefined();
+    const fm = mapFromProvince(save.world, p.id, { fort: 0.4 });
+    expect(fm.holdTurns).toBe(BM.holdOther);
+    expect(['fort', 'camp']).toContain(fm.terrain[fm.seat!]);
+    expect(mapFromProvince(save.world, p.id, { fort: 0 }).holdTurns).toBe(BM.holdOther);
   });
 
   it('holding the keep for the needed rounds wins; leaving it resets the count', async () => {

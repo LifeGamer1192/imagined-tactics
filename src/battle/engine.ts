@@ -1,6 +1,7 @@
 // 戦闘の進行：行動の実行、ターンの切り替え、勝敗。乱数はすべて st.rng から取る。
 
 import { D } from '../data/db';
+import { seatName } from './map';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import {
   atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, skillTargetCells,
@@ -369,17 +370,17 @@ function checkHold(st: BattleState): void {
   if (!h || st.winner !== null) return;
   const u = holder(st);
   if (!u) {
-    if (h.count > 0) log(st, 'holdLost', { side: st.sideNames[0] });
+    if (h.count > 0) log(st, 'holdLost', { side: st.sideNames[0], seat: seatName(st.map.terrain[h.cell]) });
     h.count = 0;
     return;
   }
   h.count++;
   if (h.count >= h.need) {
     st.winner = 0;
-    log(st, 'castleTaken', { side: st.sideNames[0], unit: u.name, uid: u.id });
+    log(st, 'castleTaken', { side: st.sideNames[0], unit: u.name, uid: u.id, seat: seatName(st.map.terrain[h.cell]) });
     return;
   }
-  log(st, 'hold', { unit: u.name, uid: u.id, count: h.count, need: h.need });
+  log(st, 'hold', { unit: u.name, uid: u.id, count: h.count, need: h.need, seat: seatName(st.map.terrain[h.cell]) });
 }
 
 export function endTurn(st: BattleState): void {
@@ -389,7 +390,7 @@ export function endTurn(st: BattleState): void {
     if (st.round > st.maxRounds) {
       // 時間切れ：天守を攻め手が押さえていれば攻め手の勝ち、そうでなければ守り手の勝ち
       const u = holder(st);
-      if (u) { st.winner = 0; log(st, 'timeupHeld', { side: st.sideNames[0], unit: u.name }); return; }
+      if (u) { st.winner = 0; log(st, 'timeupHeld', { side: st.sideNames[0], unit: u.name, seat: seatName(st.map.terrain[st.hold!.cell]) }); return; }
       st.winner = 1; log(st, 'timeup', { side: st.sideNames[1] }); return;
     }
   }

@@ -2,6 +2,7 @@
 // スクロール・拡大縮小は hist-sim から持ってきた Camera を使う。絵が無いものは、文字や形で代わりに描く。
 
 import { art, artCount, onArtLoaded } from '../art/art';
+import { seatName } from '../battle/map';
 import type { BUnit, BattleState } from '../battle/types';
 import { getVariant } from '../data/db';
 import type { TerrainKind } from '../data/types';
@@ -462,7 +463,7 @@ export class BattleView {
       this.hexPath(ctx, x, y, HEX - 1); ctx.stroke();
       ctx.setLineDash([]);
       ctx.font = `700 ${HEX * 0.34}px ${MINCHO}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      const label = `天守 ${st.hold.count}/${st.hold.need}`;
+      const label = `${seatName(st.map.terrain[st.hold.cell])} ${st.hold.count}/${st.hold.need}`;
       ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(244,239,226,0.95)'; ctx.strokeText(label, x, y + HEX * 0.98);
       ctx.fillStyle = held ? css(VERMILION) : 'rgba(90,62,20,1)'; ctx.fillText(label, x, y + HEX * 0.98);
       ctx.restore();
