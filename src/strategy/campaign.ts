@@ -12,6 +12,7 @@ import type { GFaction, GGeneral, GProvince, GTroop, GameStart } from '../conver
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { TRAITS } from '../rules/traits';
+import { addFeats, chronFromLog, type ChronEntry, type Feat } from './chronicle';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
@@ -78,6 +79,12 @@ export interface Campaign {
   resting?: Record<string, number>;
   /** 味方のおまかせの方針（P50）。自分の勢力の戦いをおまかせにしたとき、これで動く */
   autoPlan?: AutoPlan;
+  /** 年表（P57）：自分の家の歩み */
+  chronicle?: ChronEntry[];
+  /** 功臣（P57）：自分の家の武将の戦・勝ち・倒した敵将の数 */
+  feats?: Record<string, Feat>;
+  /** 天下統一の窓を出したか（P57） */
+  unified?: boolean;
   /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */
   reel?: ReelBattle[];
   /** 訓練（P30）：武将 → 1か月訓練かずっと訓練か */
@@ -154,7 +161,7 @@ export function homeFor(c: Campaign, f: number, from: number): number {
   return gs.factions[f].capital;
 }
 
-export const note = (c: Campaign, key: string, vars: Record<string, string | number> = {}): void => { c.log.push({ key, vars }); };
+export const note = (c: Campaign, key: string, vars: Record<string, string | number> = {}): void => { const e = { key, vars }; c.log.push(e); chronFromLog(c, e); };
 
 // ---------------------------------------------------------------- 調べる
 
@@ -704,6 +711,9 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
   // 敵の兵を捕まえる（P37）：結果を当てる前に、捕まえる兵を写しておく（当てると、寝返ったままの兵は失われるため）
   const caught = catchTroops(c, pb, battle);
   const sum = applyBattleResult(c.gs, battle);
+  // 功臣の記録（P57）：自分の家の武将の戦・勝ち・倒した敵将
+  addFeats(c, pb.atk, sum.winner === 0, sum.beatenSides.filter((s) => s === 1).length);
+  addFeats(c, pb.def, sum.winner === 1, sum.beatenSides.filter((s) => s === 0).length);
   if (reel) {
     reel.winner = sum.winner;
     // ある程度様子の分かる領（偵察度が「名前まで」以上）の戦いは、結果の詳細も報告する

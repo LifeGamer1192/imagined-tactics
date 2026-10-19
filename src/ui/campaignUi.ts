@@ -29,13 +29,14 @@ import { openSaveMenu, writeSlot } from './saveMenu';
 import { TRAIT_NAME } from './text';
 import { busy, toast } from './busy';
 import { bannerHtml, sceneUrl, seasonBand, setScene } from './scene';
-import { BGM_LEVEL_NAME, bgm, bgmLevel, setBgmLevel } from './bgm';
+import { BGM_LEVEL_NAME, bgm, bgmLevel, jingle, setBgmLevel } from './bgm';
 import { play } from './sound';
 import { confirmBox } from './confirm';
 import { classTip, commandTip, personalityTip, strengthRank, strengthTip, traitTip, unitTip } from './describe';
 import { initTips } from './tip';
 import { personalityLabel, personalityOf, planLabel, PLAN_LABEL, PLAN_TIP } from '../ai/personality';
 import { bindPlan, getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
+import { spanText, startChronicle } from '../strategy/chronicle';
 import { artUrl } from '../art/art';
 
 /** 画面の土台（App）に求めるもの */
@@ -171,6 +172,8 @@ export class CampaignScreen {
     this.selected = c.player ? c.gs.factions[c.player].capital : -1;
     // 味方のおまかせの方針（P50）：セーブにあればそれ、無ければ前の設定。切り替えたらセーブにも残す
     if (c.player) bindPlan(c.autoPlan, (p) => { c.autoPlan = p; });
+    // 年表（P57）：家が起った日を書き留める（古いセーブは、読み込んだ日から）
+    if (c.player) startChronicle(c);
     // 開発時の動作確認（tools/smoke.mjs）から操作できるようにする
     if (import.meta.env.DEV) (window as unknown as { __campaign?: CampaignScreen }).__campaign = this;
     this.mount();
@@ -411,6 +414,60 @@ export class CampaignScreen {
       <p class="cbtns"><button class="primary" data-a="ok">見事！</button></p>`;
     this.frame().appendChild(box);
     play('win');
+    box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };
+  }
+
+  /**
+   * 天下統一の窓（P57）：大きな「天下統一」、統一までの年月と数、功臣、年表（年ごとに、ひとつずつ浮かび上がる）。
+   * 偉業を成し遂げた感じを出す。あとからは、天下を取った欄の「年表を見る」で開ける
+   */
+  private unifyWindow(): void {
+    const c = this.c, gs = c.gs, me = gs.factions[c.player];
+    if (!me) return;
+    this.frame().querySelector('.unify')?.remove();
+    const chron = c.chronicle ?? [];
+    if (!chron.some((e) => e.kind === 'unify')) chron.push({ year: gs.year, month: gs.month, kind: 'unify', text: `${me.name.ja}、天下を統一する`, provs: provincesOf(c, me.id).length });
+    c.chronicle = chron;
+    const yr = (y: number): string => (y < 0 ? `前${-y + 1}年` : `${y}年`);
+    const start = chron[0];
+    const count = (k: string): number => chron.filter((e) => e.kind === k).length;
+    const gens = Object.values(gs.generals).filter((g) => g.faction === me.id);
+    const lord = gs.generals[me.lordId];
+    // 功臣：勝った戦の多い順（倒した敵将、戦の数で並べ替え）
+    const feats = Object.entries(c.feats ?? {}).map(([id, f]) => ({ g: gs.generals[id], f })).filter((x) => x.g && x.g.faction === me.id)
+      .sort((a, b) => b.f.wins - a.f.wins || b.f.foes - a.f.foes || b.f.battles - a.f.battles).slice(0, 5);
+    const totalBattles = Object.values(c.feats ?? {}).reduce((s, f) => Math.max(s, f.battles), 0);
+    const TAG: Record<string, string> = { start: '起', capture: '取', lost: '失', fall: '滅', war: '戦', ally: '盟', truce: '和', capital: '移', lord: '主', history: '史', unify: '統' };
+    // 年ごとにまとめる（長い年表は、大事な出来事を残して詰める）
+    const keep = chron.length > 80 ? chron.filter((e, i) => i === 0 || e.kind !== 'capture' || i % 2 === 0) : chron;
+    const years = new Map<number, typeof chron>();
+    for (const e of keep) years.set(e.year, [...(years.get(e.year) ?? []), e]);
+    let delay = 0;
+    const timeline = [...years].map(([y, es]) => `<div class="uy"><div class="uyear">${yr(y)}</div><ul>${es.map((e) => {
+      delay += 0.12;
+      return `<li class="k-${e.kind}" style="animation-delay:${Math.min(delay, 9).toFixed(2)}s"><span class="ut">${TAG[e.kind] ?? '・'}</span><span class="um">${e.month}月</span>${esc(e.text)}${e.provs !== undefined && (e.kind === 'capture' || e.kind === 'lost' || e.kind === 'start') ? `<span class="dim small">（領${e.provs}）</span>` : ''}</li>`;
+    }).join('')}</ul></div>`).join('');
+    const leaf = Array.from({ length: 48 }, (_v, i) => `<span class="leaf" style="left:${(i * 23) % 100}%;animation-delay:${((i * 0.17) % 3).toFixed(2)}s;animation-duration:${(2.8 + (i % 6) * 0.4).toFixed(1)}s"></span>`).join('');
+    const box = document.createElement('div');
+    box.className = 'result victory-box unify';
+    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory', gs.variant))}
+      <div class="u-title">天下統一</div>
+      <p class="u-lead">${factionBadge(me.name.ja, me.color)}　${yr(gs.year)}${gs.month}月、ついに天下をひとつにまとめる</p>
+      <p class="u-sub">${start ? `${yr(start.year)}${start.month}月に起ってから、${esc(spanText(c))}。` : ''}${lord ? `当主 <b>${esc(lord.name.ja)}</b> のもと、` : ''}乱世はここに終わりを告げた。</p>
+      <div class="u-stats">
+        <div><b>${provincesOf(c, me.id).length}</b><span>領</span></div>
+        <div><b>${gens.length}</b><span>武将</span></div>
+        <div><b>${count('capture')}</b><span>攻め取った</span></div>
+        <div><b>${count('fall')}</b><span>滅ぼした家</span></div>
+        <div><b>${esc(spanText(c))}</b><span>統一まで</span></div>
+      </div>
+      ${feats.length ? `<h4>功臣</h4><ol class="u-feats">${feats.map((x, i) => `<li>${i === 0 ? '<span class="u-first">筆頭</span>' : ''}<b>${esc(x.g.name.ja)}</b> <span class="dim">Lv${x.g.level}</span>　戦${x.f.battles}・勝${x.f.wins}${x.f.foes ? `・討った敵将${x.f.foes}` : ''}</li>`).join('')}</ol>` : totalBattles ? '' : ''}
+      <h4>年表</h4>
+      <div class="u-timeline">${timeline}</div>
+      <p class="u-end">この偉業は、後の世まで長く語り継がれるであろう。</p>
+      <p class="cbtns"><button class="primary" data-a="ok">天下統一を祝う</button></p>`;
+    this.frame().appendChild(box);
+    if (!jingle(`win_${gs.variant}`)) play('win');
     box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };
   }
 
@@ -1202,6 +1259,12 @@ export class CampaignScreen {
     const c = this.c, gs = c.gs;
     bgm(`map_${gs.variant}`);
     this.draw();
+    // 天下統一（P57）：ほかの窓（祝い・結果・知らせ）が閉じてから、1度だけ年表の窓を出す
+    if (c.over === 'win' && c.player && !c.unified && !this.frame().querySelector('.result, .confirm, .reel-cover')) {
+      c.unified = true;
+      this.stopAuto();
+      window.setTimeout(() => this.unifyWindow(), 300);
+    }
     const me = c.player ? gs.factions[c.player] : null;
     const p = this.selected >= 0 ? gs.provinces[this.selected] : null;
     let body = '<div class="card dim">領をクリックすると情報が出ます。</div>';
@@ -1242,7 +1305,7 @@ export class CampaignScreen {
         ${own && me ? awayAt(c, p.id, me.id).map((g) => `<div class="dim">${esc(g.name.ja)}：諸国巡り中（あと${c.away[g.id] - gs.tick}か月）</div>`).join('') : ''}
         `;
     }
-    const over = c.over ? `<div class="card status over">${bannerHtml(sceneUrl(c.over === 'win' ? 'victory' : 'defeat', gs.variant))}${c.over === 'win' ? '天下を取りました' : '自分の勢力は滅びました'}</div>` : '';
+    const over = c.over ? `<div class="card status over">${bannerHtml(sceneUrl(c.over === 'win' ? 'victory' : 'defeat', gs.variant))}${c.over === 'win' ? '天下を取りました' : '自分の勢力は滅びました'}${c.chronicle?.length ? ' <button id="chronBtn">年表を見る</button>' : ''}</div>` : '';
     this.host.root.querySelector('#panel')!.innerHTML = `
       <div class="turn" style="background:${seasonBand(me ? me.color : null, gs.month)}">${this.date()} <small>${me ? `${esc(me.name.ja)}　兵糧${me.supply}／${supplyCap(me)}（+${me.income}／月）　領${provincesOf(c, me.id).length}` : '観戦'}</small></div>
       <div class="foot">
@@ -1488,6 +1551,7 @@ export class CampaignScreen {
     on('#bgmBtn', () => { setBgmLevel((bgmLevel() + 1) % BGM_LEVEL_NAME.length); this.refresh(); });
     on('#reelBtn', () => { setReel(!reelOn()); this.refresh(); });
     on('#planBtn', () => this.openPlan());
+    on('#chronBtn', () => { if (c.over === 'win') this.unifyWindow(); });
     on('#saves', () => { void openSaveMenu(root.querySelector<HTMLElement>('.battle')!, { current: () => snapshot(this.c), onLoad: (s) => { clearTimeout(this.watchTimer); this.runToken++; void busy('読み込んでいます…', () => this.host.loadHexSave(s)); } }); });
     on('#exit', async () => {
       const ok = await confirmBox(this.frame(), { title: '戦略をやめる', body: '<p>題の画面に戻ります。</p><p class="dim small">月が変わるたびに自動の枠へ保存しているので、「つづきから」で今月の初めから続けられます。今月に動かした分は残りません。残したいときは、先に「セーブ」で保存してください。</p>', ok: 'やめる', cancel: '続ける', danger: true });
