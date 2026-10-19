@@ -5,6 +5,7 @@ import { personalityOf } from '../ai/personality';
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { stepCost } from '../rules/move';
+import { applyTraitMods, traitMods, withoutOldTraitPassives } from '../rules/traits';
 import { BM, type BattleMap } from './map';
 import type { BUnit, BattleState, Side } from './types';
 import { skyFor, type Sky } from './weather';
@@ -25,8 +26,9 @@ export function generalUnit(g: GGeneral, id: number, side: Side): BUnit {
     name: g.name.ja, level: g.level, hp, maxHp: hp, mp, maxMp: mp,
     str: g.stats.str + c.mod.str, int: g.stats.int + c.mod.int, agi: g.stats.agi + c.mod.agi, def: c.def,
     move: c.move, affinity: c.affinity, commandRange: g.commandRange,
-    passives: [...g.passives], skills: [`atk:${c.id}`], tactics: [...new Set([...c.tactics, ...g.learned])],
-    critPct: g.critPct, healPct: g.healPct, persona: personalityOf(g.traits, g.ab),
+    // 特性の特技・回復・会心は、戦場で特性から付ける（P56。前の版で変換のときに付けたものは外す）
+    passives: withoutOldTraitPassives(g.passives, g.traits), skills: [`atk:${c.id}`], tactics: [...new Set([...c.tactics, ...g.learned])],
+    critPct: 0, healPct: 0, persona: personalityOf(g.traits, g.ab),
   };
 }
 
@@ -87,6 +89,9 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
     ids.forEach((gid, k) => {
       const gen = gs.generals[gid];
       const leader = generalUnit(gen, st.units.length, side);
+      // 特性の効き目（P56）：将と、配下のすべての兵に当てる
+      const mods = traitMods(gen.traits);
+      applyTraitMods(leader, mods);
       const zone = map.spawn[side];
       let anchor: number;
       if (map.depth && map.lateral && zone.length) {
@@ -111,6 +116,7 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
         if (p < 0 || g.distance(p, leader.pos) > 3) { const q = nearest(t, leader.pos, all); if (q >= 0) p = q; }
         if (p < 0) continue;
         t.id = st.units.length; t.pos = p; taken.add(p);
+        applyTraitMods(t, mods);
         st.units.push(t);
       }
     });

@@ -181,7 +181,8 @@ export interface SuccessParts {
 export function successParts(st: BattleState, a: BUnit, t: BUnit): SuccessParts {
   const C = D.combat;
   const p: SuccessParts = { pct: 0, base: C.statusBase, intA: intellect(a), intT: intellect(t), resist: Math.max(0, tacticResist(st, t)), raw: 0 };
-  p.raw = (C.statusBase + p.intA - p.intT) * (1 - p.resist);
+  // 特性（皮肉屋など）：状態の軍略の成功率を足す（P56）
+  p.raw = (C.statusBase + p.intA - p.intT + (a.statusPct ?? 0)) * (1 - p.resist);
   p.pct = clamp(Math.round(p.raw), C.statusMin, C.statusMax);
   return p;
 }
@@ -255,9 +256,15 @@ export function tacticSide(tac: TacticDef): 'ally' | 'enemy' | 'any' {
   }
 }
 
+/** 軍略に使う気力（P56：特性で増減。満足は軍略の気力が減り、優しいは味方への補助の気力が減る） */
+export function tacticCost(u: BUnit, tac: TacticDef): number {
+  const pct = (u.mpCostPct ?? 0) + (tacticSide(tac) === 'ally' ? u.supportMpCostPct ?? 0 : 0);
+  return pct ? Math.max(0, Math.round(tac.mp * (1 + pct / 100))) : tac.mp;
+}
+
 /** 軍略を使えるか（気力がある、攪乱されていない、まだ移動していない） */
 export function canUseTactic(u: BUnit, tac: TacticDef): boolean {
-  return u.mp >= tac.mp && !has(u, 'silence') && !u.moved;
+  return u.mp >= tacticCost(u, tac) && !has(u, 'silence') && !u.moved;
 }
 
 /** 軍略の対象に選べるマス */

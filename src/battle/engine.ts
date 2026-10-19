@@ -5,7 +5,7 @@ import { seatName } from './map';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import {
   atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, skillTargetCells,
-  skillVictims, successParts, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
+  skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
 } from '../rules/combat';
 import { killExp } from '../rules/growth';
 import { reach, unitAt } from '../rules/move';
@@ -221,7 +221,7 @@ function freeNear(st: BattleState, u: BUnit, center: number): number {
 
 function doTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number): void {
   const rng = st.rng;
-  u.mp -= tac.mp;
+  u.mp -= tacticCost(u, tac);
   u.expGained += tac.kind === 'heal' || tac.kind === 'cure' ? D.combat.healExp : D.combat.useExp;
   log(st, 'tactic', { unit: u.name, tactic: tac.name.jp, uid: u.id, cell: target, tac: tac.id });
 
@@ -428,7 +428,7 @@ export function apply(st: BattleState, a: Action): boolean {
       const tac = u.tactics.includes(a.tactic) ? D.byTactic[a.tactic] : undefined;
       if (!tac || !canAct(st, u) || !canUseTactic(u, tac)) return false;
       if (!tacticTargetCells(st, u, tac).includes(a.target)) return false;
-      const act = openAct(st, u, 'tactic', tac.id, a.target, tac.mp);
+      const act = openAct(st, u, 'tactic', tac.id, a.target, tacticCost(u, tac));
       doTactic(st, u, tac, a.target);
       afterAction(st, u);
       closeAct(st, u, act);

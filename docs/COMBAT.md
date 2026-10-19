@@ -87,7 +87,7 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 - 耐久が0になると、門・砦の門は道、柵は平地に変わる。門・砦の門は、壊れるまで攻め手は通れない（`closed`）。
 - **1対1では**：使わない。## 4. 会心
 
-`会心率 = clamp(C.critRate ＋ 特技 crit の合計 ＋ 武将の critPct（特性「残酷」など）, 0, 100)`。会心で ×C.critMult。
+`会心率 = clamp(C.critRate ＋ 特技 crit の合計 ＋ 駒の critPct（率いる将の特性「残酷」など。将と配下の兵の両方。10. を参照）, 0, 100)`。会心で ×C.critMult。
 
 ## 5. 反撃
 
@@ -102,7 +102,7 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 | 技の効果 `status` | 当たったあと、効果の chance（百分率）で付く |
 | 技の効果 `weakenStun` | 当たったあと chance で、攻防ダウン（S.weaken.turns ターン）と気絶 |
 | 軍略 `damage` で status が `{status, chance}` | 当たったあと chance で付く |
-| 軍略 `status`（sure でない、敵に） | 成功率 `clamp(round((C.statusBase ＋ 知略(攻) − 知略(守)) × (1 − max(0, 耐性))), C.statusMin, C.statusMax)` |
+| 軍略 `status`（sure でない、敵に） | 成功率 `clamp(round((C.statusBase ＋ 知略(攻) − 知略(守) ＋ 特性の statusPct(攻)) × (1 − max(0, 耐性))), C.statusMin, C.statusMax)` |
 | 軍略 `status`（sure、または味方に）、`buff`・`debuff` | 必ず付く |
 
 - 特技 `immune` に含まれる状態は付かない。
@@ -127,7 +127,7 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 ## 8. 気力
 
 - 戦いの始まりは最大気力（武将：成長した mp ＋ 役職の mod.mp、兵：兵種の mp ＋ 成長）。
-- 技・軍略を使うと、その mp を引く。足りなければ使えない。
+- 技・軍略を使うと、その mp を引く。足りなければ使えない。軍略の mp は、率いる将の特性で増減する：`round(mp × (1 ＋ (mpCostPct ＋ 味方への軍略なら supportMpCostPct) ÷ 100))`（10. を参照）。
 - 戦いの中で自然には戻らない。戻すのは軍略 `mpRestore`（amount だけ、最大まで）。技の効果 `mpHalf` は相手の気力を半分（切り捨て）にする。
 - 軍略は、移動したあとと攪乱中には使えない。技は `afterMove` が偽なら移動したあとに使えない。
 
@@ -135,3 +135,12 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 
 - 技・軍略を使うと C.useExp（回復・立て直しは C.healExp）、相手を倒すと `exp.json` の kill（`base ＋ perLv × 相手のLV`）。
 - 次のレベルまで：`round(K × (1 ＋ (LV−1)² ÷ exp.curve.div))`。K は exp.json の k（役職・兵種ごと）。レベルに上限は無い。
+
+## 10. 武将の特性（hex-sim。2026-10-20・P56）
+
+- 値は `data/system/convert.json` の `traits`。戦場の効き目は、戦闘を作るときに、その将と配下のすべての兵の駒へ当てる（`src/rules/traits.ts`）。
+- 武力・知略・機敏・体力・気力・防御：`round(値 × (1 ＋ ％ ÷ 100))`（最低1）。移動：足す。回復 healPct・会心 critPct：足す。反撃の威力・命中・回避・軍略への耐性：同じ名の特技（counterDamage・hit・evade・tacticResist）として足す。2回行動：特技 doubleAct。
+- 状態の軍略の成功率 statusPct（6.）、軍略の気力 mpCostPct・supportMpCostPct（8.）。
+- 将だけ：采配・采配の範囲・得る経験・忠誠（変換のときに入る）。
+- **1対1では**：特性を持つ人物（ima-rpg の史実の人物）に使うなら、同じ数を本人だけに当てればよい。ima-rpg の主人公と仲間は特性を持たない。
+

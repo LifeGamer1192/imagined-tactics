@@ -4,13 +4,14 @@ import { D } from '../src/data/db';
 import { FIXTURES, loadFixture } from './helpers';
 
 describe('stat conversion (docs/13 の 4-12 の計算例)', () => {
+  // 特性の能力の増減は、変換では入れず、戦場で％で当てる（P56）。ここで入るのは采配・采配の範囲だけ
   const cases: [string, [number, number, number, number], string[], number, { str: number; int: number; agi: number; hp: number; command: number; range: number }][] = [
-    ['柴田勝家', [6, 9, 4, 6], ['brave'], 6, { str: 83, int: 60, agi: 69, hp: 370, command: 220, range: 2 }],
-    ['前田利家', [6, 8, 6, 8], ['brave'], 6, { str: 78, int: 65, agi: 70, hp: 370, command: 260, range: 3 }],
+    ['柴田勝家', [6, 9, 4, 6], ['brave'], 6, { str: 80, int: 60, agi: 69, hp: 370, command: 220, range: 2 }],
+    ['前田利家', [6, 8, 6, 8], ['brave'], 6, { str: 75, int: 65, agi: 70, hp: 370, command: 260, range: 3 }],
     ['滝川一益', [5, 8, 6, 5], [], 4, { str: 75, int: 63, agi: 64, hp: 355, command: 180, range: 2 }],
     ['丹羽長秀', [8, 6, 6, 6], ['builder'], 4, { str: 65, int: 70, agi: 60, hp: 340, command: 200, range: 2 }],
     ['お市', [3, 2, 6, 9], ['charismatic'], 6, { str: 45, int: 58, agi: 54, hp: 315, command: 320, range: 4 }],
-    ['管仲', [10, 6, 9, 7], ['wise', 'genius'], 8, { str: 65, int: 93, agi: 62, hp: 345, command: 260, range: 3 }],
+    ['管仲', [10, 6, 9, 7], ['wise', 'genius'], 8, { str: 65, int: 83, agi: 62, hp: 345, command: 260, range: 3 }],
   ];
   for (const [name, ab, traits, fame, want] of cases) {
     it(name, () => {

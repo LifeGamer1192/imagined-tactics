@@ -68,20 +68,27 @@ const PASSIVE_TEXT = (p: Passive): string => {
 export function traitTip(t: string): string {
   const name = TRAIT_NAME[t] ?? t, r = CFG.traits[t] ?? {}, out: string[] = [];
   out.push(`【${name}】`, TRAIT_STORY[t] ?? '');
-  const eff: string[] = [];
-  const add = (k: string, label: string, unit = ''): void => { const v = r[k]; if (typeof v === 'number' && v) eff.push(`${label}${v > 0 ? '+' : ''}${v}${unit}`); };
-  add('str', T.str()); add('int', T.int()); add('agi', T.agi()); add('command', '采配'); add('commandRange', '采配の届く範囲');
-  add('expPct', '得る経験', '%'); add('healPct', '回復', '%'); add('critPct', '会心', '%');
-  if (r.passive === 'counterDamage') eff.push('反撃の威力+20%');
-  if (r.passive === 'evade') eff.push('回避+10%');
-  if (r.passive === 'hit') eff.push('命中+10%');
-  if (typeof r.loyalty === 'number' && r.loyalty) eff.push(r.loyalty > 0 ? '主君を裏切りにくい' : '主君を裏切ることがある');
-  if (S.people.wound.shortTraits.includes(t)) eff.push(`深手が早く治る（${S.people.wound.short}か月）`);
-  if (S.people.wound.longTraits.includes(t)) eff.push(`深手の治りが遅い（${S.people.wound.long}か月）`);
-  out.push(`能力：${eff.length ? eff.join('、') : '数値の変化はなし'}`);
+  // 戦場の効き目（P56）：将と、配下のすべての兵に効く
+  const army: string[] = [], self: string[] = [], realm: string[] = [];
+  const add = (to: string[], k: string, label: string, unit = '%'): void => { const v = r[k]; if (typeof v === 'number' && v) to.push(`${label}${v > 0 ? '+' : ''}${v}${unit}`); };
+  add(army, 'strPct', T.str()); add(army, 'intPct', T.int()); add(army, 'agiPct', T.agi()); add(army, 'hpPct', T.hp()); add(army, 'mpPct', T.mp()); add(army, 'defPct', '防御');
+  add(army, 'move', '移動', ''); add(army, 'healPct', '回復の量'); add(army, 'critPct', '会心', '％ポイント'); add(army, 'counterPct', '反撃の威力');
+  add(army, 'hitPct', '命中'); add(army, 'evadePct', '回避'); add(army, 'resistPct', '軍略への耐性');
+  add(army, 'statusPct', '状態の軍略の成功率', '％ポイント'); add(army, 'mpCostPct', '軍略の気力'); add(army, 'supportMpCostPct', '味方への補助の軍略の気力');
+  if (r.doubleAct) army.push('1回の番に2回動ける（2回動いたら行動済み）');
+  add(self, 'command', '采配', ''); add(self, 'commandRange', '采配の届く範囲', ''); add(self, 'expPct', '得る経験');
+  if (typeof r.loyalty === 'number' && r.loyalty) self.push(r.loyalty > 0 ? '主君を裏切りにくい' : '主君を裏切ることがある');
+  if (S.people.wound.shortTraits.includes(t)) self.push(`深手が早く治る（${S.people.wound.short}か月）`);
+  if (S.people.wound.longTraits.includes(t)) self.push(`深手の治りが遅い（${S.people.wound.long}か月）`);
+  if (typeof r.buildCostMult === 'number') realm.push(`この武将がいる領は、普請の兵糧が${Math.round(Number(r.buildCostMult) * 100)}%`);
+  if (typeof r.recruitCostMult === 'number') realm.push(`この武将が雇う兵（当主なら家じゅうの兵）の兵糧が${Math.round(Number(r.recruitCostMult) * 100)}%`);
+  if (army.length) out.push(`戦場（将と配下のすべての兵に効く）：${army.join('、')}`);
+  if (self.length) out.push(`将だけ：${self.join('、')}`);
+  if (realm.length) out.push(`領の仕事：${realm.join('、')}`);
+  if (!army.length && !self.length && !realm.length) out.push('能力：数値の変化はなし');
   const ax = AI.traits[t] ?? {};
   const way = AXES.filter((a) => Math.abs(ax[a] ?? 0) >= 0.2).map((a) => AXIS_WORD[a][(ax[a] ?? 0) > 0 ? 0 : 1]);
-  if (way.length) out.push(`戦い方：${way.join('、')}（兵も、率いる武将の性格で動きます）`);
+  if (way.length) out.push(`戦い方：${way.join('、')}（敵の武将と配下の兵は、この性格で動きます。味方のおまかせは、選んだ方針で動きます）`);
   return out.filter(Boolean).join('\n');
 }
 

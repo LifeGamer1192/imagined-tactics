@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { convert } from '../src/convert/convert';
 import {
   autoMonth, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, neighborsOf, newCampaign, planAttack,
-  provincesOf, recruit, recruitCost, recruitProblem, relation, resolveBattle, troopLoad,
+  provincesOf, recruit, recruitCost, recruitCostFor, recruitProblem, relation, resolveBattle, troopLoad,
 } from '../src/strategy/campaign';
 import { D } from '../src/data/db';
 import { loadFixture } from './helpers';
@@ -54,7 +54,8 @@ describe('campaign', () => {
     lord.troops = [];
     const before = oda.supply;
     expect(recruit(c, lord.id, unit)).toBe(true);
-    expect(oda.supply).toBe(before - recruitCost(unit, oda));
+    // 雇う武将か当主が改革者なら、兵糧が半分（P56）
+    expect(oda.supply).toBe(before - recruitCostFor(c, lord, unit));
     expect(lord.troops.length).toBe(1);
     lord.command = D.byUnit[unit].cost;
     expect(recruitProblem(c, lord, unit)).toBe('采配力が足りません');

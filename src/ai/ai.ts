@@ -14,7 +14,7 @@ import { D } from '../data/db';
 import type { SkillDef, TacticDef } from '../data/types';
 import {
   canCounter, canUseSkill, canUseTactic, healAmount, hitChance, skillDamage, skillTargetCells, skillVictims,
-  tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
+  tacticCost, tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { MinHeap } from '../core/heap';
 import { RNG, codeToSeed } from '../core/rng';
@@ -134,7 +134,7 @@ function threatsTo(st: BattleState, u: BUnit, exact = false): Threat[] {
     }
     for (const id of e.tactics) {
       const t = D.byTactic[id];
-      if (t.kind !== 'damage' || e.mp < t.mp) continue;
+      if (t.kind !== 'damage' || e.mp < tacticCost(e, t)) continue;
       const v = tacticDamage(st, e, t, u);
       if (v > best) { best = v; range = (t.range ?? 0) + t.area; }
     }
@@ -340,7 +340,7 @@ function scoreTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number, 
   // 種類ごとの使い時（むずかしい）：効き目が続く軍略（補助・妨害・状態）は、序盤ほど得が大きい。気力の惜しみ方も種類ごとに変える
   const lasting = tac.kind === 'buff' || tac.kind === 'debuff' || tac.kind === 'status';
   if (lasting && w.early && s > 0) s *= 1 + w.early * clamp(1 - st.round / (st.maxRounds * 0.6), 0, 1);
-  return s - tac.mp * w.mp * (w[`mpK_${tac.kind}`] ?? 1);
+  return s - tacticCost(u, tac) * w.mp * (w[`mpK_${tac.kind}`] ?? 1);
 }
 
 // ---------------------------------------------------------------- 位置
@@ -657,7 +657,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
       if (!canUseTactic(u, tac)) continue;
       for (const t of tacticTargetCells(st, u, tac)) {
         const v = scoreTactic(st, u, tac, t, w, leader);
-        if (tac.mp > 0) bestCast = Math.max(bestCast, v + tac.mp * w.mp);
+        if (tac.mp > 0) bestCast = Math.max(bestCast, v + tacticCost(u, tac) * w.mp);
         if (v <= 0) continue;
         const isAttack = tac.kind === 'damage';
         consider({ ...base, attack: isAttack ? v : 0, support: isAttack ? 0 : v }, { type: 'tactic', unit: u.id, tactic: tid, target: t });

@@ -79,17 +79,16 @@ export function convertStats(ab: [number, number, number, number], health: numbe
   const hp = Math.round((s.hp.base + s.hp.mil * m + s.hp.cha * c) * (s.hp.healthMin + s.hp.healthSpan * clamp(health, 0, 1)));
   let command = s.command.base + s.command.cha * c + s.command.fame * (fame - CFG.defaultFame);
   let range = s.commandRange.base + (c >= 7 ? s.commandRange.cha7 : 0) + (c >= 9 ? s.commandRange.cha9 : 0);
+  // 特性の戦場の効き目（能力の％の増減・特技・回復・会心）は、戦闘を作るときに将と配下の兵へ当てる（P56。src/rules/traits.ts）。
+  // ここで入れるのは、将だけに効くもの（采配・采配の範囲・得る経験・忠誠）
   const passives: Passive[] = [];
-  let expPct = 0, healPct = 0, critPct = 0, loyalty = 0;
+  let expPct = 0, loyalty = 0;
+  const healPct = 0, critPct = 0;
   for (const t of traits) {
     const r = CFG.traits[t];
     if (!r) continue;
-    str += r.str ?? 0; int += r.int ?? 0; agi += r.agi ?? 0;
     command += r.command ?? 0; range += r.commandRange ?? 0;
-    expPct += r.expPct ?? 0; healPct += r.healPct ?? 0; critPct += r.critPct ?? 0; loyalty += r.loyalty ?? 0;
-    if (r.passive === 'counterDamage') passives.push({ type: 'counterDamage', pct: 20 });
-    if (r.passive === 'evade') passives.push({ type: 'evade', pct: 10 });
-    if (r.passive === 'hit') passives.push({ type: 'hit', pct: 10 });
+    expPct += r.expPct ?? 0; loyalty += r.loyalty ?? 0;
   }
   str = clamp(str, 1, 150); int = clamp(int, 1, 150); agi = clamp(agi, 1, 150);
   return {

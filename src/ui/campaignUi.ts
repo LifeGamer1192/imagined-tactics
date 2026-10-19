@@ -7,7 +7,7 @@ import { D, L } from '../data/db';
 import { StrategyView } from '../render/strategyView';
 import {
   autoMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
-  declareWar, dismissTroop, garrisonOf, recruit, recruitCost, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
+  declareWar, dismissTroop, garrisonOf, recruit, recruitCost, recruitCostFor, recruitTraitMult, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
   S, supplyCap, provinceRecruit, isNativeUnit, isResting, type Campaign, type CampaignLog, type PendingBattle, type ReelBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
 import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
@@ -902,7 +902,7 @@ export class CampaignScreen {
       // 武将のいる領で雇える兵種から（P37）。初めから雇えた兵種でなければ、兵糧が2倍
       const opts = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u))
         .sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))
-        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（采配${D.byUnit[u].cost}・兵糧${recruitCost(u, f, isExclave(c, g.prov))}${isNativeUnit(f, u) ? '' : '・新しい兵種で2倍'}）</option>`).join('');
+        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（采配${D.byUnit[u].cost}・兵糧${recruitCostFor(c, g, u)}${isNativeUnit(f, u) ? '' : '・新しい兵種で2倍'}）</option>`).join('');
       // 選ぶ前から、いま選ばれている兵種の采配と兵糧、雇ったあとの残りの采配を出す（P51）
       const first = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u)).sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))[0];
       rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button><span class="recinfo" data-recinfo="${g.id}">${first ? this.recruitInfo(g, first) : ''}</span></span>` : '';
@@ -946,7 +946,7 @@ export class CampaignScreen {
     const c = this.c, f = c.gs.factions[g.faction], u = D.byUnit[unitId];
     if (!u || !f) return '';
     const left = g.command - troopLoad(g);
-    return `<span data-tip="${esc(unitTip(unitId))}">必要な采配<b>${u.cost}</b>（残り${left}→${left - u.cost}）・兵糧<b>${recruitCost(unitId, f, isExclave(c, g.prov))}</b></span>`;
+    return `<span data-tip="${esc(unitTip(unitId))}">必要な采配<b>${u.cost}</b>（残り${left}→${left - u.cost}）・兵糧<b>${recruitCostFor(c, g, unitId)}</b>${recruitTraitMult(c, g) < 1 ? '<span class="okc">（改革者で半分）</span>' : ''}</span>`;
   }
 
   /** 大陸全土の武将の強さ（強さの10段階の評価に使う。描くたびに1度だけ数える） */

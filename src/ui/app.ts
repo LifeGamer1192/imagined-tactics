@@ -31,7 +31,7 @@ import { prewarm } from '../render/strategyView';
 import { NationMap } from '../render/nationMap';
 
 import {
-  canUseSkill, canUseTactic, forecastSkill, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
+  canUseSkill, canUseTactic, forecastSkill, tacticCost, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
   tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { reach, stepCost, unitAt } from '../rules/move';
@@ -957,7 +957,7 @@ export class App {
       const [a, b] = skillRange(st, u, s);
       return `<span class="sk" data-tip="${esc(skillTip(s))}">${esc(L(s.name))}<small>${s.power ? `威${s.power}` : ''}${a === b ? ` 射${b}` : ` 射${a}-${b}`}${s.mp ? ` 気${s.mp}` : ''}</small></span>`;
     });
-    const tactics = u.tactics.map((id) => D.byTactic[id]).filter(Boolean).map((t) => `<span class="sk tac" data-tip="${esc(tacticTip(t))}">${esc(L(t.name))}<small>気${t.mp}</small></span>`);
+    const tactics = u.tactics.map((id) => D.byTactic[id]).filter(Boolean).map((t) => `<span class="sk tac" data-tip="${esc(tacticTip(t))}">${esc(L(t.name))}<small>気${tacticCost(u, t)}</small></span>`);
     const enemy = !this.human.has(u.side) && this.human.size > 0;
     return `<div class="card" style="border-color:${SIDE_COLOR[u.side]}">
       <div><b>${esc(u.name)}</b> <span class="dim">${u.kind === 'general' ? kindName(u) : '兵'} Lv${u.level}${enemy ? '　<b class="foe">敵</b>' : ''}</span></div>
@@ -1080,9 +1080,9 @@ export class App {
     const range = s.shape.type === 'around' ? `周囲${s.shape.n}` : s.shape.type === 'line' ? `直線${s.shape.n}` : s.range[0] === s.range[1] ? `射程${s.range[1]}` : `射程${s.range[0]}〜${s.range[1]}`;
     return `${L(s.name)} <small>威力${s.power || '-'} ${range}${s.mp ? ` 気${s.mp}` : ''}</small>`;
   }
-  private tacticLabel(t: TacticDef): string {
+  private tacticLabel(t: TacticDef, u?: BUnit): string {
     const range = t.range === null ? '' : t.area ? (t.range ? `射程${t.range}・範囲${t.area}` : `周囲${t.area}`) : `射程${t.range}`;
-    return `${L(t.name)} <small>${t.power ? `威力${t.power} ` : ''}${range} 気${t.mp}</small>`;
+    return `${L(t.name)} <small>${t.power ? `威力${t.power} ` : ''}${range} 気${u ? tacticCost(u, t) : t.mp}</small>`;
   }
 
   /** いま選んでいる技・軍略を、マウスのあるマスに使ったときの予測 */
@@ -1210,8 +1210,8 @@ export class App {
       }).join('');
       actions += u.tactics.map((id) => {
         const t = D.byTactic[id];
-        const why = notAct || (u.mp < t.mp ? '気力が足りない' : has(u, 'silence') ? '軍略を封じられている' : !canUseTactic(u, t) ? '今は使えない' : !tacticTargetCells(st, u, t).length ? '届く所に相手がいない' : '');
-        return btn('tactic', id, this.tacticLabel(t), why);
+        const why = notAct || (u.mp < tacticCost(u, t) ? '気力が足りない' : has(u, 'silence') ? '軍略を封じられている' : !canUseTactic(u, t) ? '今は使えない' : !tacticTargetCells(st, u, t).length ? '届く所に相手がいない' : '');
+        return btn('tactic', id, this.tacticLabel(t, u), why);
       }).join('');
       const br = act ? breachTargets(st, u) : [];
       if (br.length) actions += `<button data-breach="1" class="${this.mode.type === 'breach' ? 'on' : ''}" data-tip="届く所の門・砦の門・柵を通常攻撃で打って壊します。門と砦の門は、壊すまで攻め手は通れません。石火矢・大筒の系統は2倍、火の攻撃は1.5倍の力で壊します。壊れた門は道に、柵は平地になります。">壊す（門・柵） <small>${br.length}か所</small></button>`;

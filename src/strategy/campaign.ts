@@ -11,6 +11,7 @@ import { makeGarrison, makeTroop } from '../convert/convert';
 import type { GFaction, GGeneral, GProvince, GTroop, GameStart } from '../convert/model';
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
+import { TRAITS } from '../rules/traits';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
@@ -260,6 +261,11 @@ export function recruitCost(unitId: string, f?: GFaction, exclave = false): numb
   if (f) for (const t of traitsOf(f)) if (t.cost?.lines.includes(u.line)) mult *= t.cost.mult;
   return Math.round(u.cost * SUPPLY.recruitCostMult * mult);
 }
+/** その武将が雇うときの兵糧（飛び地・新しい兵種・勢力の特色に、武将と当主の特性を掛ける。P56） */
+export function recruitCostFor(c: Campaign, g: GGeneral, unitId: string): number {
+  const f = c.gs.factions[g.faction];
+  return Math.round(recruitCost(unitId, f, isExclave(c, g.prov)) * recruitTraitMult(c, g));
+}
 /**
  * 徴兵した兵の開始レベル。徴兵する時点で生き残っている国どうしを比べて決める（いちばん進んだ国が最も高く、いちばん遅れた国が最も低い）。
  * 比べる値＝技術の位置×techWeight＋威信の位置×prestigeWeight（位置は、いちばん低い国を0、いちばん高い国を1とした割合）。
@@ -301,7 +307,7 @@ export function recruitProblem(c: Campaign, g: GGeneral, unitId: string): string
   // 軍略の兵（伝令・間者の系統）は本陣付きの少数の役なので、武将1人につき1隊まで
   if (isTactical(unitId) && g.troops.filter((t) => isTactical(t.unitId)).length >= S.tactical.capPerGeneral) return `軍略の兵は${S.tactical.capPerGeneral}隊までです`;
   if (g.id in c.away) return '諸国巡りに出ています';
-  if (f.supply < recruitCost(unitId, f, isExclave(c, g.prov))) return '兵糧が足りません';
+  if (f.supply < recruitCostFor(c, g, unitId)) return '兵糧が足りません';
   return null;
 }
 
@@ -309,7 +315,7 @@ export function recruit(c: Campaign, gid: string, unitId: string): boolean {
   const g = c.gs.generals[gid];
   if (!g || recruitProblem(c, g, unitId)) return false;
   const f = c.gs.factions[g.faction];
-  f.supply -= recruitCost(unitId, f, isExclave(c, g.prov));
+  f.supply -= recruitCostFor(c, g, unitId);
   g.troops.push(makeTroop(D.byUnit[unitId], recruitLevel(c, unitId, f, c.player && f.id !== c.player ? S.difficulty[c.difficulty].aiTroopLevel : 0)));
   return true;
 }
@@ -383,7 +389,27 @@ export const BUILD_KINDS: BuildKind[] = ['fort', ...Object.keys(BM.build.costs)]
 
 export function buildCost(c: Campaign, prov: number, kind: BuildKind): number {
   const B = BM.build, p = c.gs.provinces[prov];
-  return kind === 'fort' ? Math.round(B.fortCostBase + B.fortCostPerFort * (p?.fort ?? 0)) : B.costs[kind] ?? 0;
+  const base = kind === 'fort' ? Math.round(B.fortCostBase + B.fortCostPerFort * (p?.fort ?? 0)) : B.costs[kind] ?? 0;
+  return Math.round(base * buildCostMult(c, prov));
+}
+
+/** 普請の費用に掛ける数（P56）：領に、持ち主の家の築城家（など）が1人でもいれば、その特性の数 */
+export function buildCostMult(c: Campaign, prov: number): number {
+  const owner = c.gs.provinces[prov]?.owner;
+  let m = 1;
+  for (const g of Object.values(c.gs.generals)) {
+    if (g.prov !== prov || !owner || g.faction !== owner) continue;
+    for (const t of g.traits) m = Math.min(m, TRAITS[t]?.buildCostMult ?? 1);
+  }
+  return m;
+}
+
+/** 兵を雇う兵糧に掛ける数（P56）：雇う武将か、その家の当主が改革者（など）なら、その特性の数 */
+export function recruitTraitMult(c: Campaign, g: GGeneral): number {
+  const lord = c.gs.generals[c.gs.factions[g.faction]?.lordId ?? ''];
+  let m = 1;
+  for (const t of [...g.traits, ...(lord?.traits ?? [])]) m = Math.min(m, TRAITS[t]?.recruitCostMult ?? 1);
+  return m;
 }
 
 /** 普請できるか。できないときは理由を返す */
