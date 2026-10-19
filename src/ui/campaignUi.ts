@@ -551,8 +551,8 @@ export class CampaignScreen {
       <p>攻め手：${esc(names(pb.atk))}</p>
       <p>守り手：${garrison ? `守備兵（Lv${g.level}・${g.troops}隊）<span class="dim">　守る武将はいません</span>` : esc(names(pb.def))}</p>
       ${garrison
-        ? '<button class="primary" data-a="play">自分で戦う</button> <button data-a="watch">観戦</button> <button data-a="auto">おまかせ</button><p class="dim small">自分で戦うは、自分の側を動かします。観戦は、戦いを見ます（途中で「手動にする」を押すと、自分で動かせます）。おまかせは、結果だけ出ます。</p>'
-        : '<button class="primary" data-a="play">自分で戦う</button> <button data-a="auto">おまかせ</button>'}`;
+        ? `<button class="primary" data-a="play">自分で戦う</button> <button data-a="watch">観戦</button> <button data-a="auto">おまかせ</button>${side === 0 ? ' <button data-a="cancel">攻めるのを中止</button>' : ''}<p class="dim small">自分で戦うは、自分の側を動かします。観戦は、戦いを見ます（途中で「手動にする」を押すと、自分で動かせます）。おまかせは、結果だけ出ます。</p>`
+        : `<button class="primary" data-a="play">自分で戦う</button> <button data-a="auto">おまかせ</button>${side === 0 ? ' <button data-a="cancel">攻めるのを中止</button>' : ''}`}`;
     this.host.root.querySelector('.battle')!.appendChild(box);
     // 攻めてきた領と攻められた領を、地図で目立たせて真ん中へ寄せる
     this.alarm = { from: pb.from, to: pb.prov };
@@ -569,6 +569,8 @@ export class CampaignScreen {
     box.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
       b.onclick = () => {
         this.alarm = null;
+        // 攻めるのを中止（P47）：まだ戦も始まっておらず、武将も動いていないので、窓を閉じて地図に戻るだけ
+        if (b.dataset.a === 'cancel') { box.remove(); toast('攻めるのを中止しました'); this.mount(); return; }
         if (b.dataset.a === 'auto') { void busy('戦っています…', () => { won(resolveBattle(c, pb)); then(); }); return; }
         const human = b.dataset.a === 'watch' ? new Set<Side>() : new Set<Side>([side]);
         void busy('戦場を用意しています…', () => this.host.openBattle(battleFor(c, pb), human, (st) => won(resolveBattle(c, pb, st)), { label: '戦略マップへ', fn: then }, false, side));

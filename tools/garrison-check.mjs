@@ -171,6 +171,22 @@ await page.waitForSelector('.result [data-a="watch"]', { timeout: 30000 });
 const ask = await page.textContent('.result');
 ok('守備兵が相手だと、「自分で戦う」「観戦」「おまかせ」を選べる', !!(await page.$('.result [data-a="auto"]')) && !!(await page.$('.result [data-a="play"]')) && /守備兵（Lv\d+・\d+隊）/.test(ask));
 if (process.argv[2]) await page.screenshot({ path: path.join(process.argv[2], 'garrison_ask.png') });
+// 攻めるのを中止（P47）：窓が閉じ、戦にならず、武将はまだ動ける
+const relBefore = await page.evaluate(async (to) => { const c = window.__campaign.c, cam = await import('/src/strategy/campaign.ts'); return cam.relation(c, c.player, c.gs.provinces[to].owner); }, spot.to);
+await page.click('.result [data-a="cancel"]');
+await idle();
+const after = await page.evaluate(async (sp) => {
+  const c = window.__campaign.c, cam = await import('/src/strategy/campaign.ts'), gens = cam.generalsAt(c, sp.from, c.player);
+  return { open: !!document.querySelector('.result [data-a="auto"]'), owner: c.gs.provinces[sp.to].owner !== c.player, moved: gens.filter((g) => c.moved.has(g.id)).length, n: gens.length, rel: cam.relation(c, c.player, c.gs.provinces[sp.to].owner) };
+}, spot);
+ok('「攻めるのを中止」で窓が閉じ、戦にならず、武将はまだ動ける', !after.open && after.owner && after.moved === 0 && after.n > 0 && after.rel === relBefore, JSON.stringify({ ...after, relBefore }));
+// もう一度攻める
+await page.click('#selTop');
+await page.click('#attack');
+await page.mouse.click(spot.xy[0], spot.xy[1]);
+await page.waitForSelector('.confirm, .result [data-a="auto"]', { timeout: 30000 });
+if (await page.$('.confirm [data-a="ok"]')) { const tx = await page.textContent('.confirm'); if (/開戦/.test(tx)) await page.click('.confirm [data-a="ok"]'); }
+await page.waitForSelector('.result [data-a="watch"]', { timeout: 30000 });
 await page.click('.result [data-a="watch"]');
 await page.waitForSelector('#watch', { timeout: 30000 });
 await idle();
