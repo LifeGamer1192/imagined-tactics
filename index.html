@@ -317,6 +317,35 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .result.report .side p { margin: 2px 0; }
     .result.report h4 { margin: 8px 0 2px; color: #e9c98a; }
     @media (max-width: 560px) { .result.report .sides { grid-template-columns: 1fr; } }
+    .result.unify { max-height: 94%; overflow-y: auto; width: min(760px, 94vw); }
+    .unify .u-title { font-family: var(--mincho, serif); font-size: clamp(44px, 9vw, 84px); font-weight: 800; letter-spacing: 0.35em; text-align: center; margin: 4px 0 2px 0.35em;
+      background: linear-gradient(180deg, #fff6c8 0%, #f0c95a 45%, #b07a1c 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 0 14px rgba(255,210,110,0.75)); animation: utitle 1.6s cubic-bezier(.2,1.4,.4,1) both; }
+    @keyframes utitle { 0% { transform: scale(2.4); opacity: 0; letter-spacing: 1em; } 60% { opacity: 1; } 100% { transform: scale(1); letter-spacing: 0.35em; } }
+    .unify .u-lead { text-align: center; font-size: 17px; font-weight: 700; margin: 4px 0; animation: ufade 1s 0.9s both; }
+    .unify .u-sub { text-align: center; font-size: 14px; color: #e9dcc0; margin: 2px 0 8px; animation: ufade 1s 1.3s both; }
+    .unify .u-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 6px 0 10px; animation: ufade 1s 1.7s both; }
+    .unify .u-stats > div { min-width: 92px; text-align: center; border: 1px solid rgba(216,176,74,0.55); border-radius: 6px; padding: 6px 8px; background: rgba(216,176,74,0.08); }
+    .unify .u-stats b { display: block; font-size: 22px; color: #f4d47a; }
+    .unify .u-stats span { font-size: 12px; color: #d8c8a8; }
+    .unify h4 { color: #e9c98a; margin: 10px 0 4px; text-align: left; }
+    .unify .u-feats { text-align: left; margin: 0; padding-left: 22px; font-size: 14px; }
+    .unify .u-first { display: inline-block; background: #b8862a; color: #fff; font-size: 11px; padding: 0 6px; border-radius: 3px; margin-right: 6px; }
+    .unify .u-timeline { text-align: left; background: rgba(244,236,214,0.06); border: 1px solid rgba(216,176,74,0.3); border-radius: 6px; padding: 6px 10px; max-height: 340px; overflow-y: auto; }
+    .unify .uy { display: grid; grid-template-columns: 76px 1fr; gap: 6px; border-left: 3px solid rgba(216,176,74,0.6); padding-left: 8px; margin: 4px 0; }
+    .unify .uyear { font-weight: 800; color: #f4d47a; font-family: var(--mincho, serif); }
+    .unify .uy ul { list-style: none; margin: 0; padding: 0; }
+    .unify .uy li { font-size: 13.5px; line-height: 1.6; opacity: 0; animation: ufade 0.6s both; }
+    .unify .ut { display: inline-block; width: 18px; height: 18px; line-height: 18px; text-align: center; border-radius: 3px; font-size: 11px; font-weight: 800; margin-right: 6px; background: #5a4a30; color: #f4e8c8; }
+    .unify .k-capture .ut, .unify .k-fall .ut { background: #b8402a; }
+    .unify .k-lost .ut { background: #555; }
+    .unify .k-ally .ut, .unify .k-truce .ut { background: #2e6b8a; }
+    .unify .k-unify .ut { background: #d8b04a; color: #2a1e08; }
+    .unify .k-unify { font-weight: 800; color: #f4d47a; }
+    .unify .um { color: #c8b890; margin-right: 6px; font-size: 12px; }
+    .unify .u-end { text-align: center; font-family: var(--mincho, serif); font-size: 16px; color: #f4e2b0; margin: 10px 0 4px; animation: ufade 1.2s 2.4s both; }
+    @keyframes ufade { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: none; } }
+    @media (max-width: 520px) { .unify .uy { grid-template-columns: 1fr; } .unify .u-stats > div { min-width: 70px; } }
     .planfold { width: 100%; font-size: 13px; }
     .planfold summary { cursor: pointer; padding: 2px 0; }
     .planfold .plan > .dim:first-child { display: none; }
@@ -486,7 +515,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-WleTk2u7.js"></script>
+  <script type="module" crossorigin src="./assets/index-sGOeBImJ.js"></script>
 </head>
 <body>
   <div id="app"></div>
