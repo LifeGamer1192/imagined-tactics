@@ -97,7 +97,7 @@ export function generalIndex(st: BattleState): Map<number, number> {
 }
 export const genColor = (i: number): RGB => GEN_COLORS[i % GEN_COLORS.length];
 /** 強化（よい状態）と弱化・状態異常（悪い状態） */
-export const GOOD_STATUS = new Set(['atkNext', 'sureNext', 'atkUp', 'defUp', 'agiUp', 'moveUp', 'resistUp', 'regen', 'ward', 'extraAct', 'mounted']);
+export const GOOD_STATUS = new Set(['atkNext', 'sureNext', 'atkUp', 'defUp', 'agiUp', 'moveUp', 'resistUp', 'regen', 'ward', 'extraAct', 'mounted', 'loaded']);
 export const BAD_STATUS = new Set(['poison', 'daze', 'stun', 'confuse', 'silence', 'defect', 'weaken', 'atkDown', 'intDown', 'grounded']);
 
 export class BattleView {

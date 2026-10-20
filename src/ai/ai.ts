@@ -14,7 +14,7 @@ import { D } from '../data/db';
 import type { SkillDef, TacticDef } from '../data/types';
 import {
   canCounter, canUseSkill, canUseTactic, healAmount, hitChance, skillDamage, skillTargetCells, skillVictims,
-  tacticCost, tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
+  needsReload, tacticCost, tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { MinHeap } from '../core/heap';
 import { RNG, codeToSeed } from '../core/rng';
@@ -615,6 +615,8 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     joins: u.kind !== 'general' || persona.aggression + persona.honor * 0.5 > 0.3 || urgent >= (AI.stance.generalJoinFrom - AI.stance.urgentFrom) / (1 - AI.stance.urgentFrom),
   };
 
+  // 装填の値打ち：込めていない駒の待機に、撃てるようになる技の威力 × ai.json の reload を足す
+  const reloadValue = mayAct && needsReload(u) && !has(u, 'loaded') ? AI.reload * Math.max(0, ...u.skills.map(skillOf).filter((s) => s.reload).map((s) => s.power)) : 0;
   const origin = u.pos, wasMoved = u.moved;
   const cells = mayMove ? reach(st, u, moveOf(u) - u.moveSpent).cells : [origin];
   let best: { score: number; parts: ScoreParts; move: number | null; act: Action | null } = { score: -Infinity, parts: zeroParts(), move: null, act: null };
@@ -631,7 +633,9 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     };
     // 先手を取る（むずかしい）：攻めずに敵の届く所に立つのは損。攻め手は時間が押すほど気にしない
     const fs = ctx.smart?.firstStrike;
-    const idle = fs && ctx.reachN ? { ...base, spacing: base.spacing - fs * ctx.reachN * (1 - urgent) * (u.home === 0 ? 0.5 : 1) } : base;
+    const idle0 = fs && ctx.reachN ? { ...base, spacing: base.spacing - fs * ctx.reachN * (1 - urgent) * (u.home === 0 ? 0.5 : 1) } : base;
+    // 装填：込めていない弩・鉄砲は、待機すると込められる（次の番に必中の技を撃てる）ので、待機にも値打ちを付ける
+    const idle = reloadValue ? { ...idle0, support: idle0.support + reloadValue } : idle0;
     consider(idle, null);
     if (c === origin) stay = total(idle);
     if (!mayAct) continue;

@@ -57,7 +57,7 @@ const TACTIC_COLOR: Record<TacticFx, RGB> = {
   heal: VERDIGRIS, buff: OCHRE, debuff: PURPLE, shout: PURPLE,
 };
 /** 付くと得になる状態（小さな字の色を分ける） */
-const GOOD = new Set<StatusId>(['atkNext', 'moveUp', 'resistUp', 'defUp', 'atkUp', 'agiUp', 'mounted', 'regen', 'ward', 'sureNext', 'extraAct', 'routed']);
+const GOOD = new Set<StatusId>(['atkNext', 'moveUp', 'resistUp', 'defUp', 'atkUp', 'agiUp', 'mounted', 'regen', 'ward', 'sureNext', 'extraAct', 'routed', 'loaded']);
 
 export function before(st: BattleState): Before {
   return { units: st.units.map((u) => ({ ...u, statuses: [...u.statuses] })), logLen: st.log.length, paths: new Map() };

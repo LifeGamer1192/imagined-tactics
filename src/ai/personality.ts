@@ -20,6 +20,8 @@ export interface AiConfig {
   /** 天守の取り合い：攻め手が天守にいる値・天守へ近づく重み、守り手が天守を守る値と、その気になる敵の近さ */
   /** 戦闘の難しさ：相手の思考の重みに掛ける数と、構えの決め方（数値の効き目は変えず、考え方の賢さだけを変える） */
   levels: Record<AiLevel, { weights: Record<string, number>; sallyAggression?: number; sallyStrengthRatio?: number; retreatHp?: number; engageDistance?: number; smart?: SmartConfig }>;
+  /** 装填：込めていない弩・鉄砲の待機の値打ち（撃てるようになる技の威力に掛ける） */
+  reload: number;
   /** 味方のおまかせの方針（P50）で掛ける重み */
   plan: { generalTarget: number; leaderKill: number; weakTarget: number; weakKill: number; otherWeak: number; nearAim: number; cunningTactics: number; directTactics: number };
   castle: { hold: number; approach: number; guard: number; guardRange: number; breach: number; breachKill: number; breachClosed: number };

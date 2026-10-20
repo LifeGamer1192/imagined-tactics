@@ -33,7 +33,7 @@ import { prewarm } from '../render/strategyView';
 import { NationMap } from '../render/nationMap';
 
 import {
-  canUseSkill, canUseTactic, forecastSkill, tacticCost, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
+  canUseSkill, canUseTactic, forecastSkill, needsReload, tacticCost, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
   tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { reach, stepCost, unitAt } from '../rules/move';
@@ -1335,7 +1335,7 @@ export class App {
       const arts = [
         ...u.skills.map((id) => {
           const s = skillOf(id);
-          const why = notAct || (u.mp < s.mp ? '気力が足りない' : !canUseSkill(st, u, s) ? '今は使えない' : !skillTargetCells(st, u, s).length ? '届く所に相手がいない' : '');
+          const why = notAct || (s.reload && !has(u, 'loaded') ? '装填していない（待機すると装填）' : u.mp < s.mp ? '気力が足りない' : !canUseSkill(st, u, s) ? '今は使えない' : !skillTargetCells(st, u, s).length ? '届く所に相手がいない' : '');
           return { on: this.mode.type === 'skill' && this.mode.id === id, why, html: btn('skill', id, this.skillLabel(s), why) };
         }),
         ...u.tactics.map((id) => {
@@ -1362,7 +1362,9 @@ export class App {
       actions += `<button id="autoUnit" data-tip="この駒を、コンピューターの考え方で動かします（自分の番の初めに自動で動く）">この駒をおまかせ</button>`;
       if (u.kind === 'general') actions += `<button id="autoGen" data-tip="この将と配下の兵を、すべてコンピューターの考え方で動かします">この将の配下をすべておまかせ</button>`;
       if (canWithdraw(st, u)) actions += `<button id="withdraw" data-tip="この武将と配下の兵が、戦場から必ず退きます。兵は失わず、深手にもなりません。武将は翌月いっぱい休養になります（守りの出陣だけできる）。自分の側の武将がみな退くと、この戦いは負けです">退却（この部隊）</button>`;
-      actions += `<button id="wait" ${act ? '' : 'disabled'} class="${act && this.flashActions ? 'flash' : ''}">待機${act ? '' : `<small class="why">${esc(notAct)}</small>`}</button>`;
+      // 装填の要る駒は、待機で矢・弾を込める（ボタンにも書く）
+      const reloads = needsReload(u) && !has(u, 'loaded');
+      actions += `<button id="wait" ${act ? '' : 'disabled'} class="${act && this.flashActions ? 'flash' : ''}" ${reloads ? 'data-tip="待機すると矢・弾を込めて「装填済み」になり、次の番から装填の要る技を撃てます"' : ''}>${reloads ? '待機（装填する）' : '待機'}${act ? '' : `<small class="why">${esc(notAct)}</small>`}</button>`;
       actions += `<button id="cancel">${this.mode.type !== 'idle' ? (this.mode.type === 'breach' ? '壊すのをやめる' : '技・軍略をやめる') : '選択を解く'}</button>`;
       if (this.undo && this.undo.unit === u.id && !u.acted) actions += `<button id="undo">移動を取り消す</button>`;
     }

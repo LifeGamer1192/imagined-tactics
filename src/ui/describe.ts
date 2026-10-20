@@ -150,6 +150,7 @@ export function statusEffect(id: string): string {
     case 'extraAct': return '行動のあと、もう1度動ける。';
     case 'mounted': return mountedText();
     case 'routed': return '倒れた兵が、収容した側の陣営で戦う。戦いが終わると失われる。';
+    case 'loaded': return '矢・弾を込めてある。装填の要る技（一斉射撃・三段撃ちなど）を撃てる。撃つと外れる。待機すると込める（移動したあとでもよい）。戦いの始めは込めていない。';
     default: return '';
   }
 }
@@ -171,6 +172,7 @@ export function skillTip(s: SkillDef): string {
   else if (s.range[0] >= 2) out.push(`反撃：相手の通常攻撃が距離${s.range[0]}以上に届くときだけ受ける（近くしか届かない相手からは受けない）`);
   else out.push('反撃：受けることがある（相手の通常攻撃が届く距離なら。相手が動けない・寝返り中なら受けない）');
   if (s.needsWater) out.push('水の上でしか使えない');
+  if (s.reload) out.push('撃つには装填が要る（装填済みのときだけ。撃つと外れ、待機すると込め直す。続けては撃てない）');
   for (const e of s.effects) {
     if (e.type === 'status') out.push(`当たると${e.chance}%で${withEffect(e.status)}`);
     else if (e.type === 'lifesteal') out.push(`与えたダメージの${Math.round(e.rate * 100)}%を回復`);

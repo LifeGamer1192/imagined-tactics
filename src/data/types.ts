@@ -21,7 +21,7 @@ export type Mark = 'sure' | 'o' | 'tri' | 'x';
 export type StatusId =
   | 'poison' | 'daze' | 'silence' | 'defect' | 'stun' | 'confuse'
   | 'weaken' | 'atkNext' | 'moveUp' | 'resistUp' | 'defUp' | 'atkUp' | 'agiUp' | 'atkDown' | 'intDown'
-  | 'grounded' | 'mounted' | 'regen' | 'ward' | 'sureNext' | 'extraAct' | 'routed';
+  | 'grounded' | 'mounted' | 'regen' | 'ward' | 'sureNext' | 'extraAct' | 'routed' | 'loaded';
 
 export interface StatBlock { hp: number; mp: number; str: number; int: number; agi: number }
 
@@ -67,6 +67,8 @@ export interface SkillDef {
   effects: SkillEffect[];
   noDamage?: boolean;
   needsWater?: boolean;
+  /** 撃つには装填（状態 loaded）が要る。撃つと外れ、待機すると装填する（弩・鉄砲の必中技） */
+  reload?: boolean;
   noCounter?: boolean;
 }
 

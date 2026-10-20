@@ -44,7 +44,8 @@ function mk(id: string, side: 0 | 1, pos: number): BUnit {
 }
 
 /** 決闘の片方：期待値の体力、動けない見込み（これから先の巡ごと）、毒の見込み */
-interface Side { u: BUnit; hp: number; dis: number[]; poison: number }
+/** loaded：装填済み（装填の要る技は、込めてあるときだけ撃てる。始めは空） */
+interface Side { u: BUnit; hp: number; dis: number[]; poison: number; loaded?: boolean }
 const st: BattleState = { map: parseMap(Array.from({ length: 3 }, () => '. . . . . . .').join('\n')), units: [], turn: 0, round: 1, maxRounds: 99, winner: null, rng: new RNG(1), log: [], sideNames: ['a', 'b'] };
 const at = (a: Side, t: Side, dist: number): void => { a.u.pos = st.map.grid.idx(0, 1); t.u.pos = st.map.grid.idx(Math.max(1, dist), 1); st.units = [a.u, t.u]; };
 const crit = (u: BUnit) => 1 + (critChance(u) / 100) * (D.combat.critMult - 1);
@@ -80,7 +81,7 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
   };
   for (const id of a.u.skills) {
     const s = skillOf(id);
-    if (s.mp > a.u.mp || s.needsWater) continue;
+    if (s.mp > a.u.mp || s.needsWater || (s.reload && !a.loaded)) continue;
     for (const dist of cands(s)) {
     at(a, t, dist);
     const hit = hitChance(st, a.u, s, t.u) / 100;
@@ -109,7 +110,7 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
     // 後ろから撃つとき、直線・範囲の技は1.5体に当たるとして数える（集まった敵に撃つ）
     const crowd = process.env.HEX_REAR && s.shape.type !== 'single' ? 1.5 : 1;
     const value = (dmg * crowd) / t.u.maxHp + extra - counter / a.u.maxHp;
-    out.push({ label: L(s.name), value, cost: s.mp, apply: () => { DIST = dist; t.hp -= dmg; a.hp -= counter; a.u.mp -= s.mp; for (const f of fx) f(); if (s.effects.some((e) => e.type === 'lifesteal')) a.hp = Math.min(a.u.maxHp, a.hp + dmg * ((s.effects.find((e) => e.type === 'lifesteal') as { rate: number }).rate)); } });
+    out.push({ label: L(s.name), value, cost: s.mp, apply: () => { DIST = dist; if (s.reload) a.loaded = false; t.hp -= dmg; a.hp -= counter; a.u.mp -= s.mp; for (const f of fx) f(); if (s.effects.some((e) => e.type === 'lifesteal')) a.hp = Math.min(a.u.maxHp, a.hp + dmg * ((s.effects.find((e) => e.type === 'lifesteal') as { rate: number }).rate)); } });
     }
   }
   for (const id of a.u.tactics) {
@@ -154,6 +155,16 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
         out.push({ label: L(tac.name), value: v, cost, apply: () => { a.u.mp -= cost; if (p >= 0.5) who.u.statuses.push({ id: sid, turns: n }); } });
       }
     }
+  }
+  // 装填：込めていなければ、近づいてから待機して込める（次の行動で撃てる技の値打ちの半分と見る）
+  const reloadable = a.u.skills.map(skillOf).filter((s) => s.reload && s.mp <= a.u.mp);
+  if (!a.loaded && reloadable.length && myRest > 0) {
+    const pref = Math.max(...reloadable.map((s) => reachOf(s)[1]));
+    const to = Math.max(pref, DIST - mv);
+    at(a, t, to);
+    const v = Math.max(...reloadable.map((s) => skillDamage(st, a.u, s, t.u) * (hitChance(st, a.u, s, t.u) / 100) * crit(a.u) * shieldOf(t.u, s))) / t.u.maxHp;
+    at(a, t, DIST);
+    out.push({ label: '装填', value: v * 0.5, cost: 0, apply: () => { DIST = to; a.loaded = true; } });
   }
   // 届く攻撃が無いときは、いちばん遠くまで届く技の距離まで近づく
   if (!out.some((o) => o.value > 0)) {

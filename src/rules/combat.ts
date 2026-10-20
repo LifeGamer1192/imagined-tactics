@@ -7,7 +7,7 @@ import { BM } from '../battle/map';
 import { unitAt } from './move';
 import {
   affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf, fieldMult, type FieldParts, basicSkill, attackKinds,
-  tacticResist, terrainAt, terrainMod,
+  skillOf, tacticResist, terrainAt, terrainMod,
 } from './stats';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -215,8 +215,13 @@ export function canUseSkill(st: BattleState, u: BUnit, skill: SkillDef): boolean
   if (u.mp < skill.mp) return false;
   if (skill.needsWater && terrainAt(st, u.pos) !== 'water') return false;
   if (u.moved && !skill.afterMove) return false;
+  // 装填の要る技（弩・鉄砲の必中技）：装填済みのときだけ
+  if (skill.reload && !has(u, 'loaded')) return false;
   return true;
 }
+
+/** 装填の要る技を持っているか（待機すると込め直す） */
+export const needsReload = (u: BUnit): boolean => u.skills.some((id) => skillOf(id).reload);
 
 /** 技の対象に選べるマス。単体は相手のいるマス、直線は向きを示す隣のマス、周囲は自分のマス */
 export function skillTargetCells(st: BattleState, u: BUnit, skill: SkillDef): number[] {

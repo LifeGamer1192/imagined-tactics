@@ -5,7 +5,7 @@ import { seatName } from './map';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import {
   atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, skillTargetCells,
-  skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
+  needsReload, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
 } from '../rules/combat';
 import { killExp } from '../rules/growth';
 import { reach, unitAt } from '../rules/move';
@@ -196,6 +196,8 @@ function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: bo
 
 function doSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number): void {
   u.mp -= skill.mp;
+  // 装填の要る技は、撃つと装填が外れる
+  if (skill.reload) removeStatus(u, 'loaded');
   u.expGained += D.combat.useExp;
   const single = skill.shape.type === 'single';
   const victims = skillVictims(st, u, skill, target);
@@ -328,6 +330,12 @@ function afterAction(st: BattleState, u: BUnit): void {
   }
 }
 
+/** 装填の要る技を持つ駒が待機すると、矢・弾を込める（状態「装填済み」。強化と同じ演出が出る） */
+export function reload(st: BattleState, u: BUnit): void {
+  if (!needsReload(u) || has(u, 'loaded')) return;
+  addStatus(st, u, 'loaded', -1, u);
+}
+
 /** 陣営の番の始まり：状態変化の残りを減らし、毒・回復を処理する */
 export function startTurn(st: BattleState, side: Side): void {
   st.turn = side;
@@ -385,6 +393,8 @@ function checkHold(st: BattleState): void {
 
 export function endTurn(st: BattleState): void {
   if (st.winner !== null) return;
+  // まだ動いていない駒は待機したのと同じ：装填の要る駒は込め直す
+  for (const u of st.units) if (u.alive && u.side === st.turn && !u.acted && !disabled(u)) reload(st, u);
   if (st.turn === 1) {
     st.round++;
     if (st.round > st.maxRounds) {
@@ -445,6 +455,7 @@ export function apply(st: BattleState, a: Action): boolean {
     case 'wait': {
       if (!canAct(st, u)) return false;
       const act = openAct(st, u, 'wait', '', u.pos, 0);
+      reload(st, u);
       afterAction(st, u);
       closeAct(st, u, act);
       return true;

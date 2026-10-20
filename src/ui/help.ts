@@ -218,6 +218,7 @@ function battle(): string {
       '行動する前なら、「移動を取り消す」で元の場所に戻せる。',
       '移動と行動は、1つの番に1回ずつ。何もしないときは「待機」。',
       '騎馬など一部の兵は、攻撃したあとに、残った移動の分だけ動ける。',
+      '鉄砲の兵の必中の技（一斉射撃・三段撃ち）は、<b>装填済み</b>のときだけ撃てる。撃つと空になる。待機すると込める（移動したあとでもよい）。戦いの始めは込めていない。続けては撃てない。',
     ])}
     <h3>技と軍略</h3>
     ${ul([
@@ -285,7 +286,7 @@ function statusRows(): [string, string][] {
   const s = D.status, hp = term('hp'), agi = term('agi'), int = term('int');
   const span = (t: [number, number]): string => `${t[0]}〜${t[1]}ターン`;
   // 効き目の文は describe.ts の statusEffect（技・軍略の説明と同じもの）
-  const ids: StatusId[] = ['poison', 'daze', 'stun', 'confuse', 'silence', 'defect', 'weaken', 'atkDown', 'intDown', 'grounded', 'atkNext', 'sureNext', 'atkUp', 'defUp', 'agiUp', 'moveUp', 'resistUp', 'regen', 'ward', 'extraAct', 'mounted', 'routed'];
+  const ids: StatusId[] = ['poison', 'daze', 'stun', 'confuse', 'silence', 'defect', 'weaken', 'atkDown', 'intDown', 'grounded', 'atkNext', 'sureNext', 'atkUp', 'defUp', 'agiUp', 'moveUp', 'resistUp', 'regen', 'ward', 'extraAct', 'mounted', 'routed', 'loaded'];
   const text: Partial<Record<StatusId, string>> = Object.fromEntries(ids.map((id) => [id, statusEffect(id)]));
   const rows = (Object.keys(text) as StatusId[]).map((id): [string, string] => [STATUS_NAME[id], text[id]!]);
   rows.push(['采配範囲外', `武将の采配範囲の外にいる兵。攻撃と防御が${Math.abs(s.outOfCommand.atkDefPct)}%下がり、軍略で受けるダメージが${s.outOfCommand.tacticDamagePct}%増える。`]);

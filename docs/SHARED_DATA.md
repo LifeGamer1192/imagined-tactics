@@ -34,6 +34,7 @@
 | targets | `enemy`＝敵だけ、`all`＝味方も巻き込む |
 | effects | 当たったあとの効果。`status`（status, chance%）、`lifesteal`（rate＝与えたダメージの割合を回復）、`weakenStun`（chance%）、`mpHalf`、`heal`、`knockback`、`critBonus`（会心のとき ×1.25） |
 | noDamage / needsWater / noCounter | ダメージ無し／水の上でだけ使える／相手は反撃できない（無ければ偽） |
+| reload | 装填の要る技。状態「装填済み」のときだけ使え、使うと外れる。待機で込める（無ければ偽。0.7.3） |
 
 ## tactics.json（軍略 x##）
 
