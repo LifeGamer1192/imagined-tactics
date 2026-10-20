@@ -131,7 +131,8 @@ export function promoteGeneral(g: GGeneral, to: string): boolean {
 export function troopPromotions(t: GTroop, items: Record<string, number> = {}): PromotionCheck<UnitDef>[] {
   return D.byUnit[t.unitId].promote.map((p) => {
     const missing: string[] = [];
-    if (p.lv && t.level < p.lv && !(items.item_promote > 0)) missing.push(`レベル${p.lv}`);
+    // 練兵の書でレベルの不足を飛ばせるのは、品の要らない昇進だけ（品とレベルの両方が要る昇進は、レベルも必ず要る。鉄盾衆など）
+    if (p.lv && t.level < p.lv && (p.item || !(items.item_promote > 0))) missing.push(`レベル${p.lv}`);
     if (p.item && !(items[p.item] > 0)) missing.push(D.items[p.item]?.jp ?? p.item);
     return { to: D.byUnit[p.to], ok: missing.length === 0, missing };
   });

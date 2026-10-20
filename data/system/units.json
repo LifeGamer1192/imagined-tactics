@@ -1213,7 +1213,8 @@
   "promote": [
    {
     "to": "u09c",
-    "item": "item_shield_top"
+    "item": "item_shield_top",
+    "lv": 25
    }
   ]
  },

@@ -216,7 +216,12 @@ export function unitTip(unitId: string, level?: number): string {
   if (skills.length) out.push(`技：${skills.join('・')}`);
   if (u.tactics.length) out.push(`軍略：${u.tactics.map((id) => (D.byTactic[id] ? L(D.byTactic[id].name) : id)).join('・')}`);
   if (u.passives.length) out.push(`特技：${u.passives.map(PASSIVE_TEXT).join('、')}`);
-  for (const p of u.promote ?? []) if (D.byUnit[p.to]) out.push(`Lv${p.lv}で${L(D.byUnit[p.to].name)}へ昇格できる`);
+  for (const p of u.promote ?? []) {
+    if (!D.byUnit[p.to]) continue;
+    // 品の要る昇進は、品とレベルの両方（練兵の書ではレベルを飛ばせない）
+    const need = [p.lv ? `Lv${p.lv}` : '', p.item ? `品「${D.items[p.item]?.jp ?? p.item}」` : ''].filter(Boolean).join('と');
+    out.push(`${need}で${L(D.byUnit[p.to].name)}へ昇格できる${p.item && p.lv ? '（練兵の書ではレベルを飛ばせない）' : ''}`);
+  }
   // 特徴とおすすめの使い方（P51）
   const f = unitTraits(u);
   if (f.strong.length || f.weak.length) out.push('', `特徴：${[...f.strong.map((x) => `◎${x}`), ...f.weak.map((x) => `△${x}`)].join('、')}`);
