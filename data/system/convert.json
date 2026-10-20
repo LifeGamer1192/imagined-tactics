@@ -7,8 +7,8 @@
     "str": { "base": 35, "mil": 5 },
     "int": { "base": 35, "adminDip": 2.5 },
     "agi": { "base": 30, "mil": 3, "cha": 2 },
-    "hp": { "base": 250, "mil": 10, "cha": 5, "healthMin": 0.7, "healthSpan": 0.3 },
-    "mpPerInt": 0.8,
+    "hp": { "base": 250, "mil": 10, "cha": 5, "healthMin": 0.7, "healthSpan": 0.3, "mult": 1.3 },
+    "mpPerInt": 1.2,
     "command": { "base": 80, "cha": 20, "fame": 10 },
     "commandRange": { "base": 2, "cha7": 1, "cha9": 1, "max": 4 }
   },

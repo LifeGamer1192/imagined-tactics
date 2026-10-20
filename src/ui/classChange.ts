@@ -3,6 +3,7 @@
 
 import type { GGeneral, GTroop } from '../convert/model';
 import { D, L } from '../data/db';
+import { classMod } from '../rules/growth';
 import { AFFINITY_NAME, T } from './text';
 
 /** invert：下がる方がよいもの（采配の重さ） */
@@ -45,7 +46,8 @@ export function generalChange(g: GGeneral, to: string): ChangeRow[] {
   const rows: ChangeRow[] = [];
   for (const k of ['hp', 'mp', 'str', 'int', 'agi'] as const) {
     const base = g.stats[k];
-    rows.push({ label: T[k](), from: String(base + a.mod[k]), to: String(base + b.mod[k]), delta: b.mod[k] - a.mod[k] });
+    const ma = classMod(a)[k], mb = classMod(b)[k];
+    rows.push({ label: T[k](), from: String(base + ma), to: String(base + mb), delta: mb - ma });
   }
   rows.push({ label: '防御', from: String(a.def), to: String(b.def), delta: b.def - a.def });
   rows.push({ label: '移動', from: String(a.move), to: String(b.move), delta: b.move - a.move });

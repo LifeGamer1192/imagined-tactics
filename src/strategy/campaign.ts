@@ -12,6 +12,7 @@ import type { GFaction, GGeneral, GProvince, GTroop, GameStart } from '../conver
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { TRAITS } from '../rules/traits';
+import { classMod } from '../rules/growth';
 import { addFeats, chronFromLog, realmEvent, realmFell, realmFromLog, sampleRealms, type ChronEntry, type Feat, type RealmHist } from './chronicle';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
@@ -249,7 +250,8 @@ export const canAttack = (c: Campaign, a: number, b: number): boolean => {
 /** 武将1人（と兵）の強さの目安 */
 export function strengthOf(g: GGeneral): number {
   const cls = D.byClass[g.classId];
-  let s = g.level * 8 + (g.stats.str + g.stats.int + cls.mod.str + cls.mod.int) / 4 + (g.stats.hp + cls.mod.hp) / 20;
+  const m = classMod(cls);
+  let s = g.level * 8 + (g.stats.str + g.stats.int + m.str + m.int) / 4 + (g.stats.hp + m.hp) / 20;
   for (const t of g.troops) s += D.byUnit[t.unitId].cost * 0.6 + t.level * 3;
   return s;
 }

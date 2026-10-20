@@ -12,6 +12,7 @@ type Range = [number, number];
 const G = growthJson as unknown as {
   general: { hp: Range; mp: Range; mpTactical: Range; str: Range; int: Range; agi: Range };
   tacticalLines: string[]; maxMastery: number;
+  classChangeBonus: { hp: number; mp: number };
 };
 const MULT = (cfgJson as unknown as { growthMult: Record<GrowthRank, number> }).growthMult;
 /** 必要経験値の曲線（全員共通）：LV1 を1倍として、LV7で2倍、LV13で5倍、LV31で26倍… */
@@ -38,6 +39,15 @@ export function troopGain(unit: UnitDef, rng: RNG | null): StatBlock {
     hp: roll(unit.growth.hp, rng), mp: roll(unit.growth.mp, rng), str: roll(unit.growth.str, rng),
     int: roll(unit.growth.int, rng), agi: roll(unit.growth.agi, rng),
   };
+}
+
+/**
+ * 役職の能力の加減（昇格のボーナスを含む）。役職の格が1つ上がるごとに、体力・気力に growth.json の classChangeBonus を足す
+ * （中級の役職は1回ぶん、上級は2回ぶん。当主の役職も格で数える）。役職を進めると、そのぶん上がる
+ */
+export function classMod(c: ClassDef): StatBlock {
+  const n = Math.max(0, c.tier - 1), B = G.classChangeBonus;
+  return { ...c.mod, hp: c.mod.hp + B.hp * n, mp: c.mod.mp + B.mp * n };
 }
 
 function addStats(s: StatBlock, d: StatBlock, times = 1): void {

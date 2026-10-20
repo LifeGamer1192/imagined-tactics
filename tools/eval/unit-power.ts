@@ -17,6 +17,7 @@ import { D, L } from '../../src/data/db';
 import type { SkillDef, StatusId, TacticDef } from '../../src/data/types';
 import { canCounter, critChance, healAmount, hitChance, skillDamage, tacticCost, tacticDamage, tacticSide, tacticSuccess } from '../../src/rules/combat';
 import { attackPower, basicSkill, passive, skillOf } from '../../src/rules/stats';
+import { classMod } from '../../src/rules/growth';
 
 const LV = Number(process.argv[2] ?? 20), ROUNDS = Number(process.argv[3] ?? 5), ONLY = process.argv[4] ? Number(process.argv[4]) : null;
 const SD = D.status as unknown as Record<string, { turns?: number | [number, number]; pct?: number }>;
@@ -204,10 +205,10 @@ if (process.env.HEX_CLASSES) {
   console.log(`標準の将（見本4つの Lv${LV - 5}〜${LV + 5} の${pool.length}人の真ん中）：体力${base.hp} 気力${base.mp} 武力${base.str} 知略${base.int} 機敏${base.agi}`);
   const troops3 = D.units.filter((u) => u.tier === (ONLY ?? 3));
   const mkGen = (cid: string): BUnit => {
-    const c = D.byClass[cid], u = mk(troops3[0].id, 0, 0);
+    const c = D.byClass[cid], u = mk(troops3[0].id, 0, 0), cm = classMod(c);
     Object.assign(u, {
-      kind: 'general', defId: cid, name: L(c.name), hp: base.hp + c.mod.hp, maxHp: base.hp + c.mod.hp, mp: base.mp + c.mod.mp, maxMp: base.mp + c.mod.mp,
-      str: base.str + c.mod.str, int: base.int + c.mod.int, agi: base.agi + c.mod.agi, def: c.def, move: c.move, affinity: c.affinity,
+      kind: 'general', defId: cid, name: L(c.name), hp: base.hp + cm.hp, maxHp: base.hp + cm.hp, mp: base.mp + cm.mp, maxMp: base.mp + cm.mp,
+      str: base.str + cm.str, int: base.int + cm.int, agi: base.agi + cm.agi, def: c.def, move: c.move, affinity: c.affinity,
       passives: [], skills: [`atk:${cid}`], tactics: [...c.tactics],
     });
     return u;

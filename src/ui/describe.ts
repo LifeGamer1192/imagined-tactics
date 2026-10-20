@@ -6,6 +6,7 @@ import { AI, AXES, type Axis, type Personality } from '../ai/personality';
 import { D, L } from '../data/db';
 import type { Passive, SkillDef, TacticDef, UnitDef } from '../data/types';
 import { S } from '../strategy/config';
+import { classMod } from '../rules/growth';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
 
 const CFG = cfgJson as unknown as { traits: Record<string, Record<string, number | string>> };
@@ -304,7 +305,9 @@ export function classTip(classId: string): string {
   const out = [`【${L(c.name)}】${tier}の役職${c.unique === 'lord' ? '（当主だけ）' : ''}`];
   const atk = c.attack.kind === 'bow' ? `飛び道具（射程${c.attack.range[0]}〜${c.attack.range[1]}）` : `近接（射程${c.attack.range[1]}）`;
   out.push(`通常攻撃：${atk}、威力${c.attack.power}　防御${c.def}　移動${c.move}　得意な地形：${AFFINITY_NAME[c.affinity] ?? c.affinity}`);
-  const mod = (['hp', 'mp', 'str', 'int', 'agi'] as const).filter((k) => c.mod[k]).map((k) => `${T[k]()}${sgn(c.mod[k])}`);
+  // 役職の加減（昇格のボーナスを含む）
+  const cm = classMod(c);
+  const mod = (['hp', 'mp', 'str', 'int', 'agi'] as const).filter((k) => cm[k]).map((k) => `${T[k]()}${sgn(cm[k])}`);
   if (mod.length) out.push(`能力：${mod.join('・')}`);
   if (c.tactics.length) out.push(`使える軍略：${c.tactics.map((id) => (D.byTactic[id] ? L(D.byTactic[id].name) : id)).join('・')}`);
   const role = c.attack.kind === 'bow' ? '後ろから撃つ将' : c.tactics.some((id) => D.byTactic[id]?.kind === 'heal') ? '味方を回復して支える将' : (c.mod.int ?? 0) > (c.mod.str ?? 0) ? '軍略で戦う将（知略が大事）' : '前に出て戦う将（武力が大事）';

@@ -4,6 +4,7 @@ import type { GGeneral, GameStart } from '../convert/model';
 import { personalityOf } from '../ai/personality';
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
+import { classMod } from '../rules/growth';
 import { stepCost } from '../rules/move';
 import { applyTraitMods, traitMods, withoutOldTraitPassives } from '../rules/traits';
 import { BM, type BattleMap } from './map';
@@ -19,12 +20,12 @@ function blank(id: number, side: Side): Pick<BUnit, 'id' | 'side' | 'home' | 'st
 }
 
 export function generalUnit(g: GGeneral, id: number, side: Side): BUnit {
-  const c = D.byClass[g.classId];
-  const hp = g.stats.hp + c.mod.hp, mp = g.stats.mp + c.mod.mp;
+  const c = D.byClass[g.classId], m = classMod(c);
+  const hp = g.stats.hp + m.hp, mp = g.stats.mp + m.mp;
   return {
     ...blank(id, side), kind: 'general', generalId: g.id, leader: id, troopIndex: -1, defId: c.id,
     name: g.name.ja, level: g.level, hp, maxHp: hp, mp, maxMp: mp,
-    str: g.stats.str + c.mod.str, int: g.stats.int + c.mod.int, agi: g.stats.agi + c.mod.agi, def: c.def,
+    str: g.stats.str + m.str, int: g.stats.int + m.int, agi: g.stats.agi + m.agi, def: c.def,
     // 兵から取り立てた武将（P59）：もとの兵種の得意地形のまま。技は、引き継いだ技を通常攻撃の前に置く（弓の兵は弓で反撃する）
     move: c.move, affinity: g.unit && D.byUnit[g.unit] ? D.byUnit[g.unit].affinity : c.affinity, commandRange: g.commandRange,
     // 特性の特技・回復・会心は、戦場で特性から付ける（P56。前の版で変換のときに付けたものは外す）

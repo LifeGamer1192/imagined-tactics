@@ -19,7 +19,7 @@ interface Cfg {
   minAge: number; defaultFame: number; staleAge: { over: number; from: number; span: number };
   stats: {
     str: { base: number; mil: number }; int: { base: number; adminDip: number }; agi: { base: number; mil: number; cha: number };
-    hp: { base: number; mil: number; cha: number; healthMin: number; healthSpan: number }; mpPerInt: number;
+    hp: { base: number; mil: number; cha: number; healthMin: number; healthSpan: number; mult?: number }; mpPerInt: number;
     command: { base: number; cha: number; fame: number }; commandRange: { base: number; cha7: number; cha9: number; max: number };
   };
   traits: Record<string, TraitRule>;
@@ -76,7 +76,8 @@ export function convertStats(ab: [number, number, number, number], health: numbe
   let str = s.str.base + s.str.mil * m;
   let int = Math.round(s.int.base + s.int.adminDip * (a + d));
   let agi = s.agi.base + s.agi.mil * m + s.agi.cha * c;
-  const hp = Math.round((s.hp.base + s.hp.mil * m + s.hp.cha * c) * (s.hp.healthMin + s.hp.healthSpan * clamp(health, 0, 1)));
+  // 体力 ＝（基礎 ＋ 軍事×10 ＋ 魅力×5）× 健康（0.7〜1.0）× 倍率（2026-10-20 に 1.3 を足した）
+  const hp = Math.round((s.hp.base + s.hp.mil * m + s.hp.cha * c) * (s.hp.healthMin + s.hp.healthSpan * clamp(health, 0, 1)) * (s.hp.mult ?? 1));
   let command = s.command.base + s.command.cha * c + s.command.fame * (fame - CFG.defaultFame);
   let range = s.commandRange.base + (c >= 7 ? s.commandRange.cha7 : 0) + (c >= 9 ? s.commandRange.cha9 : 0);
   // 特性の戦場の効き目（能力の％の増減・特技・回復・会心）は、戦闘を作るときに将と配下の兵へ当てる（P56。src/rules/traits.ts）。

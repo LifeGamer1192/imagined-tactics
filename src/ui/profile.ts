@@ -5,6 +5,7 @@ import type { GGeneral } from '../convert/model';
 import { D, L } from '../data/db';
 import { biography } from '../strategy/biography';
 import { strengthOf, troopLoad, type Campaign, type CampaignLog } from '../strategy/campaign';
+import { classMod } from '../rules/growth';
 import { classTip, commandTip, personalityTip, strengthRank, strengthTip, tacticTip, traitTip, unitTip } from './describe';
 import { T, TRAIT_NAME } from './text';
 
@@ -14,7 +15,7 @@ const AB = ['政治', '軍事', '外交', '魅力'];
 
 /** 窓の中身（HTML）。fig は後ろ姿の絵、line は国モードの記録を文にする関数 */
 export function profileHtml(c: Campaign, g: GGeneral, fig: string, line: (e: CampaignLog) => string): string {
-  const cls = D.byClass[g.classId], s = g.stats, m = cls.mod;
+  const cls = D.byClass[g.classId], s = g.stats, m = classMod(cls);
   const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
   const bio = biography(c, g);
   const tactics = [...new Set([...cls.tactics, ...g.learned])].map((id) => D.byTactic[id]).filter(Boolean);

@@ -38,6 +38,7 @@ import {
 } from '../rules/combat';
 import { reach, stepCost, unitAt } from '../rules/move';
 import { statRows } from '../rules/statNotes';
+import { classMod } from '../rules/growth';
 import { affinityOf, agility, attackPower, basicSkill, defense, disabled, FIELD, has, intellect, moveOf, outOfCommand, skillOf, skillRange, supplyMultOf, terrainMod } from '../rules/stats';
 import { AFFINITY_NAME, kindName, STATUS_NAME, T, TRAIT_NAME } from './text';
 import { BattleLogView, loadLogLevel, LOG_LEVEL_NAME, saveLogLevel } from './battleLog';
@@ -253,8 +254,8 @@ export class App {
     return `<label class="gen"><input type="checkbox" data-side="${side}" data-gen="${g.id}" ${checked}>
       <span><b>${esc(g.name.ja)}</b>${g.isLord ? ' <span class="tag">当主</span>' : ''} <span class="dim">${g.age}歳</span>
       <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(c.name)}</span> Lv${g.level}
-      <span class="dim">${T.str()}${g.stats.str + c.mod.str} ${T.int()}${g.stats.int + c.mod.int} ${T.agi()}${g.stats.agi + c.mod.agi}
-      ${T.hp()}${g.stats.hp + c.mod.hp} 采配${g.command}／${g.commandRange}${traits ? ` ・${traits}` : ''} ／ 性格：${personalityLabel(personalityOf(g.traits, g.ab))}</span><br>
+      <span class="dim">${T.str()}${g.stats.str + classMod(c).str} ${T.int()}${g.stats.int + classMod(c).int} ${T.agi()}${g.stats.agi + classMod(c).agi}
+      ${T.hp()}${g.stats.hp + classMod(c).hp} 采配${g.command}／${g.commandRange}${traits ? ` ・${traits}` : ''} ／ 性格：${personalityLabel(personalityOf(g.traits, g.ab))}</span><br>
       <span class="troops">${troops}</span></span></label>`;
   }
 
@@ -485,7 +486,7 @@ export class App {
       if (!g) return '';
       const c = D.byClass[g.classId];
       return `<div class="ima-gen"><b>${esc(g.name.ja)}</b> <span class="tag">${role}</span> <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(c.name)}</span> Lv${g.level}
-        <span class="dim">${T.str()}${g.stats.str + c.mod.str} ${T.int()}${g.stats.int + c.mod.int} ${T.agi()}${g.stats.agi + c.mod.agi} ${T.hp()}${g.stats.hp + c.mod.hp} 采配${g.command}</span><br>
+        <span class="dim">${T.str()}${g.stats.str + classMod(c).str} ${T.int()}${g.stats.int + classMod(c).int} ${T.agi()}${g.stats.agi + classMod(c).agi} ${T.hp()}${g.stats.hp + classMod(c).hp} 采配${g.command}</span><br>
         <span class="small">${g.traits.length ? `特性：${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}　` : ''}${g.skills?.length ? `技：${g.skills.map((s) => `<span class="trait" data-tip="${esc(skillTip(D.bySkill[s]))}">${esc(L(D.bySkill[s].name))}</span>`).join('・')}　` : ''}${g.learned.length ? `軍略：${g.learned.map((x) => `<span class="trait" data-tip="${esc(tacticTip(D.byTactic[x]))}">${esc(L(D.byTactic[x].name))}</span>`).join('・')}　` : ''}${g.troops.length ? `兵：${g.troops.map((t) => `${esc(t.name ?? L(D.byUnit[t.unitId].name))}Lv${t.level}`).join('・')}` : ''}</span></div>`;
     };
     const patron = gs.factions[imaRealm(game)];

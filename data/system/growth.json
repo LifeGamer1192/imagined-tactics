@@ -10,5 +10,7 @@
   },
   "tacticalLines": ["gunbaisha", "so", "onna_gunbaisha", "ama", "shirabyoshi"],
   
+  "_classChangeBonus": "役職の格が1つ上がるごとの、体力・気力の上乗せ（昇格のボーナス）。中級の役職は1回ぶん、上級は2回ぶん。役職の能力の加減（classes.json の mod）に足す",
+  "classChangeBonus": { "hp": 50, "mp": 30 },
   "maxMastery": 5
 }
