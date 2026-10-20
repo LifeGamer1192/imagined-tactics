@@ -187,7 +187,7 @@ export function lordLine(n: Pick<HNation, 'government' | 'economy'>, sex: 'm' | 
   return 'daimyo';
 }
 
-function lordClass(line: string, level: number, provinceShare: number): ClassDef {
+export function lordClass(line: string, level: number, provinceShare: number): ClassDef {
   const chain = D.classes.filter((c) => c.line === line).sort((x, y) => x.tier - y.tier);
   const top = level >= CFG.lordTopLevel || provinceShare >= CFG.lordTopProvinceShare;
   if (chain[0].tier === 1) {

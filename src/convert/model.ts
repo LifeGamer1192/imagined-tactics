@@ -45,6 +45,8 @@ export interface GGeneral {
   /** 兵から取り立てた武将：もとの兵種（得意地形と、下げるときの兵種に使う）と、引き継いだ技（通常攻撃の前に使う。P59） */
   unit?: string;
   skills?: string[];
+  /** ima-rpg から連れてきた人（P61）：主人公・仲間・ライバル */
+  imarpg?: 'hero' | 'companion' | 'rival';
   /** 役職ごとの熟練度（0〜5） */
   mastery: Record<string, number>;
   /** 今の能力値（役職の補正を足す前） */

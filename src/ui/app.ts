@@ -6,7 +6,8 @@ import { getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
 import { apply, canAct, canMove, canWithdraw, holder, moveCells, withdraw } from '../battle/engine';
 import { mapFromProvince, seatName } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
-import { newCampaign, S, traitsOf, type Difficulty } from '../strategy/campaign';
+import { newCampaign, note, S, traitsOf, type Difficulty } from '../strategy/campaign';
+import { startChronicle } from '../strategy/chronicle';
 import { CampaignScreen } from './campaignUi';
 import { restore, type HexSave } from '../persist/save';
 import { anySlot, openSaveMenu, readHexSaveFile } from './saveMenu';
@@ -14,6 +15,7 @@ import { WORLDS_LEAD, worldsHtml } from './worlds';
 import { createBattle, MAX_GENERALS } from '../battle/setup';
 import type { Action, BUnit, BattleState, Side } from '../battle/types';
 import { normalizeSave, readSaveFile, SaveError, type HSave } from '../bridge/histsim';
+import { applyIma, imaRealm, imaVariant, readImaFile, type ImaFile } from '../bridge/imarpg';
 import { convert, generalsOf, variantOf } from '../convert/convert';
 import type { GGeneral, GameStart } from '../convert/model';
 import { D, L, setVariant } from '../data/db';
@@ -24,7 +26,7 @@ import { css, tint } from '../render/ink';
 import { artUrl } from '../art/art';
 import { bannerHtml, sceneUrl, setScene } from './scene';
 import { confirmBox } from './confirm';
-import { classTip, skillTip, statusEffect, tacticTip } from './describe';
+import { classTip, skillTip, statusEffect, tacticTip, traitTip } from './describe';
 import { initTips } from './tip';
 import { busy } from './busy';
 import { prewarm } from '../render/strategyView';
@@ -99,6 +101,9 @@ export class App {
   private watching = false;
   /** おまかせの陣営が動く速さ（0〜4）。1手ごとの間は AI_DELAY */
   private aiSpeed = loadSpeed();
+  /** 読み込んだ ima-rpg のセーブと、選んでいる仕える国・王にするか（P62） */
+  private ima: ImaFile | null = null;
+  private imaOpts: { faction: number; king: boolean } = { faction: 0, king: false };
   /** おまかせの方針の欄を開いているか（P50） */
   private planOpen = false;
   /** 記録の細かさ（0 簡易・1 通常・2 詳細）。速さとは別に選ぶ。記録の元データは1つで、表示だけが変わる */
@@ -155,8 +160,8 @@ export class App {
     this.root.innerHTML = `
       <div class="center">
         <h1>hex-sim</h1>
-        <p>hist-sim のセーブ（.histsim）を読み込んで、その状態からヘックスの戦いを始めます。</p>
-        <p><label class="btn">セーブファイルを選ぶ<input type="file" accept=".histsim,.json,.hexsim" hidden></label> <button id="continue" hidden>つづきから</button></p>
+        <p>hist-sim のセーブ（.histsim）を読み込んで、その状態からヘックスの戦いを始めます。ima-rpg のセーブ（.imarpg）なら、主人公と仲間・率いる兵を連れてきます。</p>
+        <p><label class="btn">セーブファイルを選ぶ<input type="file" accept=".histsim,.json,.hexsim,.imarpg" hidden></label> <button id="continue" hidden>つづきから</button></p>
         <p class="dim">または、サンプルから始める</p>
         <p>${SAMPLES.map(([id, name]) => `<button data-sample="${id}">${name}</button>`).join(' ')}</p>
         <p><button data-help="intro">遊び方</button></p>
@@ -175,6 +180,8 @@ export class App {
           try { this.loadHexSave(await readHexSaveFile(f)); } catch (e) { this.titleScreen(e instanceof Error ? e.message : String(e)); }
           return;
         }
+        // .imarpg は ima-rpg のセーブ（P62）：世界と、主人公・仲間・兵
+        if (f.name.endsWith('.imarpg')) { await this.loadIma(f); return; }
         await this.load(f, f.name.endsWith('.json'));
       });
     };
@@ -196,6 +203,7 @@ export class App {
     try {
       const { save } = await readSaveFile(data, plain);
       this.save = save;
+      this.ima = null;
       this.variant = variantOf(save);
       this.rebuild();
     } catch (e) {
@@ -204,7 +212,7 @@ export class App {
   }
 
   /** 読み込んだ世界から作り直して、画面を出す（next：出す画面。名前の版を変えたときは、今の画面のまま） */
-  private rebuild(next: 'mode' | 'nation' | 'local' = 'mode'): void {
+  private rebuild(next: 'mode' | 'nation' | 'local' | 'ima' = 'mode'): void {
     setVariant(this.variant);
     this.gs = convert(this.save!, { variant: this.variant });
     const facs = this.factionsBySize();
@@ -212,7 +220,7 @@ export class App {
     this.setup.defender = (facs[1] ?? facs[0]).id;
     this.autoPick();
     if (!this.gs.factions[this.nation]) this.nation = facs[0].id;
-    if (next === 'nation') this.nationScreen(); else if (next === 'local') this.setupScreen(); else this.modeScreen();
+    if (next === 'nation') this.nationScreen(); else if (next === 'local') this.setupScreen(); else if (next === 'ima' && this.ima) this.imaScreen(); else this.modeScreen();
     // モードや国を選んでいる間に、戦略マップの下ごしらえを進めておく（戦略を始めたときに、すぐ地図が出る）
     prewarm(this.save!.world);
   }
@@ -435,6 +443,99 @@ export class App {
       if (!this.setup.picks[0].length || !this.setup.picks[1].length) { toast('武将を1人以上選んでください'); return; }
       void busy('戦場を用意しています…', () => this.startBattle());
     };
+  }
+
+  // ------------------------------------------------------------ ima-rpg から（P62）
+
+  private async loadIma(f: Blob): Promise<void> {
+    try {
+      const file = await readImaFile(f);
+      this.ima = file;
+      this.save = file.save;
+      this.variant = imaVariant(file.game) ?? variantOf(file.save);
+      const realm = imaRealm(file.game);
+      this.imaOpts = { faction: realm, king: !!file.game.player.throne };
+      this.rebuild('ima');
+    } catch (e) {
+      this.titleScreen(e instanceof SaveError ? e.message : `読み込みに失敗しました：${e}`);
+    }
+  }
+
+  /**
+   * ima-rpg から来た人々の画面：主人公・仲間・ライバル・率いる兵の顔ぶれ（hex-sim の武将と兵にしたときの姿）と、
+   * 仕える国（浪人なら選ぶ）・主人公を王にするかしないか・難しさを選んで、国モードを始める
+   */
+  private imaScreen(): void {
+    this.enterSetupLike();
+    const file = this.ima!, game = file.game, p = game.player, gs = this.gs!;
+    const facs = this.factionsBySize();
+    const throne = p.throne && gs.factions[p.throne.realm] ? p.throne.realm : 0;
+    if (throne) this.imaOpts = { faction: throne, king: true };
+    if (!gs.factions[this.imaOpts.faction]) this.imaOpts.faction = 0;
+    const opt = this.imaOpts;
+    // 武将と兵にしたときの姿（変換し直した世界に、試しに加えて見る）
+    const pre = convert(this.save!, { variant: this.variant });
+    const res = applyIma(pre, game, this.variant, { faction: opt.faction || facs[0].id, king: opt.king });
+    const genLine = (id: string | null, role: string): string => {
+      const g = id ? pre.generals[id] : null;
+      if (!g) return '';
+      const c = D.byClass[g.classId];
+      return `<div class="ima-gen"><b>${esc(g.name.ja)}</b> <span class="tag">${role}</span> <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(c.name)}</span> Lv${g.level}
+        <span class="dim">${T.str()}${g.stats.str + c.mod.str} ${T.int()}${g.stats.int + c.mod.int} ${T.agi()}${g.stats.agi + c.mod.agi} ${T.hp()}${g.stats.hp + c.mod.hp} 采配${g.command}</span><br>
+        <span class="small">${g.traits.length ? `特性：${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}　` : ''}${g.skills?.length ? `技：${g.skills.map((s) => `<span class="trait" data-tip="${esc(skillTip(D.bySkill[s]))}">${esc(L(D.bySkill[s].name))}</span>`).join('・')}　` : ''}${g.learned.length ? `軍略：${g.learned.map((x) => `<span class="trait" data-tip="${esc(tacticTip(D.byTactic[x]))}">${esc(L(D.byTactic[x].name))}</span>`).join('・')}　` : ''}${g.troops.length ? `兵：${g.troops.map((t) => `${esc(t.name ?? L(D.byUnit[t.unitId].name))}Lv${t.level}`).join('・')}` : ''}</span></div>`;
+    };
+    const patron = gs.factions[imaRealm(game)];
+    const facOpts = `${!imaRealm(game) ? `<option value="0" ${opt.faction ? '' : 'selected'}>（仕える国を選ぶ）</option>` : ''}${facs.map((f) => `<option value="${f.id}" ${f.id === opt.faction ? 'selected' : ''}>${esc(f.name.ja)}（領${gs.provinces.filter((q) => q.owner === f.id).length}・武将${generalsOf(gs, f.id).length}）${f.id === imaRealm(game) ? '　← 仕えている国' : ''}</option>`).join('')}`;
+    const lordName = opt.faction && gs.factions[opt.faction] ? gs.generals[gs.factions[opt.faction].lordId]?.name.ja ?? '' : '';
+    this.root.innerHTML = `
+      <div class="setup ima">
+        ${this.headerHtml('save')}
+        <h2 class="modes-title">ima-rpg から来た人々</h2>
+        <p class="dim">${esc(p.name)}の旅の世界（${esc(gs.worldName.ja)}・${gs.year < 0 ? `前${-gs.year + 1}` : gs.year}年${gs.month}月）から、主人公と仲間、率いる兵を武将と兵として連れてきます。能力は技能から、技・軍略はそのまま、特性は記録の人物はその人のもの、ほかは生まれ・技能・極めた道から決めます。戦いの結果は ima-rpg へは戻りません。</p>
+        ${file.warnings.length ? `<p class="error">${file.warnings.map(esc).join('<br>')}</p>` : ''}
+        <div class="card ima-cast">
+          ${genLine(res.heroId, '主人公')}
+          ${res.companionIds.map((id) => genLine(id, '仲間')).join('')}
+          ${res.rivalIds.map((id) => genLine(id, 'ライバル')).join('')}
+          ${res.reserve.length ? `<div class="small dim">入りきらない兵${res.reserve.length}隊は、始まりの領の予備兵になります</div>` : ''}
+          ${res.jailMonths ? `<div class="small error">主人公は獄にいるので、はじめの${res.jailMonths}か月は戦えません（深手と同じ扱い）</div>` : ''}
+          ${p.dead ? '<div class="small error">主人公はすでに討たれているので、仲間と兵だけが来ます</div>' : ''}
+        </div>
+        <div class="card ima-choose">
+          <label>仕える国：<select id="imaFac" ${throne ? 'disabled' : ''}>${facOpts}</select></label>
+          ${throne ? `<p class="small">主人公は${esc(gs.factions[throne].name.ja)}の王位にある（${esc(p.throne!.how)}）ので、王として迎えます。</p>`
+            : `<p class="small">${patron ? `${esc(patron.name.ja)}に仕えています（位${p.rank ?? 0}）。` : '浪人です。仕える国を選んでください。'}</p>
+          <label class="ima-radio"><input type="radio" name="imaKing" value="1" ${opt.king ? 'checked' : ''}> 主人公を王にする <span class="dim small">（${lordName ? `本来の王の${esc(lordName)}は武将に降格` : '本来の王は武将に降格'}）</span></label>
+          <label class="ima-radio"><input type="radio" name="imaKing" value="0" ${opt.king ? '' : 'checked'}> 王にしない <span class="dim small">（${lordName ? `${esc(lordName)}が王のまま。` : ''}主人公は武将として仕える。国はあなたが動かす）</span></label>`}
+        </div>
+        <footer>
+          <select id="difficulty">${(['easy', 'normal', 'hard'] as const).map((d) => `<option value="${d}" ${this.difficulty === d ? 'selected' : ''}>難しさ：${S.difficulty[d].name}</option>`).join('')}</select>
+          <span class="spacer"></span>
+          <button id="imaStart" class="primary" ${opt.faction ? '' : 'disabled'}>${opt.faction ? `${esc(gs.factions[opt.faction].name.ja)}で国モードを始める` : '仕える国を選んでください'}</button>
+        </footer>
+      </div>`;
+    this.bindHeader('mode');
+    // 名前の版を変えたら、この画面に戻る
+    this.root.querySelector<HTMLSelectElement>('#variant')!.onchange = (e) => { this.variant = (e.target as HTMLSelectElement).value as Variant; this.rebuild('ima'); };
+    const facSel = this.root.querySelector<HTMLSelectElement>('#imaFac')!;
+    facSel.onchange = () => { opt.faction = Number(facSel.value); this.imaScreen(); };
+    this.root.querySelectorAll<HTMLInputElement>('input[name="imaKing"]').forEach((r) => { r.onchange = () => { opt.king = r.value === '1'; this.imaScreen(); }; });
+    this.root.querySelector<HTMLSelectElement>('#difficulty')!.onchange = (e) => { this.difficulty = (e.target as HTMLSelectElement).value as Difficulty; };
+    this.root.querySelector<HTMLButtonElement>('#imaStart')!.onclick = () => { if (opt.faction) void busy('戦略を始めています…', () => this.startIma()); };
+  }
+
+  /** ima-rpg の人々を加えた世界で、国モードを始める */
+  private startIma(): void {
+    const file = this.ima!, opt = this.imaOpts;
+    this.gs = convert(this.save!, { variant: this.variant });
+    const res = applyIma(this.gs, file.game, this.variant, opt);
+    const c = newCampaign(this.gs, this.save!.world, opt.faction, this.difficulty);
+    if (res.heroId && res.jailMonths) c.wounded[res.heroId] = c.gs.tick + res.jailMonths;
+    if (res.reserve.length && res.prov >= 0) c.reserve[res.prov] = [...(c.reserve[res.prov] ?? []), ...res.reserve].slice(0, S.reserve.max);
+    // 年表を起こしてから、来た人々のことを書く（年表にも残る）
+    startChronicle(c);
+    for (const n of res.notes) note(c, 'imaArrive', { text: n });
+    new CampaignScreen(this, c, () => this.rebuild());
   }
 
   // ------------------------------------------------------------ 戦略

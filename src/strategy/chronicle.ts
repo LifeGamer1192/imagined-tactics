@@ -60,6 +60,7 @@ export function chronFromLog(c: Campaign, e: CampaignLog): void {
     case 'succeed': case 'newLord':
       if (s('faction') === me) chron(c, 'lord', `${s('name')}が当主となる`);
       break;
+    case 'imaArrive': chron(c, 'lord', s('text')); break;
     case 'history':
       if (s('text') && (String(v.text).includes(me) || v.choice)) chron(c, 'history', String(v.text));
       break;
