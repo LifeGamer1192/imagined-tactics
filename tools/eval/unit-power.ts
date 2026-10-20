@@ -6,6 +6,7 @@
 //   技：期待ダメージ（命中・会心）。反撃が届けば、反撃の期待ダメージを受ける。技の状態（気絶・眩暈・混乱・毒・寝返りなど）も見込む。
 //   軍略：ダメージ（外れない）、状態（成功率）、弱化・強化（そのあとのダメージの増減で）、回復、気力を減らすもの。範囲の軍略も1体ぶんだけ数える。
 // ・2回行動（特技）は、1巡に2回動く（そのたびに反撃も受ける）。号令は、自分がもう1回動けるとして数える。
+// ・距離：両軍は距離5（HEX_START）から始まり、自分の番に移動力のぶんだけ近づいてから撃てる。離れて撃てる兵は、近づいてくる相手に先に撃て、相手の通常攻撃の届かない距離なら反撃を受けない。下がりはしない。
 // ・盾で受ける（特技）は、単体の技と反撃を、その見込みで半分にする。毎ターンの回復（特技）も入れる（森・水の上だけのものは入れない）。
 // ・強さ＝相手ごとの交換比（相手を削った割合 ÷ 自分が削られた割合）の幾何平均 ×100。100 が同じ格の並。
 // ・コスパ＝強さ ÷ 采配の重さ ×100（同じ格の中で比べる）。
@@ -16,7 +17,7 @@ import { RNG } from '../../src/core/rng';
 import { D, L } from '../../src/data/db';
 import type { SkillDef, StatusId, TacticDef } from '../../src/data/types';
 import { canCounter, critChance, healAmount, hitChance, skillDamage, tacticCost, tacticDamage, tacticSide, tacticSuccess } from '../../src/rules/combat';
-import { attackPower, basicSkill, passive, skillOf } from '../../src/rules/stats';
+import { attackPower, basicSkill, moveOf, passive, skillOf } from '../../src/rules/stats';
 import { classMod } from '../../src/rules/growth';
 
 const LV = Number(process.argv[2] ?? 20), ROUNDS = Number(process.argv[3] ?? 5), ONLY = process.argv[4] ? Number(process.argv[4]) : null;
@@ -69,10 +70,18 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
   const out: Option[] = [];
   const myRest = Math.max(1, left), theirRest = Math.max(1, actsT);
   const disAt = (k: number) => t.dis[k] ?? 0;
+  // 距離：移動力のぶんだけ近づいてから撃てる（移動のあとに使えない技は、動かないときだけ）。下がりはしない
+  const mv = moveOf(a.u);
+  const reachOf = (s: SkillDef): [number, number] => (s.shape.type === 'single' ? s.range : [1, s.shape.n]);
+  const cands = (s: SkillDef): number[] => {
+    const [lo, hi] = reachOf(s), out: number[] = [];
+    for (let d = DIST; d >= Math.max(1, DIST - mv); d--) if (d >= lo && d <= hi && (d === DIST || s.afterMove)) out.push(d);
+    return out;
+  };
   for (const id of a.u.skills) {
     const s = skillOf(id);
     if (s.mp > a.u.mp || s.needsWater) continue;
-    const dist = s.shape.type === 'single' ? s.range[1] : 1;
+    for (const dist of cands(s)) {
     at(a, t, dist);
     const hit = hitChance(st, a.u, s, t.u) / 100;
     const dmg = s.noDamage ? 0 : skillDamage(st, a.u, s, t.u) * hit * crit(a.u) * shieldOf(t.u, s);
@@ -97,16 +106,22 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
       } else if (e.type === 'lifesteal') extra += (dmg * e.rate) / a.u.maxHp;
       else if (e.type === 'mpHalf') fx.push(() => { t.u.mp = Math.floor(t.u.mp / 2); });
     }
-    const value = dmg / t.u.maxHp + extra - counter / a.u.maxHp;
-    out.push({ label: L(s.name), value, cost: s.mp, apply: () => { t.hp -= dmg; a.hp -= counter; a.u.mp -= s.mp; for (const f of fx) f(); if (s.effects.some((e) => e.type === 'lifesteal')) a.hp = Math.min(a.u.maxHp, a.hp + dmg * ((s.effects.find((e) => e.type === 'lifesteal') as { rate: number }).rate)); } });
+    // 後ろから撃つとき、直線・範囲の技は1.5体に当たるとして数える（集まった敵に撃つ）
+    const crowd = process.env.HEX_REAR && s.shape.type !== 'single' ? 1.5 : 1;
+    const value = (dmg * crowd) / t.u.maxHp + extra - counter / a.u.maxHp;
+    out.push({ label: L(s.name), value, cost: s.mp, apply: () => { DIST = dist; t.hp -= dmg; a.hp -= counter; a.u.mp -= s.mp; for (const f of fx) f(); if (s.effects.some((e) => e.type === 'lifesteal')) a.hp = Math.min(a.u.maxHp, a.hp + dmg * ((s.effects.find((e) => e.type === 'lifesteal') as { rate: number }).rate)); } });
+    }
   }
   for (const id of a.u.tactics) {
     const tac = D.byTactic[id];
     if (!tac) continue;
     const cost = tacticCost(a.u, tac);
     if (cost > a.u.mp) continue;
-    at(a, t, Math.max(1, tac.range ?? 1));
     const side = tacticSide(tac);
+    // 軍略は動かずに使う。相手に向けるものは、届く距離（射程＋範囲）にいるときだけ
+    const tacReach = (tac.range ?? 0) + (tac.area ?? 0);
+    if (side !== 'ally' && DIST > Math.max(1, tacReach)) continue;
+    at(a, t, DIST);
     if (tac.kind === 'damage') {
       const dmg = tacticDamage(st, a.u, tac, t.u);
       let extra = 0;
@@ -140,12 +155,18 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
       }
     }
   }
-  // 何もできないときの待機
-  if (!out.length) out.push({ label: '待機', value: 0, cost: 0, apply: () => {} });
+  // 届く攻撃が無いときは、いちばん遠くまで届く技の距離まで近づく
+  if (!out.some((o) => o.value > 0)) {
+    const pref = Math.max(1, ...a.u.skills.map((id) => skillOf(id)).filter((s) => !s.noDamage && s.mp <= a.u.mp).map((s) => reachOf(s)[1]));
+    out.push({ label: '前進', value: 0.0001, cost: 0, apply: () => { DIST = Math.max(pref, DIST - mv); } });
+  }
   return out;
 }
 
 let extraActs = 0;
+/** 決闘の間の距離（両軍は START だけ離れて始まる） */
+const START = Number(process.env.HEX_START ?? 5);
+let DIST = START;
 interface Log { used: Map<string, number>; mpOut: number | null }
 
 /** a の1回の行動 */
@@ -170,6 +191,7 @@ function act(a: Side, t: Side, left: number, actsT: number, log: Log, round: num
 function duel(aId: string, tId: string, aFirst: boolean, log: Log): [number, number] {
   const A: Side = { u: mk(aId, 0, 0), hp: 0, dis: [], poison: 0 }, T: Side = { u: mk(tId, 1, 0), hp: 0, dis: [], poison: 0 };
   A.hp = A.u.maxHp; T.hp = T.u.maxHp;
+  DIST = START;
   // 2回行動を外して比べるとき：HEX_NO_DOUBLE=1
   const dbl = (u: BUnit) => (passive(u, 'doubleAct').length && !process.env.HEX_NO_DOUBLE ? 2 : 1);
   const nA = dbl(A.u), nT = dbl(T.u);
@@ -186,6 +208,8 @@ function duel(aId: string, tId: string, aFirst: boolean, log: Log): [number, num
     tick(me);
   };
   for (let r = 1; r <= ROUNDS && A.hp > 0 && T.hp > 0; r++) {
+    // 後ろから撃つ（HEX_REAR）：相手は前衛に止められていて、こちらへは攻めてこない（反撃だけ受ける）
+    if (process.env.HEX_REAR) { turn(A, T, nA, nT, r, log); continue; }
     if (aFirst) { turn(A, T, nA, nT, r, log); turn(T, A, nT, nA, r, null); } else { turn(T, A, nT, nA, r, null); turn(A, T, nA, nT, r, log); }
   }
   const dealt = Math.min(1, Math.max(0, (T.u.maxHp - T.hp) / T.u.maxHp)), taken = Math.min(1, Math.max(0, (A.u.maxHp - A.hp) / A.u.maxHp));
