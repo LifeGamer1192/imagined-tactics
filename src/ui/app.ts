@@ -56,6 +56,8 @@ type Mode = { type: 'idle' } | { type: 'skill'; id: string } | { type: 'tactic';
 type Control = 'attack' | 'defend' | 'both' | 'watch';
 /** おまかせの陣営が1手ごとに空ける間（ミリ秒）。速さ1〜5 */
 const AI_DELAY = [900, 500, 260, 110, 0];
+/** 技・軍略のボタン：この数までは全部並べる。超えたら、使えるものをこの数だけ出し、残りは畳む */
+const ARTS_FLAT = 8, ARTS_SHOW = 6;
 /** おまかせの陣営の演出の長さの倍率。速さ5では演出をしない（待たない） */
 const FX_SCALE = [1, 0.8, 0.55, 0.3, 0];
 function loadSpeed(): number {
@@ -106,6 +108,8 @@ export class App {
   private imaOpts: { faction: number; king: boolean } = { faction: 0, king: false };
   /** おまかせの方針の欄を開いているか（P50） */
   private planOpen = false;
+  /** 畳んだ技・軍略の欄を開いているか（ほかの技・軍略、使えない技・軍略） */
+  private artsFold = { more: false, off: false };
   /** 記録の細かさ（0 簡易・1 通常・2 詳細）。速さとは別に選ぶ。記録の元データは1つで、表示だけが変わる */
   private logLevel = loadLogLevel();
   private logView = new BattleLogView();
@@ -1068,7 +1072,9 @@ export class App {
       <div class="stats">攻撃${Math.round(attackPower(st, u))} 防御${Math.round(defense(st, u))} ${T.int()}${intellect(u)} ${T.agi()}${agility(u)}
         移動${moveOf(u)} ${AFFINITY_NAME[affinityOf(u)]}${u.kind === 'general' ? ` 采配範囲${u.commandRange}` : ''}${u.acted && u.side === st.turn ? '（行動済み）' : ''}</div>
       ${this.modsHtml(u)}
-      <div class="skl">${[...skills, ...tactics].join('')}</div>
+      ${skills.length + tactics.length > ARTS_FLAT
+        ? `<details class="sklfold"><summary>技${skills.length}・軍略${tactics.length}（押すと一覧）</summary><div class="skl">${[...skills, ...tactics].join('')}</div></details>`
+        : `<div class="skl">${[...skills, ...tactics].join('')}</div>`}
       <div class="dim">${TERRAIN_NAME[st.map.terrain[u.pos]]}（命中・回避 ${terrainMod(st, u) >= 0 ? '+' : ''}${terrainMod(st, u)}${this.terrainNote(u)}）</div>
       ${g?.traits.length ? `<div class="dim">${g.traits.map((t) => TRAIT_NAME[t] ?? t).join('・')}</div>` : ''}
       ${this.personaLine(u)}
@@ -1324,16 +1330,30 @@ export class App {
       const notAct = !act ? (u.acted ? '行動済み' : '動けない状態') : '';
       const btn = (kind: 'skill' | 'tactic', id: string, label: string, why: string) =>
         `<button data-${kind}="${id}" ${why ? 'disabled' : ''} class="${this.mode.type === kind && this.mode.id === id ? 'on' : ''}${!why && this.flashActions ? ' flash' : ''}" data-tip="${esc(kind === 'skill' ? skillTip(skillOf(id)) : tacticTip(D.byTactic[id]))}${why ? esc(`（使えない：${why}）`) : ''}">${label}${why ? `<small class="why">${esc(why)}</small>` : ''}</button>`;
-      actions += u.skills.map((id) => {
-        const s = skillOf(id);
-        const why = notAct || (u.mp < s.mp ? '気力が足りない' : !canUseSkill(st, u, s) ? '今は使えない' : !skillTargetCells(st, u, s).length ? '届く所に相手がいない' : '');
-        return btn('skill', id, this.skillLabel(s), why);
-      }).join('');
-      actions += u.tactics.map((id) => {
-        const t = D.byTactic[id];
-        const why = notAct || (u.mp < tacticCost(u, t) ? '気力が足りない' : has(u, 'silence') ? '軍略を封じられている' : !canUseTactic(u, t) ? '今は使えない' : !tacticTargetCells(st, u, t).length ? '届く所に相手がいない' : '');
-        return btn('tactic', id, this.tacticLabel(t, u), why);
-      }).join('');
+      // 技・軍略のボタン（数に上限は無い）。多いときは、使えるものを先に数個だけ出し、残りと使えないものは畳んでおく
+      const arts = [
+        ...u.skills.map((id) => {
+          const s = skillOf(id);
+          const why = notAct || (u.mp < s.mp ? '気力が足りない' : !canUseSkill(st, u, s) ? '今は使えない' : !skillTargetCells(st, u, s).length ? '届く所に相手がいない' : '');
+          return { on: this.mode.type === 'skill' && this.mode.id === id, why, html: btn('skill', id, this.skillLabel(s), why) };
+        }),
+        ...u.tactics.map((id) => {
+          const t = D.byTactic[id];
+          const why = notAct || (u.mp < tacticCost(u, t) ? '気力が足りない' : has(u, 'silence') ? '軍略を封じられている' : !canUseTactic(u, t) ? '今は使えない' : !tacticTargetCells(st, u, t).length ? '届く所に相手がいない' : '');
+          return { on: this.mode.type === 'tactic' && this.mode.id === id, why, html: btn('tactic', id, this.tacticLabel(t, u), why) };
+        }),
+      ];
+      if (arts.length <= ARTS_FLAT) actions += `<div class="arts">${arts.map((a) => a.html).join('')}</div>`;
+      else {
+        const ok = arts.filter((a) => !a.why), off = arts.filter((a) => a.why);
+        // 選んでいる技・軍略は、畳んだ中にあっても上に出す
+        const first = ok.slice(0, ARTS_SHOW);
+        for (const a of ok.slice(ARTS_SHOW)) if (a.on) first.push(a);
+        const more = ok.filter((a) => !first.includes(a));
+        actions += `<div class="arts">${first.map((a) => a.html).join('')}</div>`;
+        if (more.length) actions += `<details class="arts-more" data-fold="more" ${this.artsFold.more ? 'open' : ''}><summary>ほかの技・軍略（${more.length}）</summary><div class="arts">${more.map((a) => a.html).join('')}</div></details>`;
+        if (off.length) actions += `<details class="arts-more off" data-fold="off" ${this.artsFold.off ? 'open' : ''}><summary>${notAct ? `${esc(notAct)}：技・軍略（${off.length}）` : `今は使えない技・軍略（${off.length}）`}</summary><div class="arts">${off.map((a) => a.html).join('')}</div></details>`;
+      }
       const br = act ? breachTargets(st, u) : [];
       if (br.length) actions += `<button data-breach="1" class="${this.mode.type === 'breach' ? 'on' : ''}" data-tip="届く所の門・砦の門・柵を通常攻撃で打って壊します。門と砦の門は、壊すまで攻め手は通れません。石火矢・大筒の系統は2倍、火の攻撃は1.5倍の力で壊します。壊れた門は道に、柵は平地になります。">壊す（門・柵） <small>${br.length}か所</small></button>`;
       // 部隊ごとの退却：初期配置のマスにいる武将だけ
@@ -1362,6 +1382,8 @@ export class App {
     this.root.querySelectorAll<HTMLButtonElement>('[data-skill]').forEach((b) => { b.onclick = () => { this.mode = { type: 'skill', id: b.dataset.skill! }; this.autoTarget(); this.showInfo(); }; });
     this.root.querySelectorAll<HTMLButtonElement>('[data-tactic]').forEach((b) => { b.onclick = () => { this.mode = { type: 'tactic', id: b.dataset.tactic! }; this.autoTarget(); this.showInfo(); }; });
     this.root.querySelectorAll<HTMLButtonElement>('[data-breach]').forEach((b) => { b.onclick = () => { this.mode = { type: 'breach', id: '' }; this.autoTarget(); this.showInfo(); }; });
+    // 畳んだ技・軍略の欄：開け閉めを覚えておく（書き直しても、開いたまま）
+    this.root.querySelectorAll<HTMLDetailsElement>('details[data-fold]').forEach((d) => { d.ontoggle = () => { this.artsFold[d.dataset.fold as 'more' | 'off'] = d.open; }; });
     const on = (id: string, fn: () => void) => { const b = this.root.querySelector<HTMLButtonElement>(id); if (b) b.onclick = fn; };
     on('#cancel', () => this.cancel());
     on('#wait', () => { this.act({ type: 'wait', unit: u!.id }); this.refresh(); });

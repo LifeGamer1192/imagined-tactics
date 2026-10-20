@@ -83,10 +83,11 @@ describe('ima-rpg save into hex-sim (P61)', { timeout: 30000 }, () => {
     expect(rival.stats.str).toBe(Math.round(50 + 0.7 * 80 + 0.2 * 40));
   });
 
-  it('infers traits for people without any, and picks the strongest arts within the limits', () => {
+  it('infers traits for people without any, and keeps every art (no limit)', () => {
     expect(inferTraits({ feats: ['sword'], origin: 'youxia', skill: () => 0 })).toEqual(['warrior', 'brave']);
     expect(inferTraits({ origin: 'merchant', feats: ['trade'], skill: () => 0 })).toEqual(['generous']);
     const all = D.skills.map((s) => s.id).filter((id) => id.startsWith('k'));
-    expect(pickArts(all).skills.length).toBe(8);
+    // 上限なし（0）：hex-sim にある技はすべて
+    expect(pickArts(all).skills.length).toBe(all.filter((id) => D.bySkill[id]).length);
   });
 });

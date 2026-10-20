@@ -15,8 +15,9 @@
   },
   "_ab": "hist-sim の能力4つ（政治・軍事・外交・魅力、0〜10）の見立て。役職の向きと性格に使う",
   "ab": { "admin": ["letters", 0.1], "military": ["blade", 0.06, "bow", 0.04], "diplomacy": ["speech", 0.1], "charisma": ["fame", 0.1] },
-  "maxSkills": 8,
-  "maxTactics": 8,
+  "_max": "技・軍略を引き継ぐ数の上限（0 なら上限なし。戦闘の画面は、多いときは使えるものを先に出し、残りを畳む）",
+  "maxSkills": 0,
+  "maxTactics": 0,
   "maxTraits": 3,
   "troop": { "levelBase": 1, "levelPerLv": 3, "heroUnit": { "foot": "u01b", "archer": { "jp": "u06a", "cn": "u04a" } } },
   "units": {

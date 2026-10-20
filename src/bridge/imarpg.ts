@@ -86,10 +86,10 @@ export function inferTraits(src: { feats?: string[]; skill?: (k: SkillId) => num
   return out;
 }
 
-/** 技（k）と軍略（x）：hex-sim にあるものを、強い順に決まった数まで */
+/** 技（k）と軍略（x）：hex-sim にあるものを、強い順に（maxSkills・maxTactics が 0 なら、すべて） */
 export function pickArts(arts: string[] = []): { skills: string[]; tactics: string[] } {
-  const skills = arts.filter((id) => id.startsWith('k') && D.bySkill[id]).sort((a, b) => D.bySkill[b].power - D.bySkill[a].power || a.localeCompare(b)).slice(0, I.maxSkills);
-  const tactics = arts.filter((id) => id.startsWith('x') && D.byTactic[id]).sort((a, b) => (D.byTactic[b].power || D.byTactic[b].mp) - (D.byTactic[a].power || D.byTactic[a].mp) || a.localeCompare(b)).slice(0, I.maxTactics);
+  const skills = arts.filter((id) => id.startsWith('k') && D.bySkill[id]).sort((a, b) => D.bySkill[b].power - D.bySkill[a].power || a.localeCompare(b)).slice(0, I.maxSkills || undefined);
+  const tactics = arts.filter((id) => id.startsWith('x') && D.byTactic[id]).sort((a, b) => (D.byTactic[b].power || D.byTactic[b].mp) - (D.byTactic[a].power || D.byTactic[a].mp) || a.localeCompare(b)).slice(0, I.maxTactics || undefined);
   return { skills, tactics };
 }
 
