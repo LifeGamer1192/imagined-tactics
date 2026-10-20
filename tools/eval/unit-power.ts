@@ -29,6 +29,9 @@ const DISABLE = new Set<StatusId>(['daze', 'stun', 'confuse', 'defect']);
 const STAT_FX = new Set<StatusId>(['weaken', 'atkDown', 'intDown', 'grounded', 'atkUp', 'defUp', 'agiUp', 'resistUp', 'atkNext', 'sureNext', 'mounted', 'moveUp', 'regen', 'ward']);
 
 function mk(id: string, side: 0 | 1, pos: number): BUnit {
+  // 将の役職のとき（HEX_CLASSES）は、標準の将を作る
+  const hook = (globalThis as unknown as { __mk?: (i: string, s: 0 | 1, p: number) => BUnit }).__mk;
+  if (hook && D.byClass[id]) return hook(id, side, pos);
   const def = D.byUnit[id], t = makeTroop(def, LV);
   return {
     id: side, side, home: side, kind: 'troop', generalId: `g${side}`, leader: side, troopIndex: 0, defId: id, name: L(def.name), level: LV, pos,
@@ -186,6 +189,49 @@ function duel(aId: string, tId: string, aFirst: boolean, log: Log): [number, num
   }
   const dealt = Math.min(1, Math.max(0, (T.u.maxHp - T.hp) / T.u.maxHp)), taken = Math.min(1, Math.max(0, (A.u.maxHp - A.hp) / A.u.maxHp));
   return [dealt, taken];
+}
+
+// ---------------------------------------------------------------- 将の役職も比べる（HEX_CLASSES=1）
+// 標準の将：見本の戦国1575年の、Lv18〜22の武将の能力の真ん中。役職の加減・防御・移動・得意地形・通常攻撃・軍略を当てはめる。
+// 相手は上級の兵種12種（上級の表と同じ物差し。100 が上級の並）
+if (process.env.HEX_CLASSES) {
+  const { convert } = await import('../../src/convert/convert');
+  const { FIXTURES, loadFixture } = await import('../../tests/helpers');
+  const pool = [];
+  for (const f of FIXTURES) pool.push(...Object.values(convert(await loadFixture(f)).generals).filter((g) => g.faction && Math.abs(g.level - LV) <= 5));
+  const med = (k: 'hp' | 'mp' | 'str' | 'int' | 'agi') => { const v = pool.map((g) => g.stats[k]).sort((a, b) => a - b); return v[Math.floor(v.length / 2)]; };
+  const base = { hp: med('hp'), mp: med('mp'), str: med('str'), int: med('int'), agi: med('agi') };
+  console.log(`標準の将（見本4つの Lv${LV - 5}〜${LV + 5} の${pool.length}人の真ん中）：体力${base.hp} 気力${base.mp} 武力${base.str} 知略${base.int} 機敏${base.agi}`);
+  const troops3 = D.units.filter((u) => u.tier === (ONLY ?? 3));
+  const mkGen = (cid: string): BUnit => {
+    const c = D.byClass[cid], u = mk(troops3[0].id, 0, 0);
+    Object.assign(u, {
+      kind: 'general', defId: cid, name: L(c.name), hp: base.hp + c.mod.hp, maxHp: base.hp + c.mod.hp, mp: base.mp + c.mod.mp, maxMp: base.mp + c.mod.mp,
+      str: base.str + c.mod.str, int: base.int + c.mod.int, agi: base.agi + c.mod.agi, def: c.def, move: c.move, affinity: c.affinity,
+      passives: [], skills: [`atk:${cid}`], tactics: [...c.tactics],
+    });
+    return u;
+  };
+  // 相手の作り方を、役職なら標準の将、兵種なら兵に切り替える
+  const realMk = mk;
+  (globalThis as unknown as { __mk: typeof mk }).__mk = (id, side, pos) => (D.byClass[id] ? Object.assign(mkGen(id), { id: side, side, home: side, pos }) : realMk(id, side, pos));
+  const rows = D.classes.map((c) => {
+    let lnSum = 0, wins = 0;
+    const log: Log = { used: new Map(), mpOut: null };
+    for (const t of troops3) {
+      let dealt = 0, taken = 0;
+      for (const first of [true, false]) { const [d, k] = duel(c.id, t.id, first, log); dealt += d / 2; taken += k / 2; }
+      const ratio = Math.min(20, Math.max(0.05, (dealt + 0.01) / (taken + 0.01)));
+      lnSum += Math.log(ratio); if (ratio > 1) wins++;
+    }
+    const tot = [...log.used.values()].reduce((s, x) => s + x, 0);
+    const used = [...log.used].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `${k}${Math.round((n / tot) * 100)}%`).join('・');
+    return { c, power: Math.round(Math.exp(lnSum / troops3.length) * 100), wins, used, mpOut: log.mpOut };
+  }).sort((a, b) => b.power - a.power);
+  console.log(`\n=== 将の役職（${rows.length}）：標準の将に当てはめ、格${ONLY ?? 3}の兵種${troops3.length}種（Lv${LV}）と1対1・${ROUNDS}巡。100＝その格の兵種の並 ===`);
+  console.log('順\t役職\t格\t当主\t強さ\t勝ち越し\t攻撃\t防御\t移動\t得意\t気力切れ\t主な行動');
+  rows.forEach((r, i) => console.log(`${i + 1}\t${L(r.c.name)}\t${r.c.tier}\t${r.c.unique === 'lord' ? '当主' : r.c.unique === 'feature' ? '特別' : ''}\t${r.power}\t${r.wins}/${troops3.length}\t${r.c.attack.kind === 'bow' ? '弓' : '近'}${r.c.attack.power}\t${r.c.def}\t${r.c.move}\t${r.c.affinity}\t${r.mpOut ? `${r.mpOut}巡目` : '-'}\t${r.used}`));
+  process.exit(0);
 }
 
 const tiers = ONLY ? [ONLY] : [1, 2, 3];
