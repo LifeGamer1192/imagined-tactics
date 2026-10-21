@@ -83,7 +83,7 @@ hist-sim 側の「この状態で hex で遊ぶ」ボタンは未実装。
 | 戦略の操作（PC幅とスマホ幅） | `node tools/campaign-check.mjs` |
 | 外交の操作 | `node tools/diplomacy-check.mjs` |
 | 遊び方の案内 | `node tools/help-check.mjs` |
-| 見本4つの通し（観戦の1戦＋戦略24か月） | `node tools/soak-check.mjs`（ビルド版には `HEX_URL` で場所を指定） |
+| 見本5つの通し（観戦の1戦＋戦略24か月） | `node tools/soak-check.mjs`（ビルド版には `HEX_URL` で場所を指定） |
 | 操作への反応（無反応は0.2秒以内） | `node tools/respond-check.mjs` |
 | サブフォルダに置いたビルド版 | `node tools/subdir-check.mjs` |
 
