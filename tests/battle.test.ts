@@ -185,7 +185,7 @@ describe('battle flow', () => {
 });
 
 describe('auto battle from real saves', () => {
-  for (const f of ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'rome_fid3_212bc', 'invented_archipelago_y30']) {
+  for (const f of ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'sangoku_fid5_212', 'rome_fid3_212bc', 'invented_archipelago_y30']) {
     it(f, async () => {
       const save = await loadFixture(f);
       const gs = convert(save);

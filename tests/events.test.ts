@@ -363,7 +363,7 @@ describe('off-stage land', () => {
 
 describe('ages', () => {
   it('nobody starts centuries old: long-dead army leaders are left out, stale birth months are reset', async () => {
-    for (const name of ['shunju_fid5_259bc', 'sengoku_fid5_1575', 'rome_fid3_212bc', 'invented_archipelago_y30']) {
+    for (const name of ['shunju_fid5_259bc', 'sengoku_fid5_1575', 'sangoku_fid5_212', 'rome_fid3_212bc', 'invented_archipelago_y30']) {
       const save = await loadFixture(name);
       const gs = convert(save);
       for (const g of Object.values(gs.generals)) {

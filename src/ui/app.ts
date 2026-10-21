@@ -50,6 +50,7 @@ import { BGM_LEVEL_NAME, bgm, bgmLevel, initBgm, jingle, setBgmLevel } from './b
 const SAMPLES: [string, string][] = [
   ['sengoku_fid5_1575', '日本の戦国 1575年'],
   ['shunju_fid5_259bc', '春秋戦国 前259年'],
+  ['sangoku_fid5_212', '三国志 212年'],
   ['rome_fid3_212bc', 'ローマ 前212年'],
   ['invented_archipelago_y30', '架空の多島海 30年目'],
 ];

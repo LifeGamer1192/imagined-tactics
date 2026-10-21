@@ -6,7 +6,7 @@ import path from 'node:path';
 const require = createRequire(path.resolve('../hist-sim/package.json'));
 const { chromium } = require('playwright');
 const url = process.env.HEX_URL ?? 'http://localhost:5183/';
-const SAMPLES = ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'rome_fid3_212bc', 'invented_archipelago_y30'];
+const SAMPLES = ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'sangoku_fid5_212', 'rome_fid3_212bc', 'invented_archipelago_y30'];
 const browser = await chromium.launch();
 let ng = 0;
 const ok = (name, v, extra = '') => { if (!v) ng++; console.log(v ? 'OK ' : 'NG ', name, extra); };

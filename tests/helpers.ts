@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import type { BattleMap } from '../src/battle/map';
 import { readSaveFile, type HSave } from '../src/bridge/histsim';
 
-export const FIXTURES = ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'rome_fid3_212bc', 'invented_archipelago_y30'] as const;
+export const FIXTURES = ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'sangoku_fid5_212', 'rome_fid3_212bc', 'invented_archipelago_y30'] as const;
 const cache = new Map<string, HSave>();
 
 export async function loadFixture(name: string): Promise<HSave> {

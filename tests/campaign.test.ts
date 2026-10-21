@@ -29,7 +29,7 @@ function invariants(c: Awaited<ReturnType<typeof campaign>>): void {
 
 describe('campaign', () => {
   it('starts consistent: every general stands in a province of their faction', async () => {
-    for (const f of ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'rome_fid3_212bc', 'invented_archipelago_y30']) invariants(await campaign(f));
+    for (const f of ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'sangoku_fid5_212', 'rome_fid3_212bc', 'invented_archipelago_y30']) invariants(await campaign(f));
   }, 60000);
 
   it('relations follow the save', async () => {
