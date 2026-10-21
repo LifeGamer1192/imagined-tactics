@@ -38,6 +38,7 @@ import { personalityLabel, personalityOf, planLabel, PLAN_LABEL, PLAN_TIP } from
 import { bindPlan, getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
 import { spanText, startChronicle } from '../strategy/chronicle';
 import { artUrl } from '../art/art';
+import { faceFor } from '../art/faces';
 
 /** 画面の土台（App）に求めるもの */
 export interface Host {
@@ -308,8 +309,10 @@ export class CampaignScreen {
   /** 窓を出す枠 */
   private frame(): HTMLElement { return this.host.root.querySelector<HTMLElement>('.battle')!; }
 
-  /** 武将の後ろ姿（顔は描かない）。役割と性別で選ぶ */
+  /** 武将の絵。史実の人物で顔絵があればその顔（hist-sim と共有）、なければ後ろ姿（顔は描かない）を役割と性別で選ぶ */
   private figure(g: GGeneral): string {
+    const face = this.c.gs.scenario ? faceFor(this.c.gs.scenario, g.recordName ?? g.name.ja) : null;
+    if (face) return `<img class="fig face" src="${import.meta.env.BASE_URL ?? './'}${face}" alt="" draggable="false">`;
     const v = this.c.gs.variant;
     const role = g.isLord || g.role === 'heir' ? 'lord' : g.sex === 'f' ? 'woman' : !g.faction || g.role === 'hero' ? 'wanderer'
       : g.role === 'minister' ? 'strategist' : g.role === 'scholar' || g.role === 'artist' ? 'monk'

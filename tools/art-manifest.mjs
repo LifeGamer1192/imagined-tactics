@@ -9,7 +9,8 @@ const files = [];
 function walk(dir) {
   for (const name of readdirSync(dir)) {
     const p = path.join(dir, name);
-    if (statSync(p).isDirectory()) walk(p);
+    // faces/ は史実の人物の顔絵（hist-sim から写す。台帳 faces.json で引くので、一覧には入れない）
+    if (statSync(p).isDirectory()) { if (path.relative(root, p) !== 'faces') walk(p); }
     else if (/\.(webp|png)$/.test(name)) files.push(path.relative(root, p).replaceAll('\\', '/'));
   }
 }

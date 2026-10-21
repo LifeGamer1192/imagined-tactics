@@ -140,6 +140,9 @@ body .result.low .banner { height: clamp(60px, 10vh, 110px); }
 details.pf-more { max-height: none; margin: 0 0 4px; } details.pf-more > summary { cursor: pointer; color: var(--gold, #c9a227); font-size: 12px; }
 .pf-head { display: flex; gap: 10px; align-items: center; }
 .pf-head .fig { width: 64px; height: auto; }
+/* 史実の人物の顔絵（256×320 の胸像） */
+.fig.face { height: 46px; width: 37px; flex-basis: 37px; object-fit: cover; object-position: top; border-radius: 4px; border: 1px solid var(--line, rgba(200,170,110,0.5)); margin: 0; }
+.pf-head .fig.face { width: 96px; height: 120px; flex-basis: 96px; }
 .pf-name { font: 700 20px var(--mincho); }
 .pf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px; }
 .pf-stats { border-collapse: collapse; font-size: 12.5px; }

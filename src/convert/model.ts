@@ -25,6 +25,8 @@ export interface GGeneral {
   /** hist-sim の人物ID（記録上の人物・当主） */
   pid?: number;
   name: Name;
+  /** 名前を変える前の、記録の名前（顔絵を引くのに使う） */
+  recordName?: string;
   house: Name;
   /** 仕えている勢力（0 = 浪人） */
   faction: number;

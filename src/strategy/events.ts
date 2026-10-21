@@ -538,6 +538,7 @@ const cleanName = (name: string): string => name.replace(/[\u0000-\u001f<>]/g, '
 export function renameGeneral(c: Campaign, gid: string, name: string): boolean {
   const g = c.gs.generals[gid], n = cleanName(name);
   if (!g || !n) return false;
+  g.recordName ??= g.name.ja;
   g.name = { ja: n, en: n };
   return true;
 }
