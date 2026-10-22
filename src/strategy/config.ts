@@ -63,13 +63,21 @@ export const S = strategyJson as unknown as {
     attackRatio: number; attackChance: number; neutralMult: number; aggressionRatio: number; cautionRatio: number; aggressionChance: number;
     cunningEmptyBonus: number; honorNeutralPenalty: number; warBonus: number; emptyDefenseShare: number; reserveSupply: number;
   };
-  difficulty: Record<Difficulty, { name: string; playerIncome: number; playerSiege: number; aiVsPlayer: number; aiTroopLevel: number; aiEmptyChance: number }>;
+  /**
+   * 難しさ。aiIncome：相手の勢力の収入に掛ける数、aiGeneralLevel：始めに相手の武将のレベルに足す数、
+   * aiGangUp：自分が最も大きい国のとき、相手どうしが組んで自分を攻める強さ（0〜1）、warn：選ぶときの注意（P64）
+   */
+  difficulty: Record<Difficulty, { name: string; playerIncome: number; playerSiege: number; aiVsPlayer: number; aiTroopLevel: number; aiEmptyChance: number; aiIncome?: number; aiGeneralLevel?: number; aiGangUp?: number; warn?: string }>;
   supply: { capMonths: number; capMin: number };
   tactical: { lines: number[]; capPerGeneral: number };
   traits: { economy: Record<string, FactionTrait>; government: Record<string, FactionTrait> };
 };
 
-export type Difficulty = 'easy' | 'normal' | 'hard';
+export type Difficulty = 'easy' | 'normal' | 'hard' | 'veryHard' | 'oni';
+/** 難しさの並び（選ぶ所に出す順） */
+export const DIFFICULTIES: readonly Difficulty[] = ['easy', 'normal', 'hard', 'veryHard', 'oni'];
+/** セーブなどから読んだ難しさ。知らない値は「ふつう」 */
+export const validDifficulty = (d: unknown): Difficulty => (DIFFICULTIES as readonly unknown[]).includes(d) ? (d as Difficulty) : 'normal';
 
 /** 勢力の特色（経済と政体から決まる） */
 export interface FactionTrait {

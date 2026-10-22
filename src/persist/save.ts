@@ -6,6 +6,7 @@ import type { HWorld } from '../bridge/histsim';
 import type { GameStart } from '../convert/model';
 import { RNG } from '../core/rng';
 import type { Campaign, CampaignLog } from '../strategy/campaign';
+import { validDifficulty } from '../strategy/config';
 import { initScout } from '../strategy/scouting';
 
 export const SAVE_FORMAT = 'hex-sim';
@@ -90,7 +91,7 @@ export function restore(s: HexSave): Campaign {
   const c: Campaign = {
     gs: k.gs, world: data.world, player: k.player, months: k.months, over: k.over,
     moved: new Set(k.moved), log: [...k.log], rng: RNG.restore(k.rng[0], k.rng[1]),
-    items: k.items ?? {}, sieges: k.sieges ?? {}, away: k.away ?? {}, difficulty: k.difficulty ?? 'normal', offers: k.offers ?? [], wounded: k.wounded ?? {}, reserve: k.reserve ?? {}, built: k.built ?? {}, relocations: k.relocations ?? {}, history: k.history ?? { done: [] },
+    items: k.items ?? {}, sieges: k.sieges ?? {}, away: k.away ?? {}, difficulty: validDifficulty(k.difficulty), offers: k.offers ?? [], wounded: k.wounded ?? {}, reserve: k.reserve ?? {}, built: k.built ?? {}, relocations: k.relocations ?? {}, history: k.history ?? { done: [] },
     training: k.training ?? {}, trainedThisMonth: k.trainedThisMonth ?? [], trainBonus: k.trainBonus ?? {}, scout: k.scout, scoutMissions: k.scoutMissions ?? [], offices: k.offices ?? {}, resting: k.resting ?? {}, autoPlan: k.autoPlan, chronicle: k.chronicle, feats: k.feats, unified: k.unified, realms: k.realms,
   };
   // 偵察度の無い古いセーブは、隣の領から始める

@@ -458,6 +458,7 @@ export class CampaignScreen {
       <div class="u-title">天下統一</div>
       <p class="u-lead">${factionBadge(me.name.ja, me.color)}　${yr(gs.year)}${gs.month}月、ついに天下をひとつにまとめる</p>
       <p class="u-sub">${start ? `${yr(start.year)}${start.month}月に起ってから、${esc(spanText(c))}。` : ''}${lord ? `当主 <b>${esc(lord.name.ja)}</b> のもと、` : ''}乱世はここに終わりを告げた。</p>
+      <p class="u-sub small">難しさ：<b class="${c.difficulty === 'oni' ? 'oni' : ''}">${esc(S.difficulty[c.difficulty].name)}</b>${c.difficulty === 'oni' ? '　——鬼の難しさで天下を取った者は、古今にほとんどいない。まさに「鬼神」の業である。' : c.difficulty === 'veryHard' ? '　——並の将では成し得ぬ、非常の偉業である。' : ''}</p>
       <div class="u-stats">
         <div><b>${provincesOf(c, me.id).length}</b><span>領</span></div>
         <div><b>${gens.length}</b><span>武将</span></div>
@@ -1374,7 +1375,7 @@ export class CampaignScreen {
         <button id="next" class="primary" ${c.over || this.autoOn ? 'disabled' : ''}>月を進める</button>
         ${c.player ? `<button id="autoMonth" class="${this.autoOn ? 'on autoing' : ''}" ${c.over ? 'disabled' : ''} data-tip="押すと、自分の勢力の動きもおまかせにして1か月進めます。2度押すと、ずっとおまかせで進みます（どこかを押すと手動に戻ります）。">${this.autoOn ? 'ずっとオート中…（押すと手動）' : '1か月オート'}</button>` : ''}
         ${c.player ? '' : '<button id="run">12か月進める</button>'}
-        <span class="dim">勢力${Object.keys(gs.factions).length}・${c.months}か月・${S.difficulty[c.difficulty].name}</span>
+        <span class="dim">勢力${Object.keys(gs.factions).length}・${c.months}か月・<span class="${c.difficulty === 'oni' ? 'oni' : ''}" title="難しさ">${S.difficulty[c.difficulty].name}</span></span>
         ${c.player ? `<button id="planBtn" data-tip="味方をおまかせで戦わせるとき（おまかせ・観戦・1か月オート）の動き方。押すと切り替えられます">方針：${esc(planLabel(getPlan()))}</button>` : ''}
         ${c.player ? `<button id="reelBtn" title="月を進めたあと、ほかの国どうしの戦いを1つずつ見せるか">他国の戦い：${reelOn() ? '見る' : '見ない'}</button>` : ''}
         <button id="saves">セーブ</button>

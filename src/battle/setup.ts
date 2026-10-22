@@ -1,7 +1,7 @@
 // ゲーム開始データの武将と兵から、戦闘の初期状態を作る。
 
 import type { GGeneral, GameStart } from '../convert/model';
-import { personalityOf } from '../ai/personality';
+import { AI, personalityOf, type AiLevel } from '../ai/personality';
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { classMod } from '../rules/growth';
@@ -125,4 +125,27 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
     });
   }
   return st;
+}
+
+/** 難しさの名前（駒の能力の変化の原因に書く） */
+const LEVEL_NAME: Record<AiLevel, string> = { easy: 'やさしい', normal: 'ふつう', hard: 'むずかしい', veryHard: '非常に難しい', oni: '鬼' };
+
+/**
+ * 戦闘の難しさを決める（P64）。相手の陣営の思考の賢さが変わり、非常に難しい・鬼では相手の駒の体力・武力・知略も上がる。
+ * 上がったぶんは、特性と同じく駒の「能力の変化」に原因（難しさ）と値を書く
+ */
+export function setAiLevel(st: BattleState, side: Side, level: AiLevel): void {
+  st.aiLevel = { side, level };
+  const m = AI.levels[level]?.statMult ?? 1;
+  if (m === 1) return;
+  const why = `難しさ（${LEVEL_NAME[level]}）`, value = `${m > 1 ? '+' : ''}${Math.round((m - 1) * 100)}%`;
+  for (const u of st.units) {
+    if (u.side !== side) continue;
+    const fx = (u.traitFx ??= []);
+    const up = (stat: 'str' | 'int'): void => { const from = u[stat]; u[stat] = Math.max(1, Math.round(from * m)); fx.push({ stat, from, to: u[stat], value, traits: [], why }); };
+    const from = u.maxHp;
+    u.maxHp = Math.max(1, Math.round(u.maxHp * m)); u.hp = Math.min(u.maxHp, Math.round(u.hp * m));
+    fx.push({ stat: 'hp', from, to: u.maxHp, value, traits: [], why });
+    up('str'); up('int');
+  }
 }

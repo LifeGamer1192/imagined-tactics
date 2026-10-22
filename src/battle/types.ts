@@ -51,7 +51,7 @@ export interface BUnit {
   mpCostPct?: number;
   supportMpCostPct?: number;
   /** 戦いの始めに特性で変わった能力の書き留め（P58）。stat：能力の名前の鍵、value：「+12%」など、traits：効いた特性の id */
-  traitFx?: { stat: string; from?: number; to?: number; value: string; traits: string[] }[];
+  traitFx?: { stat: string; from?: number; to?: number; value: string; traits: string[]; /** 特性でないときの原因（「難しさ（鬼）」など） */ why?: string }[];
   /** 武将の性格（敵の思考で使う。兵は率いる武将の性格で動く） */
   persona?: Personality;
   statuses: BStatus[];
@@ -172,7 +172,7 @@ export interface BattleState {
   /** 退いた陣営（国モードの「退く」）。退いた陣営の負けで、初期配置のマスの外にいた部隊だけが重い罰を受ける */
   retreat?: Side;
   /** 戦闘の難しさ：自分と戦う相手の陣営（side）の、思考の賢さ（やさしい・ふつう・むずかしい）。数値は変えない */
-  aiLevel?: { side: Side; level: 'easy' | 'normal' | 'hard' };
+  aiLevel?: { side: Side; level: 'easy' | 'normal' | 'hard' | 'veryHard' | 'oni' };
   /** 味方のおまかせの方針（P50）：陣営ごと。ある陣営は、武将の性格の代わりにこれで動く */
   autoPlan?: [AutoPlan | null, AutoPlan | null];
 }

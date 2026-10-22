@@ -4,7 +4,7 @@ import cfgJson from '../../data/system/convert.json';
 import { autoBattle, runAiTurn } from '../ai/ai';
 import { BM, mapFromProvince, type BattleMap, type ProvinceLook } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
-import { createBattle, MAX_GENERALS } from '../battle/setup';
+import { createBattle, MAX_GENERALS, setAiLevel } from '../battle/setup';
 import type { BattleState } from '../battle/types';
 import type { HWorld } from '../bridge/histsim';
 import { makeGarrison, makeTroop } from '../convert/convert';
@@ -12,7 +12,7 @@ import type { GFaction, GGeneral, GProvince, GTroop, GameStart } from '../conver
 import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { TRAITS } from '../rules/traits';
-import { classMod } from '../rules/growth';
+import { addLevels, classMod } from '../rules/growth';
 import { addFeats, chronFromLog, realmEvent, realmFell, realmFromLog, sampleRealms, type ChronEntry, type Feat, type RealmHist } from './chronicle';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
@@ -139,6 +139,9 @@ export function newCampaign(gs: GameStart, world: HWorld, player: number, diffic
   const c: Campaign = { gs, world, player, rng: new RNG(codeToSeed(`${gs.seed}:${gs.tick}:campaign`)), moved: new Set(), log: [], over: null, months: 0, items: {}, sieges: {}, away: {}, wounded: {}, difficulty, offers: [], reserve: {}, built: {}, relocations: {}, history: { done: [], from: gs.year * 12 + gs.month } };
   // hist-sim では軍が他国の領にいることがある（遠征・包囲）。戦略パートでは、武将は必ず自分の勢力の領にいることにする
   for (const g of Object.values(gs.generals)) if (g.faction && gs.provinces[g.prov]?.owner !== g.faction) g.prov = homeFor(c, g.faction, g.prov);
+  // 難しさ（非常に難しい・鬼。P64）：相手の勢力の武将は、始めのレベルが上がる
+  const lvUp = player ? S.difficulty[difficulty].aiGeneralLevel ?? 0 : 0;
+  if (lvUp) for (const g of Object.values(gs.generals)) if (g.faction && g.faction !== player) addLevels(g, lvUp);
   // 開始時の兵糧も、蔵に入るぶんまで（hist-sim の国庫が大きい勢力は、上限の何倍にもなるため）
   refreshIncome(c);
   for (const f of Object.values(gs.factions)) f.supply = Math.min(f.supply, supplyCap(f));
@@ -517,7 +520,7 @@ export function battleFor(c: Campaign, pb: PendingBattle): BattleState {
   const cut = battleSupply(c, pb);
   if (cut[0] !== 1 || cut[1] !== 1) st.supplyMult = cut;
   // 戦闘の難しさ：自分の勢力と戦う相手の陣営だけ、思考の賢さが変わる（相手どうしの戦いは、ふつう）
-  if (c.player && (pb.attacker === c.player || pb.defender === c.player)) st.aiLevel = { side: pb.attacker === c.player ? 1 : 0, level: c.difficulty };
+  if (c.player && (pb.attacker === c.player || pb.defender === c.player)) setAiLevel(st, pb.attacker === c.player ? 1 : 0, c.difficulty);
   // 味方のおまかせの方針（P50）：自分の陣営は、武将の性格の代わりに方針で動く
   if (c.player && (pb.attacker === c.player || pb.defender === c.player)) {
     const plan = c.autoPlan ?? DEFAULT_PLAN;
@@ -650,7 +653,8 @@ function capture(c: Campaign, pb: PendingBattle): void {
 
 function refreshIncome(c: Campaign): void {
   for (const f of Object.values(c.gs.factions)) {
-    const mult = traitsOf(f).reduce((m, t) => m * (t.incomeMult ?? 1), 1) * (f.id === c.player ? S.difficulty[c.difficulty].playerIncome : 1);
+    const dif = S.difficulty[c.difficulty];
+    const mult = traitsOf(f).reduce((m, t) => m * (t.incomeMult ?? 1), 1) * (f.id === c.player ? dif.playerIncome : c.player ? dif.aiIncome ?? 1 : 1);
     // 飛び地の収入は大きく減る
     const ex = exclavesOf(c, f.id);
     f.income = Math.round(provincesOf(c, f.id).reduce((s, p) => s + p.income * (ex.has(p.id) ? S.exclave.incomeMult : 1), 0) * mult);
@@ -922,6 +926,14 @@ function threatened(c: Campaign, f: number, prov: number): boolean {
   return neighborsOf(c, prov).some((n) => { const o = c.gs.provinces[n].owner; return o !== f && o !== 0 && canAttack(c, o, f); });
 }
 
+/** 自分の勢力が、領の数でいちばん大きいか（同じ数を含む） */
+function playerLeads(c: Campaign): boolean {
+  const n = new Map<number, number>();
+  for (const p of Object.values(c.gs.provinces)) if (p.owner) n.set(p.owner, (n.get(p.owner) ?? 0) + 1);
+  const mine = n.get(c.player) ?? 0;
+  return mine > 0 && [...n.values()].every((v) => v <= mine);
+}
+
 /**
  * 勢力の1か月ぶんの行動。プレイヤーの領への攻撃は、戦わずに返す（プレイヤーが戦う）。
  * 当主の性格で判断が変わる：猛攻なら少ない戦力差でも攻め、慎重なら十分に勝る相手だけを攻める。
@@ -934,6 +946,8 @@ function aiFaction(c: Campaign, f: GFaction): PendingBattle[] {
   const chance = Math.max(0.2, Math.min(0.95, A.attackChance * (1 + per.aggression * A.aggressionChance)));
   aiRecruit(c, f);
   if (f.id !== c.player) aiBuild(c, f);
+  // 組んで攻める（非常に難しい・鬼。P64）：自分が最も大きい国のとき、相手は自分を狙いやすく、相手どうしは攻め合いにくい
+  const gang = c.player && f.id !== c.player && playerLeads(c) ? S.difficulty[c.difficulty].aiGangUp ?? 0 : 0;
   for (const p of provincesOf(c, f.id)) {
     if (!c.gs.factions[f.id]) break;
     const here = generalsAt(c, p.id, f.id).filter((g) => !c.moved.has(g.id));
@@ -952,7 +966,9 @@ function aiFaction(c: Campaign, f: GFaction): PendingBattle[] {
       if (c.sieges[n]?.by === f.id) score *= 1.5;       // 始めた包囲は続ける
       if (t.owner === c.player && c.player) score *= S.difficulty[c.difficulty].aiVsPlayer;
       if (t.owner && relation(c, f.id, t.owner) === 'war') score *= A.warBonus;
+      else if (t.owner === c.player && gang) score *= A.warBonus;   // 組んで攻めるときは、戦争中でなくても自分を攻める
       else if (t.owner) score *= A.neutralMult * (1 - Math.max(0, per.honor) * A.honorNeutralPenalty);   // 戦争中でない相手には、仕掛けにくい
+      if (gang && t.owner) score *= t.owner === c.player ? 1 + gang : 1 - gang * 0.5;
       if (!best || score > best.score) best = { to: n, score, empty: !defenders.length };
     }
     // 守りのいない領は取りやすいが、毎月のように取り合うと落ち着かないので、仕掛ける頻度は下げる

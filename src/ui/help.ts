@@ -10,7 +10,8 @@ import type { Affinity, StatusId, TerrainKind } from '../data/types';
 import { SLOTS } from '../persist/save';
 import { TERRAIN_NAME } from '../render/battleView';
 import { FIELD } from '../rules/stats';
-import { S } from '../strategy/config';
+import { AI } from '../ai/personality';
+import { DIFFICULTIES, S } from '../strategy/config';
 import { AFFINITY_NAME, STATUS_NAME, TRAIT_NAME } from './text';
 import { statusEffect } from './describe';
 
@@ -154,8 +155,9 @@ function strategy(): string {
     <h3>兵糧と難しさ</h3>
     ${ul([
       `兵糧は、収入の${S.supply.capMonths}か月ぶん（少なくとも${S.supply.capMin}）までためられる。画面の上の「兵糧 今の量／上限」で分かる。`,
-      `難しさは、国を選ぶ画面で選ぶ（${(['easy', 'normal', 'hard'] as const).map((d) => S.difficulty[d].name).join('・')}）。戦略では、自分の収入（やさしい×${S.difficulty.easy.playerIncome}・むずかしい×${S.difficulty.hard.playerIncome}）、自分の領の守備兵の強さ、相手が自分を狙う度合い、相手の兵の初めのレベル（むずかしいは+${S.difficulty.hard.aiTroopLevel}）、守りのいない領を攻める度合いが変わる。`,
-      '戦闘では数値は変わらず、自分と戦う相手の考え方の賢さが変わる。やさしいは、あまり考えずに動き（危険や地形を気にせず、とどめも刺し損ねる）、守り手は城から打って出やすい。むずかしいは、弱った相手を集中して狙い、地形と危険をよく見て、天守を固く守る。さらに、とどめを刺せる駒から先に動き、傷んだ兵は前線から陣などへ下げ、受けるダメージを立つ地形で見積もり、敵を囲み自分は囲まれないように動き、気力を使う技は効き目が大きいときに取っておき、攻め手のときは時間が経つほど押し、天守を早めに目指す。将を倒すと配下の兵がみな退くので、兵を多く率いる将を狙い撃つ。局地戦では、編成の画面の「相手」で選ぶ。',
+      `難しさは、国を選ぶ画面で選ぶ（${DIFFICULTIES.map((d) => S.difficulty[d].name).join('・')}）。戦略では、自分の収入（やさしい×${S.difficulty.easy.playerIncome}・むずかしい×${S.difficulty.hard.playerIncome}）、自分の領の守備兵の強さ、相手が自分を狙う度合い、相手の兵の初めのレベル（むずかしいは+${S.difficulty.hard.aiTroopLevel}）、守りのいない領を攻める度合いが変わる。`,
+      `非常に難しい・鬼では、さらに相手の収入（×${S.difficulty.veryHard.aiIncome}・×${S.difficulty.oni.aiIncome}）と相手の武将の初めのレベル（+${S.difficulty.veryHard.aiGeneralLevel}・+${S.difficulty.oni.aiGeneralLevel}）が上がり、相手の兵の初めのレベルは+${S.difficulty.veryHard.aiTroopLevel}・+${S.difficulty.oni.aiTroopLevel}、自分の収入は×${S.difficulty.veryHard.playerIncome}・×${S.difficulty.oni.playerIncome}。自分が最も大きい国になると、相手どうしが組んで自分を攻める（鬼のほうが強い）。戦闘では、相手の駒の体力・武力・知略が+${Math.round(((AI.levels.veryHard.statMult ?? 1) - 1) * 100)}%・+${Math.round(((AI.levels.oni.statMult ?? 1) - 1) * 100)}%（駒の「能力の変化」に出る）。どちらも初めから選べるが、選ぶと注意の窓が出る。`,
+      '戦闘では（非常に難しい・鬼を除いて）数値は変わらず、自分と戦う相手の考え方の賢さが変わる。やさしいは、あまり考えずに動き（危険や地形を気にせず、とどめも刺し損ねる）、守り手は城から打って出やすい。むずかしいは、弱った相手を集中して狙い、地形と危険をよく見て、天守を固く守る。さらに、とどめを刺せる駒から先に動き、傷んだ兵は前線から陣などへ下げ、受けるダメージを立つ地形で見積もり、敵を囲み自分は囲まれないように動き、気力を使う技は効き目が大きいときに取っておき、攻め手のときは時間が経つほど押し、天守を早めに目指す。将を倒すと配下の兵がみな退くので、兵を多く率いる将を狙い撃つ。局地戦では、編成の画面の「相手」で選ぶ。',
     ])}
     <h3>諸国巡り</h3>
     <p>当主のほかの武将を、${q.months}か月の旅に出せます（武将の欄の「諸国巡りに出す」）。その間は戦えません。戻ったときに、次のどれかが起きます。</p>

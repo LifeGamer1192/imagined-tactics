@@ -63,6 +63,14 @@ export function applyStartLevels(g: GGeneral): void {
   roundStats(g.stats);
 }
 
+/** レベルを n 上げる（成長は中央値。難しさで相手の武将を強くするときに使う。P64） */
+export function addLevels(g: GGeneral, n: number): void {
+  if (n <= 0) return;
+  g.level += n;
+  addStats(g.stats, generalGain(g, null), n);
+  roundStats(g.stats);
+}
+
 // ---------------------------------------------------------------- 経験値
 
 /** 次のレベルまでに必要な経験値（レベルに上限は無い。上がるほど必要な量が増える） */

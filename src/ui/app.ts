@@ -1,18 +1,19 @@
 // 画面：セーブの読み込み → 編成 → 戦闘 → 結果。
 
 import { autoBattle, nextAiActions, planUnit, stanceOf } from '../ai/ai';
-import { personalityLabel, personalityOf, planLabel, type AutoPlan } from '../ai/personality';
+import { AI, personalityLabel, personalityOf, planLabel, type AutoPlan } from '../ai/personality';
 import { getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
 import { apply, canAct, canMove, canWithdraw, holder, moveCells, withdraw } from '../battle/engine';
 import { mapFromProvince, seatName } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
 import { newCampaign, note, S, traitsOf, type Difficulty } from '../strategy/campaign';
+import { DIFFICULTIES } from '../strategy/config';
 import { startChronicle } from '../strategy/chronicle';
 import { CampaignScreen } from './campaignUi';
 import { restore, type HexSave } from '../persist/save';
 import { anySlot, openSaveMenu, readHexSaveFile } from './saveMenu';
 import { WORLDS_LEAD, worldsHtml } from './worlds';
-import { createBattle, MAX_GENERALS } from '../battle/setup';
+import { createBattle, MAX_GENERALS, setAiLevel } from '../battle/setup';
 import type { Action, BUnit, BattleState, Side } from '../battle/types';
 import { normalizeSave, readSaveFile, SaveError, type HSave } from '../bridge/histsim';
 import { applyIma, imaRealm, imaVariant, readImaFile, type ImaFile } from '../bridge/imarpg';
@@ -54,7 +55,37 @@ const SAMPLES: [string, string][] = [
   ['rome_fid3_212bc', 'ローマ 前212年'],
   ['invented_archipelago_y30', '架空の多島海 30年目'],
 ];
-type Mode = { type: 'idle' } | { type: 'skill'; id: string } | { type: 'tactic'; id: string } | { type: 'breach'; id: '' };
+/** 難しさを選ぶ欄の中身（鬼は朱色） */
+function difficultyOptions(cur: Difficulty, label: string): string {
+  return DIFFICULTIES.map((d) => `<option value="${d}" ${cur === d ? 'selected' : ''} ${d === 'oni' ? 'class="oni"' : ''}>${label}：${S.difficulty[d].name}</option>`).join('');
+}
+/** 難しさの注意の中身（P64）。local：単独の戦い（戦略の数は効かない） */
+function difficultyWarn(d: Difficulty, local: boolean): string {
+  const s = S.difficulty[d], m = AI.levels[d]?.statMult ?? 1;
+  const pc = (v: number): string => `${v >= 1 ? '+' : ''}${Math.round((v - 1) * 100)}%`;
+  const battle = `戦闘：相手の考え方は「むずかしい」と同じ${m !== 1 ? `。相手の駒の体力・武力・知略が${pc(m)}（駒の「能力の変化」に出ます）` : ''}`;
+  if (local) return `<p>${battle}。</p>`;
+  return `<p>${s.warn ?? ''}</p><ul class="small">
+    <li>自分の収入 ${pc(s.playerIncome)}・相手の収入 ${pc(s.aiIncome ?? 1)}</li>
+    <li>自分の領の守備兵 ${pc(s.playerSiege)}・相手が自分を狙う度合い ×${s.aiVsPlayer}</li>
+    <li>相手の武将のレベル +${s.aiGeneralLevel ?? 0}・相手が雇う兵のレベル +${s.aiTroopLevel}</li>
+    ${s.aiGangUp ? `<li>自分が最も大きい国になると、相手どうしが組んで自分を攻める（${s.aiGangUp >= 1 ? '強く' : '少し'}）</li>` : ''}
+    <li>${battle}</li></ul>`;
+}
+/** 難しさの欄を結ぶ。注意のある段（非常に難しい・鬼）を選ぶと確かめる窓を出し、やめたら元に戻す */
+function bindDifficulty(root: HTMLElement, sel: HTMLSelectElement, local: boolean, set: (d: Difficulty) => void): void {
+  let prev = sel.value as Difficulty;
+  sel.onchange = async () => {
+    const d = sel.value as Difficulty;
+    sel.classList.toggle('oni', d === 'oni');
+    if (S.difficulty[d].warn) {
+      const ok = await confirmBox(root.firstElementChild as HTMLElement ?? root, { title: `難しさ：${S.difficulty[d].name}`, body: difficultyWarn(d, local), ok: 'この難しさにする', cancel: 'やめる', danger: d === 'oni' });
+      if (!ok) { sel.value = prev; sel.classList.toggle('oni', prev === 'oni'); return; }
+    }
+    prev = d;
+    set(d);
+  };
+}type Mode = { type: 'idle' } | { type: 'skill'; id: string } | { type: 'tactic'; id: string } | { type: 'breach'; id: '' };
 type Control = 'attack' | 'defend' | 'both' | 'watch';
 /** おまかせの陣営が1手ごとに空ける間（ミリ秒）。速さ1〜5 */
 const AI_DELAY = [900, 500, 260, 110, 0];
@@ -124,7 +155,7 @@ export class App {
   /** 国モードで選んでいる国 */
   private nation = 0;
   /** 局地戦の、相手の強さ（思考の賢さ） */
-  private localLevel: 'easy' | 'normal' | 'hard' = 'normal';
+  private localLevel: Difficulty = 'normal';
   private battleDone: ((st: BattleState) => BattleSummary | null) | null = null;
   private battleBack: { label: string; fn: () => void } = { label: '戻る', fn: () => this.setupScreen() };
   private allowQuit = true;
@@ -348,7 +379,7 @@ export class App {
           <div class="nation-map"><div class="dim small">広域地図（明るいのが選んでいる国、白い点が本拠）</div></div>
         </div>
         <footer>
-          <select id="difficulty" title="戦略の難しさ：自分の収入と領の落ちにくさ、相手の攻めやすさが変わる">${(['easy', 'normal', 'hard'] as const).map((d) => `<option value="${d}" ${this.difficulty === d ? 'selected' : ''}>難しさ：${S.difficulty[d].name}</option>`).join('')}</select>
+          <select id="difficulty" class="${this.difficulty === 'oni' ? 'oni' : ''}" title="戦略の難しさ：自分の収入と領の落ちにくさ、相手の攻めやすさが変わる">${difficultyOptions(this.difficulty, '難しさ')}</select>
           <button id="nationRandom" title="国をくじで選ぶ">ランダム</button>
           <span class="spacer"></span>
           <button id="campaignWatch" title="どの国も選ばず、国どうしの取り合いを見る">国を選ばず観戦する</button>
@@ -386,7 +417,7 @@ export class App {
       const others = facs.filter((f) => f.id !== this.nation);
       if (others.length) pick(others[Math.floor(Math.random() * others.length)].id, true);
     };
-    this.root.querySelector<HTMLSelectElement>('#difficulty')!.onchange = (e) => { this.difficulty = (e.target as HTMLSelectElement).value as Difficulty; };
+    bindDifficulty(this.root, this.root.querySelector<HTMLSelectElement>('#difficulty')!, false, (d) => { this.difficulty = d; });
     this.root.querySelector<HTMLButtonElement>('#campaign')!.onclick = () => busy('戦略を始めています…', () => this.startCampaign(this.nation));
     this.root.querySelector<HTMLButtonElement>('#campaignWatch')!.onclick = () => busy('戦略を始めています…', () => this.startCampaign(0));
   }
@@ -418,7 +449,7 @@ export class App {
           操作：<select id="control">
             ${[['attack', '攻め手を操作'], ['defend', '守り手を操作'], ['both', '両方を操作'], ['watch', '観戦（両方おまかせ）']].map(([v, n]) => `<option value="${v}" ${this.setup.control === v ? 'selected' : ''}>${n}</option>`).join('')}
           </select>
-          <select id="localLevel" title="相手の強さ：数値は変わらず、相手の考え方の賢さが変わる（やさしいは、あまり考えずに動き、守り手は打って出やすい）">${(['easy', 'normal', 'hard'] as const).map((d) => `<option value="${d}" ${this.localLevel === d ? 'selected' : ''}>相手：${S.difficulty[d].name}</option>`).join('')}</select>
+          <select id="localLevel" title="相手の強さ：相手の考え方の賢さが変わる（やさしいは、あまり考えずに動き、守り手は打って出やすい）。非常に難しい・鬼は、相手の駒の体力・武力・知略も上がる">${difficultyOptions(this.localLevel, '相手')}</select>
           <button id="start" class="primary">戦闘開始</button>
         </footer>
       </div>`;
@@ -443,7 +474,7 @@ export class App {
         this.setup.picks[side] = list;
       };
     });
-    q<HTMLSelectElement>('#localLevel').onchange = (e) => { this.localLevel = (e.target as HTMLSelectElement).value as 'easy' | 'normal' | 'hard'; };
+    bindDifficulty(this.root, q<HTMLSelectElement>('#localLevel'), true, (d) => { this.localLevel = d; });
     q<HTMLButtonElement>('#start').onclick = () => {
       if (this.setup.attacker === this.setup.defender) { toast('攻め手と守り手に同じ勢力は選べません'); return; }
       if (!this.setup.picks[0].length || !this.setup.picks[1].length) { toast('武将を1人以上選んでください'); return; }
@@ -515,7 +546,7 @@ export class App {
           <label class="ima-radio"><input type="radio" name="imaKing" value="0" ${opt.king ? '' : 'checked'}> 王にしない <span class="dim small">（${lordName ? `${esc(lordName)}が王のまま。` : ''}主人公は武将として仕える。国はあなたが動かす）</span></label>`}
         </div>
         <footer>
-          <select id="difficulty">${(['easy', 'normal', 'hard'] as const).map((d) => `<option value="${d}" ${this.difficulty === d ? 'selected' : ''}>難しさ：${S.difficulty[d].name}</option>`).join('')}</select>
+          <select id="difficulty" class="${this.difficulty === 'oni' ? 'oni' : ''}">${difficultyOptions(this.difficulty, '難しさ')}</select>
           <span class="spacer"></span>
           <button id="imaStart" class="primary" ${opt.faction ? '' : 'disabled'}>${opt.faction ? `${esc(gs.factions[opt.faction].name.ja)}で国モードを始める` : '仕える国を選んでください'}</button>
         </footer>
@@ -526,7 +557,7 @@ export class App {
     const facSel = this.root.querySelector<HTMLSelectElement>('#imaFac')!;
     facSel.onchange = () => { opt.faction = Number(facSel.value); this.imaScreen(); };
     this.root.querySelectorAll<HTMLInputElement>('input[name="imaKing"]').forEach((r) => { r.onchange = () => { opt.king = r.value === '1'; this.imaScreen(); }; });
-    this.root.querySelector<HTMLSelectElement>('#difficulty')!.onchange = (e) => { this.difficulty = (e.target as HTMLSelectElement).value as Difficulty; };
+    bindDifficulty(this.root, this.root.querySelector<HTMLSelectElement>('#difficulty')!, false, (d) => { this.difficulty = d; });
     this.root.querySelector<HTMLButtonElement>('#imaStart')!.onclick = () => { if (opt.faction) void busy('戦略を始めています…', () => this.startIma()); };
   }
 
@@ -574,7 +605,7 @@ export class App {
     const map = mapFromProvince(w, def.capital, prov ? { capital: true, fort: prov.fort, buildings: prov.buildings, pop: prov.pop, income: prov.income, unrest: prov.unrest, coastal: prov.coastal, river: prov.river, from: atk.capital } : { capital: true, from: atk.capital });
     const st = createBattle(gs, map, this.setup.picks, `ui:${Date.now()}`, [atk.name.ja, def.name.ja]);
     // 相手の強さ：自分が片方だけを動かすとき、相手の陣営の思考の賢さを変える
-    if (this.setup.control === 'attack' || this.setup.control === 'defend') st.aiLevel = { side: this.setup.control === 'attack' ? 1 : 0, level: this.localLevel };
+    if (this.setup.control === 'attack' || this.setup.control === 'defend') setAiLevel(st, this.setup.control === 'attack' ? 1 : 0, this.localLevel);
     const human = new Set<Side>(this.setup.control === 'attack' ? [0] : this.setup.control === 'defend' ? [1] : this.setup.control === 'both' ? [0, 1] : []);
     this.openBattle(st, human, (s) => applyBattleResult(gs, s), { label: '編成に戻る', fn: () => { this.autoPick(); this.setupScreen(); } }, true);
   }
@@ -1096,7 +1127,7 @@ export class App {
       const arrow = r.base !== r.now ? `${r.base} → <b class="${r.now > r.base ? 'up' : 'down'}">${r.now}</b>` : '';
       return `<li><span class="mk">${esc(r.key)}</span>${arrow ? ` ${arrow}` : ''}：${r.causes.map((c) => `${esc(c.why)} <b>${esc(c.value)}</b>${c.turns ? `<span class="dim">（${esc(c.turns)}）</span>` : ''}`).join('、')}</li>`;
     });
-    const fx = (u.traitFx ?? []).map((f) => `<li><span class="mk">${esc(STAT[f.stat] ?? f.stat)}</span>${f.from !== undefined ? ` ${f.from} → <b class="${(f.to ?? 0) >= f.from ? 'up' : 'down'}">${f.to}</b>` : ''}：特性（${f.traits.map((t) => esc(TRAIT_NAME[t] ?? t)).join('・') || '率いる将'}） <b>${esc(f.value)}</b><span class="dim">（戦いの終わりまで）</span></li>`);
+    const fx = (u.traitFx ?? []).map((f) => `<li><span class="mk">${esc(STAT[f.stat] ?? f.stat)}</span>${f.from !== undefined ? ` ${f.from} → <b class="${(f.to ?? 0) >= f.from ? 'up' : 'down'}">${f.to}</b>` : ''}：${f.why ? esc(f.why) : `特性（${f.traits.map((t) => esc(TRAIT_NAME[t] ?? t)).join('・') || '率いる将'}）`} <b>${esc(f.value)}</b><span class="dim">（戦いの終わりまで）</span></li>`);
     if (!rows.length && !fx.length) return '';
     return `<details class="mods" open><summary>能力の変化（${rows.length + fx.length}）</summary><ul>${rows.join('')}${fx.join('')}</ul></details>`;
   }
@@ -1108,6 +1139,9 @@ export class App {
     const sts = t.statuses.map((s) => `${GOOD_STATUS.has(s.id) ? '▲' : '▼'}${STATUS_NAME[s.id as keyof typeof STATUS_NAME] ?? s.id}`);
     if (outOfCommand(st, t)) sts.push('▼采配範囲外');
     // 能力の変化（P58）：短く、原因と値と残りのターン
+    // 難しさで上がった能力（非常に難しい・鬼。P64）
+    const lv = (t.traitFx ?? []).find((f) => f.why);
+    if (lv) sts.push(`▲${lv.why}：体力・武力・知略${lv.value}（戦いの終わりまで）`);
     for (const r of statRows(st, t, (id) => STATUS_NAME[id] ?? id)) sts.push(`${r.key}${r.base !== r.now ? ` ${r.base}→${r.now}` : ''}（${r.causes.map((c) => `${c.why}${c.value}${c.turns ? `・${c.turns}` : ''}`).join('、')}）`);
     const lead = t.kind === 'troop' ? `${st.units[t.leader]?.name ?? ''}の配下` : kindName(t);
     const basic = basicSkill(t);

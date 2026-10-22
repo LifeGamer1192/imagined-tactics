@@ -39,7 +39,11 @@
   "difficulty": {
     "easy": { "name": "やさしい", "playerIncome": 1.25, "playerSiege": 1.3, "aiVsPlayer": 0.7, "aiTroopLevel": 0, "aiEmptyChance": 0.15 },
     "normal": { "name": "ふつう", "playerIncome": 1, "playerSiege": 1, "aiVsPlayer": 1, "aiTroopLevel": 0, "aiEmptyChance": 0.3 },
-    "hard": { "name": "むずかしい", "playerIncome": 0.85, "playerSiege": 0.85, "aiVsPlayer": 1.3, "aiTroopLevel": 1, "aiEmptyChance": 0.5 }
+    "hard": { "name": "むずかしい", "playerIncome": 0.85, "playerSiege": 0.85, "aiVsPlayer": 1.3, "aiTroopLevel": 1, "aiEmptyChance": 0.5 },
+    "veryHard": { "name": "非常に難しい", "playerIncome": 0.75, "playerSiege": 0.75, "aiVsPlayer": 1.6, "aiTroopLevel": 3, "aiEmptyChance": 0.65, "aiIncome": 1.15, "aiGeneralLevel": 2, "aiGangUp": 0.5,
+      "warn": "相手の収入と兵のレベルが上がり、自分の収入は下がります。自分が大きくなると、相手どうしが組んで攻めてきます。上手な人向けです。" },
+    "oni": { "name": "鬼", "playerIncome": 0.6, "playerSiege": 0.6, "aiVsPlayer": 2.0, "aiTroopLevel": 5, "aiEmptyChance": 0.8, "aiIncome": 1.3, "aiGeneralLevel": 4, "aiGangUp": 1,
+      "warn": "相手は数で上回り、自分と戦うときは能力も上がります。自分が大きくなると、四方から組んで攻めてきます。ほぼ理不尽な難しさです。" }
   },
   "ai": {
     "attackRatio": 1.6, "attackChance": 0.4, "neutralMult": 0.6, "aggressionRatio": 0.4, "cautionRatio": 0.3, "aggressionChance": 0.4,
