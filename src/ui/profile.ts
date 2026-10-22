@@ -5,7 +5,7 @@ import type { GGeneral } from '../convert/model';
 import { D, L } from '../data/db';
 import { biography } from '../strategy/biography';
 import { strengthOf, troopLoad, type Campaign, type CampaignLog } from '../strategy/campaign';
-import { classMod } from '../rules/growth';
+import { classMod, generalPromotions, lowerClasses, MAX_MASTERY } from '../rules/growth';
 import { classTip, commandTip, personalityTip, strengthRank, strengthTip, tacticTip, traitTip, unitTip } from './describe';
 import { T, TRAIT_NAME } from './text';
 
@@ -44,9 +44,10 @@ export function profileHtml(c: Campaign, g: GGeneral, fig: string, line: (e: Cam
       </table>
       <div>
         <h4>軍略</h4><div class="small">${tactics.map((t) => `<span class="trait" data-tip="${esc(tacticTip(t))}">${L(t.name)}（気力${t.mp}）</span>`).join('・') || 'なし'}</div>
-        <h4>兵</h4><div class="small">${g.troops.map((t) => `<span class="trait" data-tip="${esc(unitTip(t.unitId, t.level))}">${esc(t.name ?? L(D.byUnit[t.unitId].name))} Lv${t.level}</span>`).join('・') || '兵なし'}</div>
+        <h4>兵</h4><div class="small">${g.troops.map((t) => `<span class="trait" data-tip="${esc(unitTip(t.unitId, t.level))}">${esc(t.name ?? L(D.byUnit[t.unitId].name))} Lv${t.level}<span class="dim">・熟練${t.mastery?.[t.unitId] ?? 0}/${MAX_MASTERY}</span></span>`).join('・') || '兵なし'}</div>
       </div>
     </div>
+    ${masteryHtml(g)}
     <h3>列伝</h3>
     ${bio.facts.map((f) => `<p>${esc(f)}</p>`).join('')}
     ${list('家族', bio.family.map(esc))}${list('在位', bio.reigns.map(esc))}${list('縁', bio.ties.map(esc))}
@@ -54,4 +55,22 @@ export function profileHtml(c: Campaign, g: GGeneral, fig: string, line: (e: Cam
     ${list('かかわる話', bio.articles.map((a) => `<b>${esc(a.title)}</b>：${esc(a.text)}`), 2)}
     ${list('この国での出来事', deeds)}
   </div>`;
+}
+
+/** 熟練度の欄：役職の道（下から今の役職まで）ごとの熟練度と、何に使うか */
+function masteryHtml(g: GGeneral): string {
+  const cur = D.byClass[g.classId];
+  const path = [...lowerClasses(g.classId).reverse(), cur];
+  const others = Object.keys(g.mastery).filter((id) => D.byClass[id] && !path.some((c) => c.id === id)).map((id) => D.byClass[id]);
+  const tac = (ids: string[]): string => ids.map((id) => (D.byTactic[id] ? L(D.byTactic[id].name) : id)).join('・');
+  const line = (c: typeof cur): string => {
+    const m = Math.min(MAX_MASTERY, g.mastery[c.id] ?? 0), full = m >= MAX_MASTERY, now = c.id === cur.id;
+    const left = MAX_MASTERY - m;
+    const what = full
+      ? (c.tactics.length ? `軍略（${tac(c.tactics)}）を持ち越し済み` : '上限')
+      : `あと${left}レベルで上限${c.tactics.length ? `。上限で軍略（${tac(c.tactics)}）を持ち越せる` : ''}${now && generalPromotions(g).length ? '。昇進の条件にもなる' : ''}`;
+    return `<li><b>${esc(L(c.name))}</b>${now ? ' <span class="tag">今の役職</span>' : ''}　熟練${m}/${MAX_MASTERY}　<span class="dim">${what}</span></li>`;
+  };
+  return `<h4>熟練度</h4><ul class="small">${[...path, ...others].map(line).join('')}</ul>
+    <p class="dim small">熟練度は役職ごとに0〜${MAX_MASTERY}。レベルが1上がるごとに、今の役職の熟練度が1上がる。使い道：① 上限（${MAX_MASTERY}）になると、その役職の軍略を「持ち越し」、役職を変えても使える。② 昇進には、今の役職の熟練度${MAX_MASTERY}が要る（とレベル）。下の役職は経てきたものとして上限になっている。兵の熟練度も兵種ごとに同じように上がる（今は記録だけ）。</p>`;
 }

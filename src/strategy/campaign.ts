@@ -88,6 +88,8 @@ export interface Campaign {
   unified?: boolean;
   /** 家ごとの歩み（P60）：家の番号 → 月ごとの領・武将・兵の数と出来事 */
   realms?: Record<number, RealmHist>;
+  /** 最後に当主を譲った月（c.months。P71） */
+  abdicatedAt?: number;
   /** 滅んだが、まだ滅亡の窓を出していない家（P60） */
   fallen?: number[];
   /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */

@@ -118,6 +118,9 @@ export function gainTroopExp(t: GTroop, amount: number, rng: RNG): number {
     t.level++; ups++;
     addStats(t.stats, troopGain(D.byUnit[t.unitId], rng));
     roundStats(t.stats);
+    // 兵の熟練度：今の兵種の熟練度が1上がる（上限まで）
+    const m = t.mastery?.[t.unitId] ?? 0;
+    if (m < MAX_MASTERY) (t.mastery ??= {})[t.unitId] = m + 1;
   }
   return ups;
 }
@@ -166,5 +169,26 @@ export function promoteTroop(t: GTroop, to: string, items: Record<string, number
   const from = D.byUnit[t.unitId], next = D.byUnit[to];
   for (const k of ['hp', 'mp', 'str', 'int', 'agi'] as const) t.stats[k] += next[k] - from[k];
   t.unitId = to;
+  (t.mastery ??= {})[to] ??= 0;
   return true;
+}
+
+// ---------------------------------------------------------------- 熟練度
+
+/** その役職より下の役職（昇進してくる道。近い順） */
+export function lowerClasses(classId: string): ClassDef[] {
+  const out: ClassDef[] = [];
+  for (let c = D.byClass[D.byClass[classId]?.from ?? '']; c && out.length < 8; c = D.byClass[c.from ?? '']) out.push(c);
+  return out;
+}
+
+/**
+ * 下の役職を経てきたものとして揃える：下の役職の熟練度は上限、その軍略は持ち越しに入れる。
+ * 始めから上の役職にいる人（hist-sim から来た高いレベルの武将など）も、自分で昇進してきた人と同じ軍略を持つ
+ */
+export function fillLowerClasses(g: GGeneral): void {
+  for (const c of lowerClasses(g.classId)) {
+    g.mastery[c.id] = MAX_MASTERY;
+    for (const t of c.tactics) if (!g.learned.includes(t)) g.learned.push(t);
+  }
 }

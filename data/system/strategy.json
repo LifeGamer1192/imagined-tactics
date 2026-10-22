@@ -50,6 +50,7 @@
     "cunningEmptyBonus": 0.5, "honorNeutralPenalty": 0.5, "warBonus": 1.5, "emptyDefenseShare": 0.35,  "reserveSupply": 150
   },
   "supply": { "capMonths": 24, "capMin": 1500 },
+  "abdicate": { "minAge": 15, "cooldown": 24, "fameGap": 2, "fameGapBig": 4, "drop": 1, "dropBig": 2 },
   "tactical": { "lines": [17, 18], "capPerGeneral": 1 },
   "traits": {
     "economy": {

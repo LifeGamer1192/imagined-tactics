@@ -2,10 +2,10 @@
 // 諸国巡り、外交の操作、昇進。調整値は data/system/strategy.json。画面には依存しない。
 
 import type { BattleSummary } from '../battle/result';
-import { advanceClass, makeOfficer, makeTroop, newcomer } from '../convert/convert';
+import { advanceClass, crown, makeOfficer, makeTroop, newcomer } from '../convert/convert';
 import type { GGeneral } from '../convert/model';
 import { D } from '../data/db';
-import { gainGeneralExp, generalPromotions, promoteGeneral, promoteTroop, troopPromotions } from '../rules/growth';
+import { fillLowerClasses, gainGeneralExp, generalPromotions, promoteGeneral, promoteTroop, troopPromotions } from '../rules/growth';
 import {
   holderOf, neighborsOf, note, relation, reserveOf, strengthOf, toReserve,
   type Campaign, type Offer, type PendingBattle,
@@ -285,9 +285,9 @@ function succeed(c: Campaign, fid: number, late: string): void {
   const heirs = Object.values(gs.generals).filter((g) => g.faction === fid)
     .sort((a, b) => Number(b.role === 'heir') - Number(a.role === 'heir') || b.fame - a.fame || b.level - a.level || a.id.localeCompare(b.id));
   const next = heirs[0];
-  f.lordId = next?.id ?? '';
-  if (!next) return;
-  next.isLord = true; next.role = 'ruler';
+  if (!next) { f.lordId = ''; return; }
+  // 当主の役職・采配の上乗せも付け替える（譲るのと共通。P70）
+  crown(gs, fid, next);
   delete c.away[next.id];
   note(c, late ? 'succeed' : 'newLord', { faction: f.name.ja, late, name: next.name.ja });
 }
@@ -585,7 +585,7 @@ export function raiseToGeneral(c: Campaign, key: string, index: number, name: st
   const made = makeOfficer(c.gs, id, n, h.faction, h.prov, t.level, [trait]);
   // 役職は、兵種に近い系統にする（P59。鉄砲・弩は鉄砲足軽頭、素破・間者は乱波、医は僧、など）。レベルで上の役職へ
   const base = D.byClass[S.officerMap.raiseClass[String(unit.line)] ?? ''];
-  if (base) { const cls = advanceClass(base, t.level, made.stats, []); made.classId = cls.id; made.mastery = { [cls.id]: 0 }; }
+  if (base) { const cls = advanceClass(base, t.level, made.stats, []); made.classId = cls.id; made.mastery = { [cls.id]: 0 }; made.learned = []; fillLowerClasses(made); }
   // 兵のときの技をすべて引き継ぎ（通常攻撃の前に使う。弓の兵は弓のまま）、得意地形も兵種のまま。特技（同じ種類は重ねない）と軍略も引き継ぐ
   made.unit = t.unitId;
   made.skills = [...new Set([...unit.skills, ...(t.extraSkills ?? [])])];
@@ -642,5 +642,47 @@ export function lowerToTroop(c: Campaign, gid: string): boolean {
   c.gs.factions[g.faction].supply += refund;
   note(c, 'lowered', { name: g.name.ja, unit: unit.name[c.gs.variant], refund });
   removeGeneral(c, g);
+  return true;
+}
+
+// ---------------------------------------------------------------- 当主を譲る（P71）
+
+const AB = () => S.abdicate;
+
+/** g に当主を譲れない理由（譲れるなら null） */
+export function abdicateProblem(c: Campaign, g: GGeneral): string | null {
+  const f = c.gs.factions[c.player];
+  if (!c.player || !f || g.faction !== c.player) return '自分の武将ではありません';
+  if (g.isLord) return 'すでに当主です';
+  if (g.age < AB().minAge) return `${AB().minAge}歳にならないと継げません`;
+  if (g.id in c.wounded) return '深手を負っています';
+  if (g.id in c.away) return '諸国巡りに出ています';
+  if (c.resting?.[g.id] !== undefined) return '退却して休養中です';
+  if (c.abdicatedAt !== undefined && c.months - c.abdicatedAt < AB().cooldown) return `前に譲ってから${AB().cooldown}か月は譲れません（あと${AB().cooldown - (c.months - c.abdicatedAt)}か月）`;
+  return null;
+}
+
+/** 譲ると忠誠が下がる武将（新しい当主より名声の高い人。跡継ぎに譲るなら下がり方は半分） */
+export function abdicateLoyaltyLoss(c: Campaign, g: GGeneral): { g: GGeneral; drop: number }[] {
+  const heir = g.role === 'heir';
+  return Object.values(c.gs.generals).filter((x) => x.faction === g.faction && x.id !== g.id && !x.isLord).map((x) => {
+    const gap = x.fame - g.fame;
+    let drop = gap >= AB().fameGapBig ? AB().dropBig : gap >= AB().fameGap ? AB().drop : 0;
+    if (heir) drop = Math.floor(drop / 2);
+    return { g: x, drop };
+  }).filter((x) => x.drop > 0);
+}
+
+/** 当主を g に譲る。前の当主は隠居して武将に残る。その月は国じゅうの武将が行動済みになる */
+export function abdicate(c: Campaign, gid: string): boolean {
+  const g = c.gs.generals[gid];
+  if (!g || abdicateProblem(c, g)) return false;
+  const f = c.gs.factions[g.faction];
+  const loss = abdicateLoyaltyLoss(c, g);
+  const old = crown(c.gs, f.id, g) ?? '';
+  for (const x of loss) x.g.loyalty -= x.drop;
+  for (const x of Object.values(c.gs.generals)) if (x.faction === f.id) c.moved.add(x.id);
+  c.abdicatedAt = c.months;
+  note(c, 'abdicate', { faction: f.name.ja, late: old, name: g.name.ja });
   return true;
 }

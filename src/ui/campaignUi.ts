@@ -14,7 +14,7 @@ import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
 import { profileHtml } from './profile';
 import { toggleTrainAlways, trainMult, trainOnce, trainProblem } from '../strategy/training';
 import { envoyBonus, envoyPlan, envoyProblem, giftBonus, sendEnvoy, type DipKind } from '../strategy/envoy';
-import { factionStrength } from '../strategy/events';
+import { abdicate, abdicateLoyaltyLoss, abdicateProblem, factionStrength } from '../strategy/events';
 import { appointChancellor, approx, missionGain, officeGain, roughCount, scoutOf, scoutProblem, scoutTier, sendScout, type ScoutTier } from '../strategy/scouting';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
@@ -99,6 +99,7 @@ const LOG_TEXT: Record<string, string> = {
   death: '{faction}の{name}が世を去った（{age}歳）',
   succeed: '{faction}：{late}の跡を{name}が継いだ',
   newLord: '{faction}：{name}が当主になった',
+  abdicate: '{faction}：{late}が隠居し、{name}に当主を譲った',
   comeOfAge: '{name}が元服し、{faction}に加わった',
   rivalWin: '{name}が好敵手の{rival}を破り、互いに腕を上げた',
   avengeFight: '{name}は仇の{foe}と戦ったが、討ち漏らした',
@@ -370,7 +371,7 @@ export class CampaignScreen {
     const c = this.c, me = c.player ? c.gs.factions[c.player] : null;
     if (!me || c.over) return;
     const KIND: Record<string, string> = {
-      death: 'death', succeed: 'succession', newLord: 'succession', defect: 'defect', alliance: 'envoy', truce: 'envoy', vassal: 'envoy', breakAlliance: 'envoy', joinWar: 'envoy',
+      death: 'death', succeed: 'succession', newLord: 'succession', abdicate: 'succession', defect: 'defect', alliance: 'envoy', truce: 'envoy', vassal: 'envoy', breakAlliance: 'envoy', joinWar: 'envoy',
       questItem: 'travel', questRonin: 'travel', questExp: 'travel', questNothing: 'travel', roninJoin: 'promote', tieJoin: 'promote', comeOfAge: 'promote', history: 'history',
     };
     const ORDER = ['death', 'defect', 'succession', 'history', 'envoy', 'travel', 'promote'];
@@ -1031,6 +1032,8 @@ export class CampaignScreen {
       // 相国（偵察度を毎月上げる役。1人だけ）
       const chan = c.offices?.chancellor === g.id;
       ups.push(`<button data-chancellor="${g.id}" class="${chan ? 'on' : ''}" title="${esc(`相国は、自分の領から${S.scout.officeRange}つ先までの他国の領の偵察度を、毎月+${officeGain(g)}上げます（外交${g.ab[2]}から）。1人だけ任じられます`)}">${chan ? '相国を解く' : '相国に任じる'}</button>`);
+      // 当主を譲る（P71）：譲れる人だけ（前に譲ってから間が無いあいだは出さない。遊び方に書く）
+      if (!abdicateProblem(c, g)) ups.push(`<button data-abdicate="${g.id}" title="${esc(`${g.name.ja}に当主を譲ります。押すと、どう変わるかの説明と確かめる窓が出ます（一度譲ると${S.abdicate.cooldown}か月は譲れません）`)}">当主を譲る</button>`);
       if (!questProblem(c, g)) ups.push(`<button data-quest="${g.id}" title="2か月のあいだ戦えないが、浪人や昇進の品を得ることがある">諸国巡りに出す</button>`);
       if (ups.length) rec += `<div class="ups">${ups.join('')}</div>`;
     }
@@ -1447,6 +1450,24 @@ export class CampaignScreen {
           ok: '旅に出す',
         });
         if (ok && startQuest(c, gid)) { this.picked.delete(gid); this.refresh(); }
+      };
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-abdicate]').forEach((b) => {
+      b.onclick = async () => {
+        const g = gs.generals[b.dataset.abdicate!], me = gs.factions[c.player], old = me ? gs.generals[me.lordId] : undefined;
+        if (!g || !me) return;
+        const loss = abdicateLoyaltyLoss(c, g);
+        const ok = await confirmBox(this.frame(), {
+          title: `${esc(g.name.ja)}に当主を譲る`,
+          body: `<p>${old ? `当主の<b>${esc(old.name.ja)}</b>は隠居して、武将として残ります（当主の役職は、能力に合った並の役職に戻ります）。` : ''}<b>${esc(g.name.ja)}</b>が新しい当主になり、国に合った当主の役職と、采配の当主の上乗せを受け継ぎます。</p>
+            <ul class="small">
+              <li>この月は、国じゅうの武将が行動済みになります（守りには出られます）。</li>
+              <li>${loss.length ? `${esc(g.name.ja)}より名声の高い武将の忠誠が下がります：${loss.map((x) => `${esc(x.g.name.ja)} −${x.drop}`).join('、')}${g.role === 'heir' ? '（跡継ぎに譲るので、下がり方は半分）' : ''}` : '忠誠が下がる武将はいません。'}</li>
+              <li>一度譲ると、${S.abdicate.cooldown}か月は譲れません。戻せません。</li>
+            </ul>`,
+          ok: '当主を譲る', danger: true,
+        });
+        if (ok && abdicate(c, g.id)) { toast(`${g.name.ja}が当主になりました（${L(D.byClass[g.classId].name)}）`); this.picked.clear(); this.refresh(); }
       };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-chancellor]').forEach((b) => {

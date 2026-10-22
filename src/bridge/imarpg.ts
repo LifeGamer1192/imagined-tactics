@@ -2,9 +2,10 @@
 // 形は ima-rpg の docs/HEX.md、換算は docs/IMARPG.md、数は data/system/imarpg.json。戦いの結果は ima-rpg へ書き戻さない。
 
 import imaJson from '../../data/system/imarpg.json';
-import { advanceClass, CFG, lordClass, lordLine, makeOfficer, makeTroop, pickBaseClass } from '../convert/convert';
+import { advanceClass, CFG, crown, makeOfficer, makeTroop, pickBaseClass } from '../convert/convert';
 import type { GGeneral, GTroop, GameStart } from '../convert/model';
 import { D } from '../data/db';
+import { fillLowerClasses } from '../rules/growth';
 import type { Variant } from '../data/types';
 import { gunzip, parseSave, SaveError, type HSave } from './histsim';
 
@@ -123,6 +124,7 @@ function personGeneral(gs: GameStart, id: string, p: PersonSrc, faction: number,
   const base = pickBaseClass(p.sex, ab, 'general', p.traits, { ...g.stats }).cls;
   const cls = advanceClass(base, level, g.stats, p.traits);
   g.classId = cls.id; g.mastery = { [cls.id]: 0 };
+  fillLowerClasses(g);
   const arts = pickArts(p.arts);
   if (arts.skills.length) g.skills = arts.skills;
   g.learned = [...new Set([...g.learned, ...arts.tactics])];
@@ -173,29 +175,6 @@ export interface ImaResult {
 
 /** 主人公の仕える国：王位があればその国、なければ仕える国（0 は浪人） */
 export function imaRealm(game: ImaGame): number { return game.player.throne?.realm ?? game.player.patron ?? 0; }
-
-/** 主人公を王にする。本来の王は武将になる（役職は能力から選び直す） */
-function crown(gs: GameStart, faction: number, hero: GGeneral): string | null {
-  const f = gs.factions[faction];
-  if (!f) return null;
-  const old = gs.generals[f.lordId];
-  if (old && old.id !== hero.id) {
-    old.isLord = false; old.role = 'general';
-    old.command = Math.max(40, old.command - CFG.lordCommandBonus);
-    if (D.byClass[old.classId]?.unique === 'lord') {
-      const b = pickBaseClass(old.sex, old.ab, 'general', old.traits, { ...old.stats }).cls;
-      const c = advanceClass(b, old.level, old.stats, old.traits);
-      old.classId = c.id; old.mastery[c.id] ??= 0;
-    }
-  }
-  hero.isLord = true; hero.role = 'ruler';
-  hero.command += CFG.lordCommandBonus;
-  f.lordId = hero.id;
-  const share = gs.provinces.filter((p) => p.owner === faction).length / Math.max(1, gs.provinces.filter((p) => !p.out).length);
-  const cls = lordClass(lordLine({ government: f.government, economy: f.economy } as never, hero.sex, hero.age), hero.level, share);
-  hero.classId = cls.id; hero.mastery[cls.id] ??= 0;
-  return old?.name.ja ?? null;
-}
 
 export function applyIma(gs: GameStart, game: ImaGame, variant: Variant, opts: ImaOptions): ImaResult {
   const p = game.player, feats = (game.feats ?? []).map((f) => f.id);

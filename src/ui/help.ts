@@ -9,6 +9,7 @@ import { D, getVariant, L, term } from '../data/db';
 import type { Affinity, StatusId, TerrainKind } from '../data/types';
 import { SLOTS } from '../persist/save';
 import { TERRAIN_NAME } from '../render/battleView';
+import { MAX_MASTERY } from '../rules/growth';
 import { FIELD } from '../rules/stats';
 import { AI } from '../ai/personality';
 import { DIFFICULTIES, S } from '../strategy/config';
@@ -167,6 +168,10 @@ function strategy(): string {
       `経験を積んでレベルが上がる（${pct(q.exp)}）`,
       `何も無い（${pct(Math.max(0, 1 - q.item - q.ronin - q.exp))}）`,
     ])}
+    <h3>当主を譲る</h3>
+    <p>自分の武将の欄の「当主を譲る」で、その武将に当主を譲れます（${S.abdicate.minAge}歳以上で、深手・諸国巡り・休養中でない武将）。前の当主は隠居して武将として残り、当主の役職は能力に合った並の役職に戻ります。新しい当主は国に合った当主の役職と、采配の当主の上乗せを受け継ぎます。その月は国じゅうの武将が行動済みになり（守りには出られます）、新しい当主より名声が${S.abdicate.fameGap}以上高い武将は忠誠が${S.abdicate.drop}（${S.abdicate.fameGapBig}以上なら${S.abdicate.dropBig}）下がります（跡継ぎに譲るなら半分）。一度譲ると${S.abdicate.cooldown}か月は譲れず、そのあいだはボタンが出ません。当主が亡くなったときの代替わりでも、役職と采配の上乗せが同じように付け替わります。</p>
+    <h3>熟練度</h3>
+    <p>武将は役職ごとに熟練度（0〜${MAX_MASTERY}）を持ちます。レベルが1上がるごとに、今の役職の熟練度が1上がります。上限になると、その役職の軍略を「持ち越し」、役職を変えても使えます。昇進には、今の役職の熟練度${MAX_MASTERY}が要ります（とレベル）。始めから上の役職にいる武将は、下の役職を経てきたものとして、下の役職の熟練度は上限、軍略も持っています。今の熟練度は、武将の名前を押して出る「能力と列伝」の窓に出ます。兵も兵種ごとに熟練度を持ちます（今は記録だけ）。</p>
     <h3>昇進</h3>
     <p>条件を満たすと、緑に光る「▲◯◯」のボタンが出ます。役職名のすぐ隣なら武将の役職、兵の札のすぐ隣ならその兵の兵種が上がります。ボタンに乗せると、どう変わるかが出ます。押すと、前と後の能力の比べ表と「戻れません」の確かめる窓が出て、進めると祝いの窓で変わった能力を発表します。兵種の最上位には、諸国巡りで得る品が要るものがあります。鉄盾衆は品「精鋭の証」に加えてレベル25も要ります（品とレベルの両方が要る昇進は、練兵の書でもレベルを飛ばせません）。持っている品は、上の「特色」の行の右に出ます。</p>
     <h3>勢力の特色</h3>

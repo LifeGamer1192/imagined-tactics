@@ -69,6 +69,8 @@ export const S = strategyJson as unknown as {
    */
   difficulty: Record<Difficulty, { name: string; playerIncome: number; playerSiege: number; aiVsPlayer: number; aiTroopLevel: number; aiEmptyChance: number; aiIncome?: number; aiGeneralLevel?: number; aiGangUp?: number; warn?: string }>;
   supply: { capMonths: number; capMin: number };
+  /** 当主を譲る（P71）：継げる歳、次に譲れるまでの月、忠誠が下がる名声の差（と大きい差）、下がる量 */
+  abdicate: { minAge: number; cooldown: number; fameGap: number; fameGapBig: number; drop: number; dropBig: number };
   tactical: { lines: number[]; capPerGeneral: number };
   traits: { economy: Record<string, FactionTrait>; government: Record<string, FactionTrait> };
 };

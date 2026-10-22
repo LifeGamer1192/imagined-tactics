@@ -10,7 +10,7 @@ import { RNG, codeToSeed } from '../core/rng';
 import { D } from '../data/db';
 import type { ClassDef, Passive, StatBlock, UnitDef, Variant } from '../data/types';
 import { armShares } from '../bridge/arms';
-import { applyStartLevels } from '../rules/growth';
+import { applyStartLevels, fillLowerClasses } from '../rules/growth';
 import type { GFaction, GGeneral, GProvince, GRole, GTroop, GameStart, GrowthRank } from './model';
 
 type TraitRule = { str?: number; int?: number; agi?: number; command?: number; commandRange?: number; passive?: string; expPct?: number; healPct?: number; critPct?: number; loyalty?: number };
@@ -464,6 +464,9 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
     g.troops = pickTroops(weights, budget, f.troopLevel, variant, year, new RNG(codeToSeed(`${w.seed}:${tick}:troops:${g.id}`)));
   }
 
+  // 下の役職の熟練度と軍略を揃える（始めから上の役職にいる人も、下の役職の軍略を持つ）
+  for (const g of Object.values(generals)) fillLowerClasses(g);
+
   // ---- 外交
   const pair = (k: string): [number, number] => k.split('-').map(Number) as [number, number];
   const bothAlive = ([a, b]: [number, number]) => aliveIds.has(a) && aliveIds.has(b);
@@ -505,6 +508,7 @@ export function newcomer(gs: GameStart, rec: HPersonRec, faction: number, prov: 
     ties: [], prov, troops: [],
   };
   applyStartLevels(g);
+  fillLowerClasses(g);
   gs.generals[id] = g;
   return g;
 }
@@ -526,6 +530,7 @@ export function makeGarrison(gs: GameStart, id: string, faction: number, prov: n
     troops: units.filter((u) => D.byUnit[u]).map((u) => makeTroop(D.byUnit[u], troopLevel)),
   };
   applyStartLevels(g);
+  fillLowerClasses(g);
   gs.generals[id] = g;
   return g;
 }
@@ -547,8 +552,37 @@ export function makeOfficer(gs: GameStart, id: string, name: string | Name, fact
     ties: [], prov, troops: [],
   };
   applyStartLevels(g);
+  fillLowerClasses(g);
   gs.generals[id] = g;
   return g;
+}
+
+/**
+ * g を当主にする（ima-rpg の主人公を王にする・譲る・代替わりで共通。P70）。前の当主は武将になり、当主の役職なら能力から選び直す。
+ * 采配の当主の上乗せは新しい当主へ移る。新しい当主は、国の政体と大きさに合った当主の役職になる。戻り値：前の当主の名前
+ */
+export function crown(gs: GameStart, faction: number, hero: GGeneral): string | null {
+  const f = gs.factions[faction];
+  if (!f) return null;
+  const old = gs.generals[f.lordId];
+  if (old && old.id !== hero.id) {
+    old.isLord = false; old.role = 'general';
+    old.command = Math.max(40, old.command - CFG.lordCommandBonus);
+    if (D.byClass[old.classId]?.unique === 'lord') {
+      const b = pickBaseClass(old.sex, old.ab, 'general', old.traits, { ...old.stats }).cls;
+      const c = advanceClass(b, old.level, old.stats, old.traits);
+      old.classId = c.id; old.mastery[c.id] ??= 0;
+      fillLowerClasses(old);
+    }
+  }
+  hero.isLord = true; hero.role = 'ruler';
+  hero.command += CFG.lordCommandBonus;
+  f.lordId = hero.id;
+  const share = gs.provinces.filter((p) => p.owner === faction).length / Math.max(1, gs.provinces.filter((p) => !p.out).length);
+  const cls = lordClass(lordLine({ government: f.government, economy: f.economy } as never, hero.sex, hero.age), hero.level, share);
+  hero.classId = cls.id; hero.mastery[cls.id] ??= 0;
+  fillLowerClasses(hero);
+  return old?.name.ja ?? null;
 }
 
 /** 勢力の武将（浪人は faction 0） */

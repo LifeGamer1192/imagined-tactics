@@ -18,6 +18,8 @@ export interface GTroop {
   /** 武将から下げた兵が引き継いだ技・軍略（兵種の技・軍略に足す。P59） */
   extraSkills?: string[];
   extraTactics?: string[];
+  /** 兵種ごとの熟練度（0〜5。レベルが1上がるごとに今の兵種が+1。今は記録だけで、伝授（P68）の条件に使う予定） */
+  mastery?: Record<string, number>;
 }
 
 export interface GGeneral {

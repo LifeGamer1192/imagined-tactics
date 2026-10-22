@@ -60,6 +60,9 @@ export function chronFromLog(c: Campaign, e: CampaignLog): void {
     case 'succeed': case 'newLord':
       if (s('faction') === me) chron(c, 'lord', `${s('name')}が当主となる`);
       break;
+    case 'abdicate':
+      if (s('faction') === me) chron(c, 'lord', `${s('late')}が隠居し、${s('name')}が当主となる（譲り）`);
+      break;
     case 'imaArrive': chron(c, 'lord', s('text')); break;
     case 'history':
       if (s('text') && (String(v.text).includes(me) || v.choice)) chron(c, 'history', String(v.text));
@@ -140,6 +143,7 @@ export function realmFromLog(c: Campaign, e: CampaignLog): void {
     case 'vassal': realmEvent(c, s('faction'), `${s('lord')}に従属する`); realmEvent(c, s('lord'), `${s('faction')}を従える`); break;
     case 'capitalMoved': realmEvent(c, s('faction'), `本拠を${s('prov')}へ移す`); break;
     case 'succeed': case 'newLord': realmEvent(c, s('faction'), `${s('name')}が当主となる`); break;
+    case 'abdicate': realmEvent(c, s('faction'), `${s('late')}が隠居し、${s('name')}が当主となる（譲り）`); break;
     case 'defect': realmEvent(c, s('from'), `${s('name')}が${s('to')}へ寝返る`); realmEvent(c, s('to'), `${s('name')}が寝返ってくる`); break;
     case 'death': realmEvent(c, s('faction'), `${s('name')}が世を去る（${s('age')}歳）`); break;
     // 史実の出来事は、本文に名が出てくる家すべての歩みに書く
