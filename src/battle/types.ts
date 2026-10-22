@@ -51,6 +51,11 @@ export interface BUnit {
   mpCostPct?: number;
   supportMpCostPct?: number;
   /** 戦いの始めに特性で変わった能力の書き留め（P58）。stat：能力の名前の鍵、value：「+12%」など、traits：効いた特性の id */
+  /** 直伝で教わった技・軍略（P68）。taught：すべて、borrowed：まだ身についていない借り物（気力が borrowMult 倍）、artUses：この戦いで借り物を使った回数 */
+  taught?: string[];
+  borrowed?: string[];
+  borrowMult?: number;
+  artUses?: Record<string, number>;
   traitFx?: { stat: string; from?: number; to?: number; value: string; traits: string[]; /** 特性でないときの原因（「難しさ（鬼）」など） */ why?: string }[];
   /** 武将の性格（敵の思考で使う。兵は率いる武将の性格で動く） */
   persona?: Personality;

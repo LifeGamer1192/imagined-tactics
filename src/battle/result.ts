@@ -1,6 +1,6 @@
 // 戦闘の結果を、ゲームのデータ（武将・兵）に反映する：経験値、レベルアップ、兵の損失。
 
-import type { GameStart } from '../convert/model';
+import type { GameStart, Taught } from '../convert/model';
 import { RNG, codeToSeed } from '../core/rng';
 import { D } from '../data/db';
 import { gainGeneralExp, gainTroopExp } from '../rules/growth';
@@ -35,9 +35,12 @@ export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary
   for (const u of st.units) {
     const g = gs.generals[u.generalId];
     if (!g) continue;
+    // 直伝の借り物を使った回数を足す（5回で身につく。P68）
+    const addUses = (ts: Taught[] | undefined): void => { for (const [id, n] of Object.entries(u.artUses ?? {})) { const x = ts?.find((q) => q.id === id); if (x) x.uses += n; } };
     if (u.kind === 'general') {
       // 退却した武将は、倒されたのではない（深手にしない）
       if (!u.alive && !st.withdrawn?.includes(u.id)) { sum.beaten.push(g.name.ja); sum.beatenSides.push(u.home); sum.beatenIds.push(g.id); }
+      addUses(g.taught);
       const from = g.level;
       if (u.expGained > 0 && gainGeneralExp(g, u.expGained * D.combat.expGain, rng) > 0) sum.levelUps.push({ name: g.name.ja, from, to: g.level, side: u.home });
       continue;
@@ -52,6 +55,7 @@ export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary
       sum.lost.push({ general: g.name.ja, unit: `${label(u)} Lv${t.level}`, side: u.home });
       continue;
     }
+    addUses(t.taught);
     const from = t.level;
     if (u.expGained > 0 && gainTroopExp(t, u.expGained * D.combat.expGain, rng) > 0) sum.levelUps.push({ name: `${g.name.ja}の${label(u)}`, from, to: t.level, side: u.home });
   }

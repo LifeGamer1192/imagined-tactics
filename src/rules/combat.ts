@@ -211,8 +211,11 @@ export function healAmount(a: BUnit, power: number): number {
 export const isEnemy = (a: BUnit, b: BUnit): boolean => a.side !== b.side;
 
 /** 技を使えるか（気力、水上の条件、移動後に使えるか） */
+/** 技に使う気力（直伝の借り物は多くかかる。P68） */
+export const skillCost = (u: BUnit, skill: SkillDef): number => (u.borrowed?.includes(skill.id) ? Math.round(skill.mp * (u.borrowMult ?? 1)) : skill.mp);
+
 export function canUseSkill(st: BattleState, u: BUnit, skill: SkillDef): boolean {
-  if (u.mp < skill.mp) return false;
+  if (u.mp < skillCost(u, skill)) return false;
   if (skill.needsWater && terrainAt(st, u.pos) !== 'water') return false;
   if (u.moved && !skill.afterMove) return false;
   // 装填の要る技（弩・鉄砲の必中技）：装填済みのときだけ
@@ -264,7 +267,9 @@ export function tacticSide(tac: TacticDef): 'ally' | 'enemy' | 'any' {
 /** 軍略に使う気力（P56：特性で増減。満足は軍略の気力が減り、優しいは味方への補助の気力が減る） */
 export function tacticCost(u: BUnit, tac: TacticDef): number {
   const pct = (u.mpCostPct ?? 0) + (tacticSide(tac) === 'ally' ? u.supportMpCostPct ?? 0 : 0);
-  return pct ? Math.max(0, Math.round(tac.mp * (1 + pct / 100))) : tac.mp;
+  // 直伝の借り物は、気力が多くかかる（P68）
+  const base = u.borrowed?.includes(tac.id) ? tac.mp * (u.borrowMult ?? 1) : tac.mp;
+  return Math.max(0, Math.round(base * (1 + pct / 100)));
 }
 
 /** 軍略を使えるか（気力がある、攪乱されていない、まだ移動していない） */

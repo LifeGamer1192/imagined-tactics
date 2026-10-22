@@ -32,6 +32,7 @@ import { bannerHtml, sceneUrl, seasonBand, setScene } from './scene';
 import { BGM_LEVEL_NAME, bgm, bgmLevel, jingle, setBgmLevel } from './bgm';
 import { play } from './sound';
 import { confirmBox } from './confirm';
+import { artMp, artName, forgetArt, learnerName, learnersOf, lessonLearner, lessonMonths, maxMpOf, slotsLeft, slotsOfLearner, startLesson, teachableArts, teacherProblem, teachProblem } from '../strategy/teach';
 import { classTip, commandTip, personalityTip, strengthRank, strengthTip, traitTip, unitTip } from './describe';
 import { initTips } from './tip';
 import { personalityLabel, personalityOf, planLabel, PLAN_LABEL, PLAN_TIP } from '../ai/personality';
@@ -100,6 +101,10 @@ const LOG_TEXT: Record<string, string> = {
   succeed: '{faction}：{late}の跡を{name}が継いだ',
   newLord: '{faction}：{name}が当主になった',
   abdicate: '{faction}：{late}が隠居し、{name}に当主を譲った',
+  teachStart: '直伝：{teacher}が{learner}に「{art}」を教え始めた（{months}か月）',
+  teachDone: '直伝：{learner}が{teacher}から「{art}」を教わった（借り物。戦いで使うと身につく）',
+  teachCancel: '直伝：{teacher}から{learner}への「{art}」は取りやめになった',
+  teachReset: '直伝：療養のため、{teacher}から{learner}への「{art}」はやり直しになった',
   comeOfAge: '{name}が元服し、{faction}に加わった',
   rivalWin: '{name}が好敵手の{rival}を破り、互いに腕を上げた',
   avengeFight: '{name}は仇の{foe}と戦ったが、討ち漏らした',
@@ -814,15 +819,18 @@ export class CampaignScreen {
   private nextQueued(): void {
     const pb = this.queue.shift();
     if (pb) { this.mount(); this.fight(pb, 1, () => this.nextQueued()); return; }
-    finishMonth(this.c);
-    this.c.log.push({ key: 'month', vars: { date: this.date() } });
-    this.autosave();
-    this.mount();
-    // ほかの勢力どうしの戦いを見せてから、今月の知らせを出す
-    const reel = this.c.reel ?? [];
-    this.c.reel = [];
-    if (reel.length && reelOn()) this.playReel(reel, () => this.showNews(this.logMark));
-    else this.showNews(this.logMark);
+    // 月を締めるのは重い（出来事・史実・セーブ・描き直し）ので、先に「締めています」を出す（0.2秒の約束）
+    void busy('月を締めています…', () => {
+      finishMonth(this.c);
+      this.c.log.push({ key: 'month', vars: { date: this.date() } });
+      this.autosave();
+      this.mount();
+      // ほかの勢力どうしの戦いを見せてから、今月の知らせを出す
+      const reel = this.c.reel ?? [];
+      this.c.reel = [];
+      if (reel.length && reelOn()) this.playReel(reel, () => this.showNews(this.logMark));
+      else this.showNews(this.logMark);
+    });
   }
 
   /**
@@ -1032,6 +1040,8 @@ export class CampaignScreen {
       // 相国（偵察度を毎月上げる役。1人だけ）
       const chan = c.offices?.chancellor === g.id;
       ups.push(`<button data-chancellor="${g.id}" class="${chan ? 'on' : ''}" title="${esc(`相国は、自分の領から${S.scout.officeRange}つ先までの他国の領の偵察度を、毎月+${officeGain(g)}上げます（外交${g.ab[2]}から）。1人だけ任じられます`)}">${chan ? '相国を解く' : '相国に任じる'}</button>`);
+      // 直伝（P68）：教えられるものと相手がいて、今月教え始められる将に
+      if (!teacherProblem(c, g) && learnersOf(c, g).length && teachableArts(g).some((x) => !x.why)) ups.push(`<button data-teach="${g.id}" title="${esc('ほかの将や配下の兵に、技・軍略を教えます。押すと、教わる相手と技・軍略を選ぶ窓が出ます')}">直伝（技・軍略）</button>`);
       // 当主を譲る（P71）：譲れる人だけ（前に譲ってから間が無いあいだは出さない。遊び方に書く）
       if (!abdicateProblem(c, g)) ups.push(`<button data-abdicate="${g.id}" title="${esc(`${g.name.ja}に当主を譲ります。押すと、どう変わるかの説明と確かめる窓が出ます（一度譲ると${S.abdicate.cooldown}か月は譲れません）`)}">当主を譲る</button>`);
       if (!questProblem(c, g)) ups.push(`<button data-quest="${g.id}" title="2か月のあいだ戦えないが、浪人や昇進の品を得ることがある">諸国巡りに出す</button>`);
@@ -1040,10 +1050,68 @@ export class CampaignScreen {
     const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
     const fig = this.figure(g);
     return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}${g.imarpg ? ` <span class="tag ima" title="ima-rpg から来た人">${{ hero: '主人公', companion: '仲間', rival: 'ライバル' }[g.imarpg]}</span>` : ''}
-      <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(cls.name)}</span>${own ? generalPromotions(g).filter((p) => p.ok).map((p) => `<button class="upbtn" data-promo-ask="${g.id}" data-to="${p.to.id}" data-tip="${esc(`${L(cls.name)} → ${L(p.to.name)} に昇進すると：\n${changeText(generalChange(g, p.to.id))}\n\n押すと、確かめる窓が出ます（昇進したら戻れません）`)}">▲${esc(L(p.to.name))}</button>`).join('') : ''} Lv${g.level}<span class="dim"><span class="trait" data-tip="${esc(strengthTip(strengthOf(g), this.allStrength()))}">強さ${Math.round(strengthOf(g))}（${strengthRank(strengthOf(g), this.allStrength()).word}）</span>${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}
+      <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(cls.name)}</span>${own ? generalPromotions(g).filter((p) => p.ok).map((p) => `<button class="upbtn" data-promo-ask="${g.id}" data-to="${p.to.id}" data-tip="${esc(`${L(cls.name)} → ${L(p.to.name)} に昇進すると：\n${changeText(generalChange(g, p.to.id))}\n\n押すと、確かめる窓が出ます（昇進したら戻れません）`)}">▲${esc(L(p.to.name))}</button>`).join('') : ''} Lv${g.level}<span class="dim"><span class="trait" data-tip="${esc(strengthTip(strengthOf(g), this.allStrength()))}">強さ${Math.round(strengthOf(g))}（${strengthRank(strengthOf(g), this.allStrength()).word}）</span>${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}${this.lessonText(g)}
       ${g.traits.length ? ` ・${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}
       ・<span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span></span><br>
       ${this.commandBar(g)}<span class="troops">${troops}</span> ${own ? this.troopMenuHtml(g.id) : ''}${rec}</span></div>`;
+  }
+
+  /** 直伝の最中なら「・直伝中：…」（教える側・教わる将・教わる兵の将の欄に出す。P68） */
+  private lessonText(g: GGeneral): string {
+    const c = this.c;
+    const xs = (c.lessons ?? []).filter((x) => x.teacher === g.id || x.learner === g.id);
+    return xs.map((x) => {
+      const t = c.gs.generals[x.teacher], l = lessonLearner(c, x);
+      const who = x.teacher === g.id ? `${l ? learnerName(l) : ''}に教える` : `${t?.name.ja ?? ''}から教わる`;
+      return ` ・<span class="trait" data-tip="${esc(`直伝：${t?.name.ja ?? ''} → ${l ? learnerName(l) : ''}「${artName(x.art, x.kind)}」。${x.months}か月のうち${x.progress}か月。教えているあいだは行動済み（守りには出られる）。療養に入るとやり直し、討たれる・寝返る・領を失うと取りやめ`)}">直伝中：${esc(who)}「${esc(artName(x.art, x.kind))}」${x.progress}/${x.months}か月</span>`;
+    }).join('');
+  }
+
+  /** 直伝の窓（P68）：教わる相手と技・軍略を選ぶ。教えられないものは灰色で理由つき */
+  private async teachWindow(teacher: GGeneral): Promise<void> {
+    const c = this.c, learners = learnersOf(c, teacher), arts = teachableArts(teacher);
+    if (!learners.length) return;
+    let li = 0, pick = -1, forgot = false;
+    const body = `<div class="teach">
+      <p class="small dim">教えるのに、当主から将へは${S.teach.months.lord}か月、将から将へは${S.teach.months.general}か月、将から配下の兵へは${S.teach.months.troop}か月かかります（必ず成功）。そのあいだ教える側と教わる将は行動済み（守りには出られます）。1つの領で同時に1つまで。教わったものは「借り物」で気力が${Math.round((S.teach.borrowedMpMult - 1) * 100)}%多くかかり、戦いで${S.teach.masterUses}回使うと身につきます（直伝済）。</p>
+      <label>教わる相手：<select id="tLearner">${learners.map((l, i) => `<option value="${i}">${esc(learnerName(l))}（枠 ${slotsOfLearner(l) - slotsLeft(l)}/${slotsOfLearner(l)}）</option>`).join('')}</select></label>
+      <div id="tArts" class="tarts"></div><div id="tInfo" class="small"></div><div id="tForget" class="small"></div></div>`;
+    const wait = confirmBox(this.frame(), { title: `${esc(teacher.name.ja)}の直伝（技・軍略）`, body, ok: '教え始める', cancel: 'やめる' });
+    const box = this.frame().querySelector<HTMLElement>('.result.ask')!;
+    const okBtn = box.querySelector<HTMLButtonElement>('[data-a="ok"]')!;
+    const render = (): void => {
+      const l = learners[li];
+      const rows = arts.map((x, i) => {
+        const why = teachProblem(c, teacher, l, x.art);
+        return `<label class="tart ${why ? 'off' : ''}"><input type="radio" name="tArt" value="${i}" ${why ? 'disabled' : ''} ${pick === i ? 'checked' : ''}> ${x.art.kind === 'skill' ? '技' : '軍略'}「${esc(artName(x.art.id, x.art.kind))}」<span class="dim">気力${artMp(x.art.id, x.art.kind)}</span>${why ? `<span class="why">${esc(why)}</span>` : ''}</label>`;
+      });
+      box.querySelector('#tArts')!.innerHTML = rows.join('');
+      const sel = pick >= 0 ? arts[pick] : null, problem = sel ? teachProblem(c, teacher, l, sel.art) : 'えらんでいない';
+      okBtn.disabled = !!problem;
+      const info = box.querySelector('#tInfo')!;
+      if (sel && !problem) {
+        const need = artMp(sel.art.id, sel.art.kind, true), max = maxMpOf(l);
+        info.innerHTML = `${esc(learnerName(l))}に「${esc(artName(sel.art.id, sel.art.kind))}」を<b>${lessonMonths(teacher, l)}か月</b>で教えます。枠は教わったあと残り${slotsLeft(l) - 1}。借り物のあいだの気力は${need}。${need > max ? `<div class="error">${esc(learnerName(l))}の気力の最大（${max}）では1回ぶんに足りず、戦いでは使えない見込みです。</div>` : ''}`;
+      } else info.innerHTML = '';
+      // 枠がいっぱいなら、教わったものを忘れて枠を空けられる
+      const holder = l.troop ?? l.g;
+      box.querySelector('#tForget')!.innerHTML = slotsLeft(l) <= 0 && holder.taught?.length
+        ? `枠がいっぱいです。忘れて枠を空ける：${holder.taught.map((x, i) => `<button data-forget="${i}">「${esc(artName(x.id, x.kind))}」を忘れる</button>`).join(' ')}` : '';
+      box.querySelectorAll<HTMLInputElement>('input[name="tArt"]').forEach((r) => { r.onchange = () => { pick = Number(r.value); render(); }; });
+      box.querySelectorAll<HTMLButtonElement>('[data-forget]').forEach((b) => {
+        b.onclick = () => { const x = holder.taught![Number(b.dataset.forget)]; if (x && forgetArt(holder, x.id, x.kind)) { toast(`「${artName(x.id, x.kind)}」を忘れました`); forgot = true; render(); } };
+      });
+    };
+    box.querySelector<HTMLSelectElement>('#tLearner')!.onchange = (e) => { li = Number((e.target as HTMLSelectElement).value); pick = -1; render(); };
+    render();
+    const ok = await wait;
+    if (forgot) this.refresh();
+    const sel = pick >= 0 ? arts[pick] : null;
+    if (ok && sel && startLesson(c, teacher, learners[li], sel.art)) {
+      toast(`${teacher.name.ja}が${learnerName(learners[li])}に「${artName(sel.art.id, sel.art.kind)}」を教え始めました（${lessonMonths(teacher, learners[li])}か月）`);
+      this.picked.delete(teacher.id); this.picked.delete(learners[li].g.id);
+      this.refresh();
+    }
   }
 
   /** 采配バー（P45）：右端が最大の采配。兵ごとの区切りに、その兵が使う采配。横に「采配 使用／最大（残り）」 */
@@ -1451,6 +1519,9 @@ export class CampaignScreen {
         });
         if (ok && startQuest(c, gid)) { this.picked.delete(gid); this.refresh(); }
       };
+    });
+    root.querySelectorAll<HTMLButtonElement>('[data-teach]').forEach((b) => {
+      b.onclick = () => { const g = gs.generals[b.dataset.teach!]; if (g) void this.teachWindow(g); };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-abdicate]').forEach((b) => {
       b.onclick = async () => {

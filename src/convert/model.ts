@@ -18,9 +18,16 @@ export interface GTroop {
   /** 武将から下げた兵が引き継いだ技・軍略（兵種の技・軍略に足す。P59） */
   extraSkills?: string[];
   extraTactics?: string[];
-  /** 兵種ごとの熟練度（0〜5。レベルが1上がるごとに今の兵種が+1。今は記録だけで、伝授（P68）の条件に使う予定） */
+  /** 兵種ごとの熟練度（0〜5。レベルが1上がるごとに今の兵種が+1。今は記録だけ） */
   mastery?: Record<string, number>;
+  /** 直伝で教わった技・軍略（兵は1つまで。昇進しても残る。P68） */
+  taught?: Taught[];
+  /** 直伝で教わっている最中の兵の目印（並びが変わっても見つけられるように） */
+  tid?: string;
 }
+
+/** 直伝で教わった技・軍略。uses：戦いで使った回数（身につくまでは「借り物」で気力が多くかかる） */
+export interface Taught { id: string; kind: 'skill' | 'tactic'; from: string; uses: number }
 
 export interface GGeneral {
   id: string;
@@ -53,6 +60,8 @@ export interface GGeneral {
   imarpg?: 'hero' | 'companion' | 'rival';
   /** 役職ごとの熟練度（0〜5） */
   mastery: Record<string, number>;
+  /** 直伝で教わった技・軍略（枠は知略で決まる。P68） */
+  taught?: Taught[];
   /** 今の能力値（役職の補正を足す前） */
   stats: StatBlock;
   command: number;

@@ -34,7 +34,7 @@ import { prewarm } from '../render/strategyView';
 import { NationMap } from '../render/nationMap';
 
 import {
-  canUseSkill, canUseTactic, forecastSkill, needsReload, tacticCost, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
+  canUseSkill, canUseTactic, forecastSkill, needsReload, skillCost, tacticCost, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
   tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
 } from '../rules/combat';
 import { reach, stepCost, unitAt } from '../rules/move';
@@ -1094,9 +1094,10 @@ export class App {
     // 技・軍略（名前に乗せると説明）
     const skills = u.skills.map(skillOf).map((s) => {
       const [a, b] = skillRange(st, u, s);
-      return `<span class="sk" data-tip="${esc(skillTip(s))}">${esc(L(s.name))}<small>${s.power ? `威${s.power}` : ''}${a === b ? ` 射${b}` : ` 射${a}-${b}`}${s.mp ? ` 気${s.mp}` : ''}</small></span>`;
+      const mp = skillCost(u, s);
+      return `<span class="sk" data-tip="${esc(skillTip(s))}">${this.taughtMark(s.id, u)}${esc(L(s.name))}<small>${s.power ? `威${s.power}` : ''}${a === b ? ` 射${b}` : ` 射${a}-${b}`}${mp ? ` 気${mp}` : ''}</small></span>`;
     });
-    const tactics = u.tactics.map((id) => D.byTactic[id]).filter(Boolean).map((t) => `<span class="sk tac" data-tip="${esc(tacticTip(t))}">${esc(L(t.name))}<small>気${tacticCost(u, t)}</small></span>`);
+    const tactics = u.tactics.map((id) => D.byTactic[id]).filter(Boolean).map((t) => `<span class="sk tac" data-tip="${esc(tacticTip(t))}">${this.taughtMark(t.id, u)}${esc(L(t.name))}<small>気${tacticCost(u, t)}</small></span>`);
     const enemy = !this.human.has(u.side) && this.human.size > 0;
     return `<div class="card" style="border-color:${SIDE_COLOR[u.side]}">
       <div><b>${esc(u.name)}</b> <span class="dim">${u.kind === 'general' ? kindName(u) : '兵'} Lv${u.level}${enemy ? '　<b class="foe">敵</b>' : ''}</span></div>
@@ -1239,13 +1240,22 @@ export class App {
     return notes.length ? `、${notes.join('、')}` : '';
   }
 
-  private skillLabel(s: SkillDef): string {
+  private skillLabel(s: SkillDef, u?: BUnit): string {
     const range = s.shape.type === 'around' ? `周囲${s.shape.n}` : s.shape.type === 'line' ? `直線${s.shape.n}` : s.range[0] === s.range[1] ? `射程${s.range[1]}` : `射程${s.range[0]}〜${s.range[1]}`;
-    return `${L(s.name)} <small>威力${s.power || '-'} ${range}${s.mp ? ` 気${s.mp}` : ''}</small>`;
+    const mp = u ? skillCost(u, s) : s.mp;
+    return `${this.taughtMark(s.id, u)}${L(s.name)} <small>威力${s.power || '-'} ${range}${mp ? ` 気${mp}` : ''}</small>`;
   }
   private tacticLabel(t: TacticDef, u?: BUnit): string {
     const range = t.range === null ? '' : t.area ? (t.range ? `射程${t.range}・範囲${t.area}` : `周囲${t.area}`) : `射程${t.range}`;
-    return `${L(t.name)} <small>${t.power ? `威力${t.power} ` : ''}${range} 気${u ? tacticCost(u, t) : t.mp}</small>`;
+    return `${this.taughtMark(t.id, u)}${L(t.name)} <small>${t.power ? `威力${t.power} ` : ''}${range} 気${u ? tacticCost(u, t) : t.mp}</small>`;
+  }
+  /** 直伝の印（P68）：借り物は「借」（気力が多い・使った回数）、身についたものは「伝」 */
+  private taughtMark(id: string, u?: BUnit): string {
+    if (!u?.taught?.includes(id)) return '';
+    const n = u.artUses?.[id] ?? 0;
+    return u.borrowed?.includes(id)
+      ? `<span class="tmark borrow" title="直伝の借り物：気力が${Math.round(((u.borrowMult ?? 1) - 1) * 100)}%多くかかる（この戦いで${n}回使った。合わせて${S.teach.masterUses}回で身につく）">借</span>`
+      : '<span class="tmark" title="直伝済み（教わって身についた技・軍略）">伝</span>';
   }
 
   /** いま選んでいる技・軍略を、マウスのあるマスに使ったときの予測 */
@@ -1370,8 +1380,8 @@ export class App {
       const arts = [
         ...u.skills.map((id) => {
           const s = skillOf(id);
-          const why = notAct || (s.reload && !has(u, 'loaded') ? '装填していない（待機すると装填）' : u.mp < s.mp ? '気力が足りない' : !canUseSkill(st, u, s) ? '今は使えない' : !skillTargetCells(st, u, s).length ? '届く所に相手がいない' : '');
-          return { on: this.mode.type === 'skill' && this.mode.id === id, why, html: btn('skill', id, this.skillLabel(s), why) };
+          const why = notAct || (s.reload && !has(u, 'loaded') ? '装填していない（待機すると装填）' : u.mp < skillCost(u, s) ? '気力が足りない' : !canUseSkill(st, u, s) ? '今は使えない' : !skillTargetCells(st, u, s).length ? '届く所に相手がいない' : '');
+          return { on: this.mode.type === 'skill' && this.mode.id === id, why, html: btn('skill', id, this.skillLabel(s, u), why) };
         }),
         ...u.tactics.map((id) => {
           const t = D.byTactic[id];

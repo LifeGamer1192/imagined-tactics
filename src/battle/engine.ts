@@ -5,7 +5,7 @@ import { seatName } from './map';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import {
   atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, skillTargetCells,
-  needsReload, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
+  needsReload, skillCost, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
 } from '../rules/combat';
 import { killExp } from '../rules/growth';
 import { reach, unitAt } from '../rules/move';
@@ -194,8 +194,14 @@ function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: bo
   }
 }
 
+/** 直伝の借り物を使った回数を数える（戦いのあと、身につく回数に足す。P68） */
+function countBorrowed(u: BUnit, id: string): void {
+  if (u.borrowed?.includes(id)) (u.artUses ??= {})[id] = (u.artUses[id] ?? 0) + 1;
+}
+
 function doSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number): void {
-  u.mp -= skill.mp;
+  u.mp -= skillCost(u, skill);
+  countBorrowed(u, skill.id);
   // 装填の要る技は、撃つと装填が外れる
   if (skill.reload) removeStatus(u, 'loaded');
   u.expGained += D.combat.useExp;
@@ -224,6 +230,7 @@ function freeNear(st: BattleState, u: BUnit, center: number): number {
 function doTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number): void {
   const rng = st.rng;
   u.mp -= tacticCost(u, tac);
+  countBorrowed(u, tac.id);
   u.expGained += tac.kind === 'heal' || tac.kind === 'cure' ? D.combat.healExp : D.combat.useExp;
   log(st, 'tactic', { unit: u.name, tactic: tac.name.jp, uid: u.id, cell: target, tac: tac.id });
 
@@ -428,7 +435,7 @@ export function apply(st: BattleState, a: Action): boolean {
       const skill = u.skills.includes(a.skill) ? skillOf(a.skill) : undefined;
       if (!skill || !canAct(st, u) || !canUseSkill(st, u, skill)) return false;
       if (!skillTargetCells(st, u, skill).includes(a.target)) return false;
-      const act = openAct(st, u, 'skill', skill.id, a.target, skill.mp);
+      const act = openAct(st, u, 'skill', skill.id, a.target, skillCost(u, skill));
       doSkill(st, u, skill, a.target);
       afterAction(st, u);
       closeAct(st, u, act);

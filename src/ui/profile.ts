@@ -1,7 +1,9 @@
 // 将の詳しい窓：能力・役職・特性・性格・軍略・兵と、列伝（hist-sim の記録・史実の出来事・解説記事・この国モードでの出来事）。
 
 import { personalityLabel, personalityOf } from '../ai/personality';
-import type { GGeneral } from '../convert/model';
+import type { GGeneral, Taught } from '../convert/model';
+import { S } from '../strategy/config';
+import { artName, intOf, isMastered, slotsOf } from '../strategy/teach';
 import { D, L } from '../data/db';
 import { biography } from '../strategy/biography';
 import { strengthOf, troopLoad, type Campaign, type CampaignLog } from '../strategy/campaign';
@@ -48,6 +50,7 @@ export function profileHtml(c: Campaign, g: GGeneral, fig: string, line: (e: Cam
       </div>
     </div>
     ${masteryHtml(g)}
+    ${taughtHtml(g)}
     <h3>列伝</h3>
     ${bio.facts.map((f) => `<p>${esc(f)}</p>`).join('')}
     ${list('家族', bio.family.map(esc))}${list('在位', bio.reigns.map(esc))}${list('縁', bio.ties.map(esc))}
@@ -73,4 +76,15 @@ function masteryHtml(g: GGeneral): string {
   };
   return `<h4>熟練度</h4><ul class="small">${[...path, ...others].map(line).join('')}</ul>
     <p class="dim small">熟練度は役職ごとに0〜${MAX_MASTERY}。レベルが1上がるごとに、今の役職の熟練度が1上がる。使い道：① 上限（${MAX_MASTERY}）になると、その役職の軍略を「持ち越し」、役職を変えても使える。② 昇進には、今の役職の熟練度${MAX_MASTERY}が要る（とレベル）。下の役職は経てきたものとして上限になっている。兵の熟練度も兵種ごとに同じように上がる（今は記録だけ）。</p>`;
+}
+
+/** 直伝の欄（P68）：教わった技・軍略（借り物・直伝済）と枠。配下の兵の分も */
+function taughtHtml(g: GGeneral): string {
+  const tag = (x: Taught): string => (isMastered(x) ? '<span class="tmark">伝</span>直伝済' : `<span class="tmark borrow">借</span>借り物（${x.uses}/${S.teach.masterUses}回。気力${Math.round((S.teach.borrowedMpMult - 1) * 100)}%増し）`);
+  const row = (x: Taught): string => `<li>${x.kind === 'skill' ? '技' : '軍略'}「${esc(artName(x.id, x.kind))}」　${tag(x)}　<span class="dim">${esc(x.from)}から</span></li>`;
+  const troops = g.troops.filter((t) => t.taught?.length).map((t) => `<li>${esc(t.name ?? L(D.byUnit[t.unitId].name))}：${t.taught!.map((x) => `「${esc(artName(x.id, x.kind))}」${isMastered(x) ? '（直伝済）' : `（借り物 ${x.uses}/${S.teach.masterUses}）`}`).join('')}</li>`);
+  return `<h4>直伝 <span class="dim small">枠 ${(g.taught ?? []).length}/${slotsOf(g)}（${T.int()}${intOf(g)}で決まる）</span></h4>
+    ${g.taught?.length ? `<ul class="small">${g.taught.map(row).join('')}</ul>` : '<p class="small dim">まだ教わったものはありません。</p>'}
+    ${troops.length ? `<ul class="small">${troops.join('')}</ul>` : ''}
+    <p class="dim small">直伝の枠は${T.int()}で決まる（${S.teach.slotsByInt.map(([max, n], i) => `${i ? `${S.teach.slotsByInt[i - 1][0] + 1}〜` : ''}${max}${i ? '' : '以下'}で${n}`).join('・')}・${S.teach.slotsByInt.at(-1)![0] + 1}以上で${S.teach.maxSlots}）。兵は${S.teach.troopSlots}つ。</p>`;
 }

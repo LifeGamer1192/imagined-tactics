@@ -50,6 +50,8 @@
     "cunningEmptyBonus": 0.5, "honorNeutralPenalty": 0.5, "warBonus": 1.5, "emptyDefenseShare": 0.35,  "reserveSupply": 150
   },
   "supply": { "capMonths": 24, "capMin": 1500 },
+  "teach": { "slotsByInt": [[64, 1], [79, 2], [94, 3]], "maxSlots": 4, "troopSlots": 1, "months": { "lord": 2, "general": 3, "troop": 4 }, "borrowedMpMult": 1.2, "masterUses": 5,
+    "aiChance": { "easy": 0.04, "normal": 0.08, "hard": 0.12, "veryHard": 0.18, "oni": 0.25 } },
   "abdicate": { "minAge": 15, "cooldown": 24, "fameGap": 2, "fameGapBig": 4, "drop": 1, "dropBig": 2 },
   "tactical": { "lines": [17, 18], "capPerGeneral": 1 },
   "traits": {

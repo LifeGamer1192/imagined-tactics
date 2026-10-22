@@ -13,6 +13,7 @@ import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { TRAITS } from '../rules/traits';
 import { addLevels, classMod } from '../rules/growth';
+import { aiTeach, lessonsBusy, lessonsMonth } from './teach';
 import { addFeats, chronFromLog, realmEvent, realmFell, realmFromLog, sampleRealms, type ChronEntry, type Feat, type RealmHist } from './chronicle';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
@@ -26,6 +27,11 @@ const SUPPLY = (cfgJson as unknown as { supply: { recruitCostMult: number } }).s
 export const MAX_TROOPS = (cfgJson as unknown as { troops: { maxPerGeneral: number } }).troops.maxPerGeneral;
 
 export interface CampaignLog { key: string; vars: Record<string, string | number> }
+/**
+ * 直伝（P68）：teacher が learner（将、または teacher の配下の兵 tid）に art を教えている。
+ * months かかり、progress が進んだ月（療養に入るとやり直しで0）。prov は教えている領
+ */
+export interface Lesson { teacher: string; learner: string; tid?: string; art: string; kind: 'skill' | 'tactic'; months: number; progress: number; prov: number }
 
 export interface PendingBattle {
   attacker: number;
@@ -90,6 +96,8 @@ export interface Campaign {
   realms?: Record<number, RealmHist>;
   /** 最後に当主を譲った月（c.months。P71） */
   abdicatedAt?: number;
+  /** 進んでいる直伝（P68） */
+  lessons?: Lesson[];
   /** 滅んだが、まだ滅亡の窓を出していない家（P60） */
   fallen?: number[];
   /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */
@@ -947,7 +955,7 @@ function aiFaction(c: Campaign, f: GFaction): PendingBattle[] {
   const needRatio = Math.max(0.8, A.attackRatio - per.aggression * A.aggressionRatio + per.caution * A.cautionRatio);
   const chance = Math.max(0.2, Math.min(0.95, A.attackChance * (1 + per.aggression * A.aggressionChance)));
   aiRecruit(c, f);
-  if (f.id !== c.player) aiBuild(c, f);
+  if (f.id !== c.player) { aiBuild(c, f); aiTeach(c, f.id); }
   // 組んで攻める（非常に難しい・鬼。P64）：自分が最も大きい国のとき、相手は自分を狙いやすく、相手どうしは攻め合いにくい
   const gang = c.player && f.id !== c.player && playerLeads(c) ? S.difficulty[c.difficulty].aiGangUp ?? 0 : 0;
   for (const p of provincesOf(c, f.id)) {
@@ -1104,9 +1112,12 @@ export function finishMonth(c: Campaign): void {
   gs.truces = gs.truces.filter((t) => t.until > gs.tick);
   trainMonth(c);
   scoutMonth(c);
+  lessonsMonth(c);
   c.moved.clear();
   // 退却して休養中の武将は、この月も動けない（守りの出陣はできる）
   for (const [gid, until] of Object.entries(c.resting ?? {})) { if (until >= gs.tick && gs.generals[gid]) c.moved.add(gid); else delete c.resting![gid]; }
+  // 直伝の最中の将は、この月も動けない（守りの出陣はできる。P68）
+  lessonsBusy(c);
   // 今月攻められなかった包囲は、守りが立て直されて進みが戻る
   for (const [k, sg] of Object.entries(c.sieges)) {
     if (sg.tick >= gs.tick - 1 && gs.factions[sg.by]) continue;

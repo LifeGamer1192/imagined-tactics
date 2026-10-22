@@ -69,6 +69,12 @@ export const S = strategyJson as unknown as {
    */
   difficulty: Record<Difficulty, { name: string; playerIncome: number; playerSiege: number; aiVsPlayer: number; aiTroopLevel: number; aiEmptyChance: number; aiIncome?: number; aiGeneralLevel?: number; aiGangUp?: number; warn?: string }>;
   supply: { capMonths: number; capMin: number };
+  /**
+   * 直伝（P68）：slotsByInt：知略がこの値以下なら、この枠数（それより上は maxSlots）。troopSlots：兵の枠。
+   * months：当主→将・将→将・将→兵にかかる月。borrowedMpMult：借り物の気力の倍率。masterUses：身につくまでに戦いで使う回数。
+   * aiChance：相手の国が1か月に教え始める見込み（難しさごと）
+   */
+  teach: { slotsByInt: [number, number][]; maxSlots: number; troopSlots: number; months: { lord: number; general: number; troop: number }; borrowedMpMult: number; masterUses: number; aiChance: Record<string, number> };
   /** 当主を譲る（P71）：継げる歳、次に譲れるまでの月、忠誠が下がる名声の差（と大きい差）、下がる量 */
   abdicate: { minAge: number; cooldown: number; fameGap: number; fameGapBig: number; drop: number; dropBig: number };
   tactical: { lines: number[]; capPerGeneral: number };
