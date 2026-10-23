@@ -16,7 +16,7 @@ import { makeTroop } from '../../src/convert/convert';
 import { RNG } from '../../src/core/rng';
 import { D, L } from '../../src/data/db';
 import type { SkillDef, StatusId, TacticDef } from '../../src/data/types';
-import { canCounter, critChance, healAmount, hitChance, skillDamage, tacticCost, tacticDamage, tacticSide, tacticSuccess } from '../../src/rules/combat';
+import { canCounter, critChance, healAmount, hitChance, skillCost, skillDamage, tacticCost, tacticDamage, tacticSide, tacticSuccess } from '../../src/rules/combat';
 import { attackPower, basicSkill, moveOf, passive, skillOf } from '../../src/rules/stats';
 import { classMod } from '../../src/rules/growth';
 
@@ -81,7 +81,7 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
   };
   for (const id of a.u.skills) {
     const s = skillOf(id);
-    if (s.mp > a.u.mp || s.needsWater || (s.reload && !a.loaded)) continue;
+    if (skillCost(a.u, s) > a.u.mp || s.needsWater || (s.reload && !a.loaded)) continue;
     for (const dist of cands(s)) {
     at(a, t, dist);
     const hit = hitChance(st, a.u, s, t.u) / 100;
@@ -110,7 +110,7 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
     // 後ろから撃つとき、直線・範囲の技は1.5体に当たるとして数える（集まった敵に撃つ）
     const crowd = process.env.HEX_REAR && s.shape.type !== 'single' ? 1.5 : 1;
     const value = (dmg * crowd) / t.u.maxHp + extra - counter / a.u.maxHp;
-    out.push({ label: L(s.name), value, cost: s.mp, apply: () => { DIST = dist; if (s.reload) a.loaded = false; t.hp -= dmg; a.hp -= counter; a.u.mp -= s.mp; for (const f of fx) f(); if (s.effects.some((e) => e.type === 'lifesteal')) a.hp = Math.min(a.u.maxHp, a.hp + dmg * ((s.effects.find((e) => e.type === 'lifesteal') as { rate: number }).rate)); } });
+    out.push({ label: L(s.name), value, cost: skillCost(a.u, s), apply: () => { DIST = dist; if (s.reload) a.loaded = false; t.hp -= dmg; a.hp -= counter; a.u.mp -= skillCost(a.u, s); for (const f of fx) f(); if (s.effects.some((e) => e.type === 'lifesteal')) a.hp = Math.min(a.u.maxHp, a.hp + dmg * ((s.effects.find((e) => e.type === 'lifesteal') as { rate: number }).rate)); } });
     }
   }
   for (const id of a.u.tactics) {
@@ -175,6 +175,8 @@ function options(a: Side, t: Side, left: number, actsT: number): Option[] {
 }
 
 let extraActs = 0;
+/** 直伝を足して測るとき（HEX_TEACH）の技・軍略 */
+let TEACH_ART: { id: string; kind: 'skill' | 'tactic'; borrowed: boolean } | null = null;
 /** 決闘の間の距離（両軍は START だけ離れて始まる） */
 const START = Number(process.env.HEX_START ?? 5);
 let DIST = START;
@@ -201,6 +203,8 @@ function act(a: Side, t: Side, left: number, actsT: number, log: Log, round: num
 /** 決闘を1回（a が先か後か）。戻り値：a が削った割合、a が削られた割合 */
 function duel(aId: string, tId: string, aFirst: boolean, log: Log): [number, number] {
   const A: Side = { u: mk(aId, 0, 0), hp: 0, dis: [], poison: 0 }, T: Side = { u: mk(tId, 1, 0), hp: 0, dis: [], poison: 0 };
+  // 直伝（HEX_TEACH）：測る側に1つ足す。borrowed なら借り物（気力が多い）
+  if (TEACH_ART) { const x = TEACH_ART; if (x.kind === 'skill') A.u.skills = [x.id, ...A.u.skills.filter((s) => s !== x.id)]; else A.u.tactics = [...new Set([...A.u.tactics, x.id])]; if (x.borrowed) { A.u.borrowed = [x.id]; A.u.borrowMult = 1.2; } }
   A.hp = A.u.maxHp; T.hp = T.u.maxHp;
   DIST = START;
   // 2回行動を外して比べるとき：HEX_NO_DOUBLE=1
@@ -270,6 +274,40 @@ if (process.env.HEX_CLASSES) {
   process.exit(0);
 }
 
+// ---------------------------------------------------------------- 直伝（HEX_TEACH=1）：兵種ごとに、いちばん効く技・軍略を1つ教えたときの強さ
+// 教えられる技・軍略の候補：兵種の技（通常攻撃を除く）と軍略、役職の軍略。相手は同じ格の全種（教わっていない）
+if (process.env.HEX_TEACH) {
+  const pool: { id: string; kind: 'skill' | 'tactic' }[] = [];
+  const add = (id: string, kind: 'skill' | 'tactic') => { if (!pool.some((x) => x.id === id && x.kind === kind)) pool.push({ id, kind }); };
+  for (const u of D.units) { for (const id of u.skills) if (!skillOf(id).basic) add(id, 'skill'); for (const id of u.tactics) add(id, 'tactic'); }
+  for (const c of D.classes) for (const id of c.tactics) add(id, 'tactic');
+  const tiers2 = ONLY ? [ONLY] : [1, 2, 3];
+  for (const tier of tiers2) {
+    const units = D.units.filter((u) => u.tier === tier);
+    const powerOf = (id: string): number => {
+      let ln = 0;
+      for (const t of units) { let d = 0, k = 0; for (const first of [true, false]) { const [a, b] = duel(id, t.id, first, { used: new Map(), mpOut: null }); d += a / 2; k += b / 2; } ln += Math.log(Math.min(20, Math.max(0.05, (d + 0.01) / (k + 0.01)))); }
+      return Math.round(Math.exp(ln / units.length) * 100);
+    };
+    const rows = units.map((u) => {
+      TEACH_ART = null;
+      const base = powerOf(u.id);
+      let best = { art: '', kind: '', mastered: base, borrowed: base };
+      for (const x of pool) {
+        if ((x.kind === 'skill' ? u.skills : u.tactics).includes(x.id)) continue;
+        TEACH_ART = { ...x, borrowed: false };
+        const m = powerOf(u.id);
+        if (m > best.mastered) { TEACH_ART = { ...x, borrowed: true }; best = { art: x.kind === 'skill' ? L(skillOf(x.id).name) : L(D.byTactic[x.id].name), kind: x.kind === 'skill' ? '技' : '軍略', mastered: m, borrowed: powerOf(u.id) }; }
+      }
+      TEACH_ART = null;
+      return { name: L(u.name), base, ...best };
+    }).sort((a, b) => b.mastered / b.base - a.mastered / a.base);
+    console.log(`\n=== 直伝：格${tier}（${units.length}種・Lv${LV}・${ROUNDS}巡）いちばん効く1つを教えたとき。強さは教わっていない同じ格の全種との1対1 ===`);
+    console.log('兵種\t元の強さ\t教える技・軍略\t借り物のとき\t直伝済のとき\t伸び');
+    for (const r of rows) console.log(`${r.name}\t${r.base}\t${r.art ? `${r.kind}「${r.art}」` : '（伸びない）'}\t${r.borrowed}\t${r.mastered}\t${r.art ? `×${(r.mastered / r.base).toFixed(2)}` : '-'}`);
+  }
+  process.exit(0);
+}
 const tiers = ONLY ? [ONLY] : [1, 2, 3];
 for (const tier of tiers) {
   const units = D.units.filter((u) => u.tier === tier);
