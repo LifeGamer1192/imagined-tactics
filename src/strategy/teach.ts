@@ -193,7 +193,7 @@ export function lessonsBusy(c: Campaign): void {
   for (const x of c.lessons ?? []) { c.moved.add(x.teacher); if (!x.tid) c.moved.add(x.learner); }
 }
 
-/** 相手の国の直伝：ときどき（難しさが上がるほど多く）、どこかの領で教え始める */
+/** 相手の国の直伝：ときどき（難しさが上がるほど多く）、どこかの領で教え始める。教わる側の気力の最大が、借り物の気力1回ぶんに足りるものだけ */
 export function aiTeach(c: Campaign, fid: number): void {
   const chance = T().aiChance[c.difficulty] ?? 0.08;
   if (!c.rng.chance(chance)) return;
@@ -201,6 +201,7 @@ export function aiTeach(c: Campaign, fid: number): void {
   for (const teacher of gens.sort((a, b) => Number(b.isLord) - Number(a.isLord) || b.level - a.level)) {
     const arts = teachableArts(teacher).filter((x) => !x.why).map((x) => x.art);
     for (const l of learnersOf(c, teacher)) for (const art of arts) {
+      if (artMp(art.id, art.kind, true) > maxMpOf(l)) continue;
       if (!teachProblem(c, teacher, l, art)) { startLesson(c, teacher, l, art); return; }
     }
   }

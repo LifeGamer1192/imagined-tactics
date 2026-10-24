@@ -8,7 +8,7 @@ import type { GGeneral } from '../src/convert/model';
 import { D } from '../src/data/db';
 import { skillCost, tacticCost } from '../src/rules/combat';
 import { newCampaign, S, type Campaign } from '../src/strategy/campaign';
-import { artsOfGeneral, learnersOf, lessonsBusy, lessonsMonth, slotsOf, startLesson, teachableArts, teachProblem, teacherProblem } from '../src/strategy/teach';
+import { aiTeach, artMp, artsOfGeneral, learnersOf, lessonLearner, lessonsBusy, lessonsMonth, maxMpOf, slotsOf, startLesson, teachableArts, teachProblem, teacherProblem } from '../src/strategy/teach';
 import { loadFixture } from './helpers';
 
 async function setup(): Promise<{ c: Campaign; teacher: GGeneral; pupil: GGeneral; art: { id: string; kind: 'skill' | 'tactic' } }> {
@@ -59,6 +59,24 @@ describe('teach', () => {
     month(c);
     expect(c.lessons).toHaveLength(0);
     expect(c.log.at(-1)?.key).toBe('teachCancel');
+  });
+
+  it('rival countries only teach arts the learner has enough MP to use (borrowed cost)', async () => {
+    const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
+    const c = newCampaign(gs, save.world, 0);
+    const saved = { ...S.teach.aiChance };
+    for (const k of Object.keys(S.teach.aiChance)) S.teach.aiChance[k] = 1;
+    try {
+      for (let m = 0; m < 6; m++) { for (const f of Object.values(gs.factions)) aiTeach(c, f.id); month(c); }
+    } finally { Object.assign(S.teach.aiChance, saved); }
+    const lessons = [...(c.lessons ?? [])];
+    let learned = 0;
+    for (const g of Object.values(gs.generals)) {
+      for (const x of g.taught ?? []) { learned++; expect(artMp(x.id, x.kind, true)).toBeLessThanOrEqual(maxMpOf({ g })); }
+      for (const t of g.troops) for (const x of t.taught ?? []) { learned++; expect(artMp(x.id, x.kind, true)).toBeLessThanOrEqual(maxMpOf({ g, troop: t })); }
+    }
+    for (const x of lessons) { const l = lessonLearner(c, x); if (l) expect(artMp(x.art, x.kind, true)).toBeLessThanOrEqual(maxMpOf(l)); }
+    expect(learned + lessons.length).toBeGreaterThan(5);
   });
 
   it('troops learn one art that survives promotion; borrowed arts cost more and are mastered by use', async () => {
