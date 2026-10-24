@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <title>hex-sim</title>
-  <meta name="description" content="hist-sim のセーブから始める、ヘックスのターン制戦術ゲーム。日本の戦国と中国の春秋戦国。">
+  <meta name="description" content="hist-sim のセーブから始める、ヘックスの戦術ゲーム（攻め手と守り手が、巡ごとに交互に動く）。日本の戦国と中国の春秋戦国。">
   <meta name="theme-color" content="#1c1a17">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="apple-touch-icon" href="icon-180.png">
@@ -213,7 +213,7 @@ option.oni { color: #c0392b; font-weight: bold; }
     details.bmap img { display: block; width: 100%; max-width: 320px; height: auto; margin: 4px 0 2px; border-radius: 3px; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
     body .card:has(> .town) > details.bmap[open] { margin-right: -72px; }
     .card.build select { max-width: 100%; }
-    /* 窓は、情報欄の「ターン終了」の並び（下に残す）や記録の欄より手前に出す */
+    /* 窓は、情報欄の「巡を終える」の並び（下に残す）や記録の欄より手前に出す */
     body .result { z-index: 30; }
     .tmenu .gives { display: flex; flex-wrap: wrap; gap: 4px; flex-basis: 100%; max-height: 150px; overflow: auto; overscroll-behavior: contain; }
     .over { text-align: center; font: 700 18px var(--mincho); }
@@ -551,7 +551,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     /* 狭い画面・低い画面：速さ・音・記録のボタンは1行にまとめ、横になぞって送る（情報欄を広く残すため） */
     @media (max-width: 760px), (max-height: 520px) {
       .battle aside { min-width: 0; overflow: hidden; }
-      /* 「ターン終了」などの並びは、情報欄を送っても下に残す */
+      /* 「巡を終える」などの並びは、情報欄を送っても下に残す */
       #panel .foot { position: sticky; bottom: -8px; background: var(--panel); padding: 6px 0; z-index: 1; }
       .speed { min-width: 0; max-width: 100%; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior: contain; padding: 4px 8px; flex: 0 0 auto; scrollbar-width: none; }
       .speed > *, .speed .vol > *, .speed .lvl > * { flex: 0 0 auto; }
@@ -568,7 +568,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-B9Osu3Qs.js"></script>
+  <script type="module" crossorigin src="./assets/index-B9iBrLw4.js"></script>
 </head>
 <body>
   <div id="app"></div>
