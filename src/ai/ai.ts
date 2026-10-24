@@ -1,7 +1,7 @@
 // 戦闘の思考。
 // 移動できるマス × 使える技・軍略の組み合わせを、複数の軸で採点して最も良いものを選ぶ。
 //   攻める価値：与ダメージ、撃破、狙う相手（武将・軍略役・弱った相手・主君を脅かす相手）
-//   危険：反撃、次の敵ターンに受ける危険（脅威）、倒される危険
+//   危険：反撃、次の敵の番に受ける危険（脅威）、倒される危険
 //   位置：地形、采配範囲、部隊のまとまり、主君の護衛、役割に合った間合い
 //   支援：回復、補助、妨害、状態異常、気力の節約
 // 各軸の重みは武将の性格（personality.ts）で変わる。兵は率いる武将の性格で動く。
@@ -161,7 +161,7 @@ function strikeCells(st: BattleState, e: BUnit, range: number): Uint8Array {
   return out;
 }
 
-/** いまの位置（u.pos）で、次の敵ターンに受けそうなダメージ */
+/** いまの位置（u.pos）で、次の敵の番に受けそうなダメージ */
 function exposure(st: BattleState, u: BUnit, threats: Threat[], margin = 0): number {
   const g = st.map.grid;
   const tm = terrainMod(st, u);
@@ -419,7 +419,7 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
   }
   parts.cohesion = coh;
 
-  // 脅威：次の敵ターンに受けそうなダメージ。攻め手は時間切れが近いほど気にしない
+  // 脅威：次の敵の番に受けそうなダメージ。攻め手は時間切れが近いほど気にしない
   const keepsBack0 = c.role !== 'front' || (isGeneral && !c.joins);
   const attacking = c.stance === 'advance' || c.stance === 'engage';
   // 地形を見て受ける（むずかしい）：受けるダメージの見込みを、このマスに立ったときの地形と天気で計算し直す

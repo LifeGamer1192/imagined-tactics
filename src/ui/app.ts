@@ -123,7 +123,7 @@ export class App {
   private deploying = false;
   private human = new Set<Side>([0]);
   private undo: { unit: number; pos: number; moveSpent: number } | null = null;
-  /** 全員の行動が終わったときの、自動のターン終了 */
+  /** 全員の行動が終わったときに、自動で番を終えるか */
   private autoEndTimer = 0;
   /** 移動の直後：使える行動のボタンを一瞬光らせる */
   private flashActions = false;
@@ -856,7 +856,7 @@ export class App {
     this.runAutoUnits();
   }
 
-  /** 自分の陣営の全員が行動済みになったら、少し置いて自動でターンを終える */
+  /** 自分の陣営の全員が行動済みになったら、少し置いて自動で番を終える */
   private checkAutoEnd(): void {
     const st = this.st;
     if (!st || st.winner !== null || this.deploying || !this.isHumanTurn()) return;
@@ -864,7 +864,7 @@ export class App {
     if (!mine.length || !mine.every((x) => this.unitDone(x))) return;
     clearTimeout(this.autoEndTimer);
     const turn = st.turn, round = st.round;
-    toast('全員の行動が終わったので、ターンを終えます');
+    toast('全員の行動が終わったので、番を終えます');
     this.autoEndTimer = window.setTimeout(() => {
       if (this.st === st && st.turn === turn && st.round === round && st.winner === null) this.endTurn();
     }, Math.max(this.undo ? 1600 : 700, this.fxEnd - performance.now() + 200));
@@ -1118,7 +1118,7 @@ export class App {
   }
 
   /**
-   * 能力の変化（P58）：いま変わっている能力ごとに、元の値 → いまの値と、原因・変化の値・残りのターンをすべて書く。
+   * 能力の変化（P58）：いま変わっている能力ごとに、元の値 → いまの値と、原因・変化の値・残りの巡をすべて書く。
    * 戦いの始めに特性で変わったぶん（戦いの終わりまで）も書く
    */
   private modsHtml(u: BUnit): string {
@@ -1139,7 +1139,7 @@ export class App {
     const enemy = !this.human.has(t.side) && this.human.size > 0;
     const sts = t.statuses.map((s) => `${GOOD_STATUS.has(s.id) ? '▲' : '▼'}${STATUS_NAME[s.id as keyof typeof STATUS_NAME] ?? s.id}`);
     if (outOfCommand(st, t)) sts.push('▼采配範囲外');
-    // 能力の変化（P58）：短く、原因と値と残りのターン
+    // 能力の変化（P58）：短く、原因と値と残りの巡
     // 難しさで上がった能力（非常に難しい・鬼。P64）
     const lv = (t.traitFx ?? []).find((f) => f.why);
     if (lv) sts.push(`▲${lv.why}：体力・武力・知略${lv.value}（戦いの終わりまで）`);
@@ -1461,7 +1461,7 @@ export class App {
       this.view?.clearFx(t.id);
       this.refresh();
     });
-    // 巡を終える（全員待機）：まだ動ける駒があれば確かめてから、残りを待機にして番を終える（「ターン終了」と「全員待機」をまとめた。P42）
+    // 巡を終える（全員待機）：まだ動ける駒があれば確かめてから、残りを待機にして番を終える（「番を終える」と「全員待機」をまとめた。P42）
     on('#end', async () => {
       const left = st.units.filter((x) => x.alive && x.side === st.turn && !this.unitDone(x));
       if (left.length) {

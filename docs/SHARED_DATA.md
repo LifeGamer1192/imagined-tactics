@@ -46,7 +46,7 @@
 | sure | 状態の軍略で、知略の比べ合いをせず必ず付く |
 | kind | `damage` `heal` `cure`（状態異常を治す）`mpRestore` `buff` `debuff` `status` `dispel`（強化・弱体を消す）`pull`（味方を引き寄せる）`revive`（倒れた兵を立て直す）`displace`（敵を飛ばす） |
 | status | 付ける状態。文字列か `{status, chance%}`（damage のとき、当たったあとの確率） |
-| turns / amount / purge / friendlyFire / anyTarget | 続くターン／気力の回復量／敗残兵を消す／味方も巻き込む／敵味方どちらにも使える |
+| turns / amount / purge / friendlyFire / anyTarget | 続く巡／気力の回復量／敗残兵を消す／味方も巻き込む／敵味方どちらにも使える |
 
 ## units.json（兵種 u###）
 

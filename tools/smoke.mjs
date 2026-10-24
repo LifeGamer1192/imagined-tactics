@@ -93,7 +93,7 @@ if (nBoxes >= 4) {
 await page.selectOption('#control', 'attack');
 await page.click('#start');
 await page.waitForSelector('canvas');
-// 自分で動かす戦いは、まず配置の段階から始まる（ターン終了は無く、配置完了のボタンがある）
+// 自分で動かす戦いは、まず配置の段階から始まる（巡を終えるボタンは無く、配置完了のボタンがある）
 await page.waitForSelector('#deployDone');
 await page.waitForTimeout(300);
 check('自分で戦うと配置の段階から始まる', (await page.textContent('#panel')).includes('配置') && !(await page.$('#end')));

@@ -54,14 +54,14 @@ const PASSIVE_TEXT = (p: Passive): string => {
     case 'evade': return `回避+${p.pct}%`;
     case 'hit': return `命中+${p.pct}%`;
     case 'crit': return `会心+${p.pct}%`;
-    case 'regen': return `毎ターン体力を${p.pct}%回復${p.on === 'forest' ? '（森で）' : p.on === 'water' ? '（水辺で）' : ''}`;
+    case 'regen': return `毎巡体力を${p.pct}%回復${p.on === 'forest' ? '（森で）' : p.on === 'water' ? '（水辺で）' : ''}`;
     case 'shield': return `盾で受ける（${Math.round(p.chance <= 1 ? p.chance * 100 : p.chance)}%）`;
     case 'immune': return `${p.statuses.map((s) => STATUS_NAME[s] ?? s).join('・')}にかからない`;
     case 'tacticResist': return `軍略への耐性+${p.pct}%`;
     case 'bane': return `${AFFINITY_NAME[p.vs] ?? p.vs}の相手に威力+${p.pct}%`;
     case 'baneOnTerrain': return `${p.terrain}で威力+${p.pct}%`;
     case 'remove': return '倒されても戦場から下がるだけ（失われにくい）';
-    case 'doubleAct': return '1ターンに2回動けることがある';
+    case 'doubleAct': return '1巡に2回動けることがある';
   }
 };
 
@@ -126,7 +126,7 @@ export function statusEffect(id: string): string {
   const s = D.status as unknown as Record<string, Record<string, number | [number, number]>>;
   const hp = T.hp(), agi = T.agi(), int = T.int();
   const n = (k: string, f: string): number => Number((s[k]?.[f] as number) ?? 0);
-  const span = (k: string): string => { const t = s[k]?.turns; return Array.isArray(t) ? `${t[0]}〜${t[1]}ターン` : `${t}ターン`; };
+  const span = (k: string): string => { const t = s[k]?.turns; return Array.isArray(t) ? `${t[0]}〜${t[1]}巡` : `${t}巡`; };
   switch (id) {
     case 'poison': return `番の始めに、最大${hp}の${n('poison', 'pct')}%を失う。戦いが終わるまで続く。`;
     case 'daze': return `${span('daze')}動けず、受ける攻撃が必ず当たる。`;

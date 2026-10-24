@@ -1,4 +1,4 @@
-// 戦闘の進行：行動の実行、ターンの切り替え、勝敗。乱数はすべて st.rng から取る。
+// 戦闘の進行：行動の実行、番の切り替え、勝敗。乱数はすべて st.rng から取る。
 
 import { D } from '../data/db';
 import { seatName } from './map';
@@ -324,11 +324,11 @@ function doTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number): vo
   }
 }
 
-// ---------------------------------------------------------------- ターン
+// ---------------------------------------------------------------- 番と巡
 
 function afterAction(st: BattleState, u: BUnit): void {
   u.acted = true;
-  // 2回行動・号令：このターンにもう1度動ける
+  // 2回行動・号令：この番にもう1度動ける
   const extra = passive(u, 'doubleAct').length > 0 || has(u, 'extraAct');
   if (u.alive && extra && !u.extraUsed) {
     u.extraUsed = true;
@@ -348,7 +348,7 @@ export function startTurn(st: BattleState, side: Side): void {
   st.turn = side;
   for (const u of st.units) {
     if (!u.alive) continue;
-    // 寝返り中の兵は、もとの陣営の番で残りターンを数える
+    // 寝返り中の兵は、もとの陣営の番で残りの巡を数える
     const counts = u.home === side;
     if (counts) {
       for (const s of [...u.statuses]) {

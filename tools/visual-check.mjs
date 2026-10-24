@@ -75,7 +75,7 @@ async function run(tag, ctxOpts) {
     await press('#start');
     await page.waitForSelector('#deployDone'); await idle();
     await page.waitForTimeout(300);
-    ok(`[${tag}] 自分で戦うと配置の段階から始まる（見出し「配置」と配置完了のボタン、ターン終了は無い）`,
+    ok(`[${tag}] 自分で戦うと配置の段階から始まる（見出し「配置」と配置完了のボタン、巡を終えるボタンは無い）`,
       /配置/.test(await page.textContent('#panel .turn')) && (await page.isVisible('#deployDone')) && !(await page.$('#end')) && !(await page.$('#quit')));
     await shot('battle_deploy');
     // 配置：自分の駒を押してから青いマスを押すと動く（画面の上で本当に押す）
@@ -234,7 +234,7 @@ async function run(tag, ctxOpts) {
     ok(`[${tag}] 飛び地の戦いは天気の欄に出て、攻撃が下がる`, /飛び地で戦う/.test(await page.textContent('#sky')) && cutInfo.after < cutInfo.before, `${Math.round(cutInfo.before)}→${Math.round(cutInfo.after)}`);
     await shot('battle_exclave');
     await page.evaluate(() => { const a = window.__app; a.st.supplyMult = undefined; a.inspect = null; a.refresh(); });
-    // P32：自分の陣営の全員が行動済みになると、自動でターンが終わる
+    // P32：自分の陣営の全員が行動済みになると、自動で番が終わる
     await page.evaluate(async () => {
       const { apply } = await import('/src/battle/engine.ts');
       const a = window.__app, st = a.st;
@@ -243,7 +243,7 @@ async function run(tag, ctxOpts) {
       a.refresh(); a.checkAutoEnd();
     });
     const autoEnded = await page.waitForFunction(() => window.__app.st.turn !== window.__turn0, null, { timeout: 5000 }).then(() => true).catch(() => false);
-    ok(`[${tag}] 全員の行動が終わると、自動でターンが終わる`, autoEnded);
+    ok(`[${tag}] 全員の行動が終わると、自動で番が終わる`, autoEnded);
     await page.waitForTimeout(150);
     const turnText = await page.$eval('.splash', (el) => el.textContent).catch(() => '');
     ok(`[${tag}] 番が替わると「◯◯の番」（開戦ではない）`, /の番$/.test(turnText ?? '') && !(turnText ?? '').includes('開戦'), turnText ?? '');

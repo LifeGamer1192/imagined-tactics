@@ -10,7 +10,7 @@ export type Side = 0 | 1;
 
 export interface BStatus {
   id: StatusId;
-  /** 残りターン（-1 = 戦闘終了まで、または条件で解除） */
+  /** 残りの巡（-1 = 戦闘終了まで、または条件で解除） */
   turns: number;
   /** 敗残兵収容：もとの陣営 */
   origSide?: Side;
@@ -60,14 +60,14 @@ export interface BUnit {
   /** 武将の性格（敵の思考で使う。兵は率いる武将の性格で動く） */
   persona?: Personality;
   statuses: BStatus[];
-  /** このターン、移動に使った移動力（再移動の残りの計算用） */
+  /** この番、移動に使った移動力（再移動の残りの計算用） */
   moveSpent: number;
   moved: boolean;
   /** 行動のあとの再移動を済ませたか */
   postMoved: boolean;
   /** 行動（技・軍略・待機）を済ませたか */
   acted: boolean;
-  /** 2回行動・号令で、このターンすでに追加で動いたか */
+  /** 2回行動・号令で、この番すでに追加で動いたか */
   extraUsed: boolean;
   alive: boolean;
   /** 撤退した（倒れたのではない） */

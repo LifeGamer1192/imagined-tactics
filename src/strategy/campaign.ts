@@ -1,4 +1,4 @@
-// 戦略パート（docs/13_実装計画 の P11）：領の取り合い。1ターン＝1か月。画面には依存しない。
+// 戦略パート（docs/13_実装計画 の P11）：領の取り合い。1回＝1か月。画面には依存しない。
 
 import cfgJson from '../../data/system/convert.json';
 import { autoBattle, runAiTurn } from '../ai/ai';

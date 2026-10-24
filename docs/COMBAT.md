@@ -3,7 +3,7 @@
 hex-sim の戦闘で使っている計算式を1か所にまとめたもの。兄弟の作品（ima-rpg）の1対1の戦いでも、同じ式を使えるように書いてある。
 
 - 係数の正本は `data/system/combat.json`（以下「C」）と `data/system/statuses.json`（以下「S」）。地形は `terrain.json`。
-- 式の実装は `src/rules/combat.ts`（命中・ダメージ・会心・軍略）、`src/rules/stats.ts`（状態を含めたいまの能力）、`src/battle/engine.ts`（乱数の引き方・反撃・状態の付き方・ターンの始まり）。
+- 式の実装は `src/rules/combat.ts`（命中・ダメージ・会心・軍略）、`src/rules/stats.ts`（状態を含めたいまの能力）、`src/battle/engine.ts`（乱数の引き方・反撃・状態の付き方・巡の始まり）。
 - 公開物では `https://lifegamer1192.github.io/imagined-tactics/data/combat.json` などで同じ JSON を読める（`data/index.json` に一覧）。
 - 確率はすべて百分率（0〜100）で持つ。乱数は `r = 0以上100未満の一様乱数` を引き、`r < 確率` なら成功。
 - 1対1の戦いに要らない部分（采配範囲・地形・天気・櫓）は、0 または 1 として読めば式がそのまま使える（各節の「1対1では」）。
@@ -101,14 +101,14 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 | 付け方 | 式 |
 |---|---|
 | 技の効果 `status` | 当たったあと、効果の chance（百分率）で付く |
-| 技の効果 `weakenStun` | 当たったあと chance で、攻防ダウン（S.weaken.turns ターン）と気絶 |
+| 技の効果 `weakenStun` | 当たったあと chance で、攻防ダウン（S.weaken.turns 巡）と気絶 |
 | 軍略 `damage` で status が `{status, chance}` | 当たったあと chance で付く |
 | 軍略 `status`（sure でない、敵に） | 成功率 `clamp(round((C.statusBase ＋ 知略(攻) − 知略(守) ＋ 特性の statusPct(攻)) × (1 − max(0, 耐性))), C.statusMin, C.statusMax)` |
 | 軍略 `status`（sure、または味方に）、`buff`・`debuff` | 必ず付く |
 
 - 特技 `immune` に含まれる状態は付かない。
-- 続くターン：怯み・攪乱・寝返り・気絶は S.<id>.turns の範囲から乱数。軍略は tactics.json の turns。ほかは S.<id>.turns か、終わるまで。同じ状態が付いていれば、長い方に延ばす。
-- 状態の効き目は S（statuses.json）：毒は番の始まりに最大体力の S.poison.pct%、毎ターン回復は S.regen.pct%、混乱は防御を S.confuse.def に固定、など。気絶は攻撃を受けると解ける。
+- 続く巡：怯み・攪乱・寝返り・気絶は S.<id>.turns の範囲から乱数。軍略は tactics.json の turns。ほかは S.<id>.turns か、終わるまで。同じ状態が付いていれば、長い方に延ばす。
+- 状態の効き目は S（statuses.json）：毒は番の始まりに最大体力の S.poison.pct%、毎巡回復は S.regen.pct%、混乱は防御を S.confuse.def に固定、など。気絶は攻撃を受けると解ける。
 - 武将は寝返らない。
 - **1対1では**：寝返り（陣営が入れ替わる）は「行動不能」と読み替えるとよい。
 

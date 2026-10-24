@@ -1,4 +1,4 @@
-// 戦闘中の能力の変化の内訳（P58）：どの能力が、何のせいで、いくつ変わっているか（ターン限定なら残りのターン数も）。
+// 戦闘中の能力の変化の内訳（P58）：どの能力が、何のせいで、いくつ変わっているか（巡の数が限られるなら残りの巡の数も）。
 // 計算は stats.ts と同じ順番で、駒の情報欄に出す。戦いの始めに特性で変わったぶんは u.traitFx。
 
 import type { BStatus, BUnit, BattleState } from '../battle/types';
@@ -12,13 +12,13 @@ export interface StatRow { key: string; base: number; now: number; causes: StatC
 const sg = (v: number): string => `${v > 0 ? '+' : ''}${v}`;
 const mul = (m: number): string => `${m >= 1 ? '+' : ''}${Math.round((m - 1) * 100)}%`;
 
-/** 状態の残り：ターン数、または「次の技まで」「戦いの終わりまで」 */
+/** 状態の残り：巡の数、または「次の技まで」「戦いの終わりまで」 */
 export function turnsText(s: BStatus | undefined): string | undefined {
   if (!s) return undefined;
   if (s.id === 'atkNext' || s.id === 'sureNext') return '次の技まで';
   if (s.id === 'ward') return '次の軍略まで';
   if (s.id === 'extraAct') return 'この番だけ';
-  return s.turns > 0 ? `残り${s.turns}ターン` : '戦いの終わりまで';
+  return s.turns > 0 ? `残り${s.turns}巡` : '戦いの終わりまで';
 }
 
 /** 状態の名前（ui/text の STATUS_NAME を渡す） */
@@ -69,9 +69,9 @@ export function statRows(st: BattleState, u: BUnit, statusName: (id: StatusId) =
     const tm = terrainMod(st, u);
     if (tm) rows.push({ key: '命中・回避', base: 0, now: tm, causes: [{ why: 'いる地形', value: sg(tm), turns: 'このマスにいる間' }] });
   }
-  // 体力の増減（毎ターン）
+  // 体力の増減（毎巡）
   {
-    const c = [...withV(stat('poison'), `毎ターン −${S.poison.pct}%`), ...withV(stat('regen'), `毎ターン +${S.regen.pct}%`)];
+    const c = [...withV(stat('poison'), `毎巡 −${S.poison.pct}%`), ...withV(stat('regen'), `毎巡 +${S.regen.pct}%`)];
     if (c.length) rows.push({ key: '体力（番の始め）', base: u.hp, now: u.hp, causes: c });
   }
   // 得意地形

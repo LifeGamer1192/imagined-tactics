@@ -26,7 +26,7 @@ ok('配置の途中で観戦→手動にしても、配置の画面にならな�
 await page.waitForSelector('#end', { timeout: 60000 });
 await page.waitForSelector('#watch');
 const log = async () => (await page.$$('#log > div')).length;
-ok('手動で始まり、ターン終了のボタンがある', !!(await page.$('#end')));
+ok('手動で始まり、巡を終えるボタンがある', !!(await page.$('#end')));
 // 速さ5の観戦は1秒足らずで決着するので、切り替えの確認は速さ4で行う
 await page.click('[data-speed="4"]');
 ok('速さ5を選べる', (await page.getAttribute('[data-speed="4"]', 'class')).includes('on'));

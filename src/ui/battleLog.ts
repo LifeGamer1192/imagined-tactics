@@ -190,7 +190,7 @@ function plain(st: BattleState, e: BattleLogEntry, detail: boolean): string {
   switch (e.key) {
     case 'status.add': {
       const turns = n(v.turns);
-      return `${who(st, n(v.sid)) || esc(String(v.unit))}：${statusName(v.status)}が付いた${turns > 0 ? `（${turns}ターン）` : ''}`;
+      return `${who(st, n(v.sid)) || esc(String(v.unit))}：${statusName(v.status)}が付いた${turns > 0 ? `（${turns}巡）` : ''}`;
     }
     case 'status.end': return `${who(st, n(v.sid)) || esc(String(v.unit))}：${statusName(v.status)}が解けた`;
     case 'defeat': {
