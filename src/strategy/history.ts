@@ -12,7 +12,7 @@ import { makeOfficer, makeTroop, startLevel } from '../convert/convert';
 import type { GFaction, GGeneral } from '../convert/model';
 import { RNG, codeToSeed } from '../core/rng';
 import { D } from '../data/db';
-import { absorb, declareWar, handOver, homeFor, note, provincesOf, relation, type Campaign, type HistBattle, type HistoryChoice } from './campaign';
+import { absorb, declareWar, handOver, homeFor, note, provincesOf, relation, type Campaign, type HistBattle, type HistGoal, type HistoryChoice } from './campaign';
 import { S } from './config';
 import { leaveWar, makeTruce } from './events';
 
@@ -229,8 +229,8 @@ function diplomacy(c: Campaign, kind: string, args: unknown[], fid: (key: string
   };
   switch (kind) {
     case 'war': {
-      // 自分の家が仕掛ける戦は、自分で決める
-      if (a.id === me) return SPARED;
+      // 自分の家が仕掛ける戦は、自分で決める。代わりに史実の目標として出す（P76）
+      if (a.id === me) { addGoal(c, b, (args[2] as Partial<Name> | undefined)?.ja); return SPARED; }
       if (rel === 'war') return null;
       unbind();
       if (!declareWar(c, a.id, b.id)) return null;
@@ -690,4 +690,30 @@ export function skipHistBattle(c: Campaign, evId: string, hooks: HistoryHooks): 
   const hb = (c.history.battles ?? []).find((x) => x.ev === evId), ev = scenarioEvent(c, evId);
   c.history.battles = (c.history.battles ?? []).filter((x) => x !== hb);
   if (hb && ev) runEvent(c, ev, hooks);
+}
+
+// ---------------------------------------------------------------- 史実の目標（P76）
+
+/** 史実では自分の家が target へ攻め込む頃：期限までに target の領を1つ取れば、ほうび */
+function addGoal(c: Campaign, target: GFaction, warName?: string): void {
+  const provs = provincesOf(c, target.id).map((p) => p.id);
+  if (!provs.length) return;
+  const goal: HistGoal = { name: warName || `${target.name.ja}攻め`, target: target.id, targetName: target.name.ja, provs, until: c.gs.tick + S.histGoal.months };
+  (c.history.goals ??= []).push(goal);
+  note(c, 'histGoal', { name: goal.name, target: target.name.ja, months: S.histGoal.months });
+}
+
+/** 月の終わり：目標を果たしたか（相手の領を1つでも取った）、期限が過ぎたか */
+export function goalsMonth(c: Campaign): void {
+  const me = c.gs.factions[c.player];
+  for (const g of [...(c.history.goals ?? [])]) {
+    const done = g.provs.some((p) => c.gs.provinces[p]?.owner === c.player);
+    if (done && me) {
+      me.prestige = (me.prestige ?? 0) + S.histGoal.prestige;
+      me.supply += S.histGoal.supply;
+      note(c, 'histGoalDone', { name: g.name, target: g.targetName, prestige: S.histGoal.prestige, supply: S.histGoal.supply });
+    } else if (g.until > c.gs.tick) continue;
+    else note(c, 'histGoalMissed', { name: g.name, target: g.targetName });
+    c.history.goals = (c.history.goals ?? []).filter((x) => x !== g);
+  }
 }

@@ -80,6 +80,8 @@ export function chronFromLog(c: Campaign, e: CampaignLog): void {
     // 史実の合戦（P75）
     case 'histBattleResult': chron(c, 'history', `${s('name')}を戦い、${s('foe')}に${s('result')}`); break;
     case 'histBattleDiverged': chron(c, 'diverge', `${s('name')}、史実と逆の結果（史実と違う道）`); break;
+    // 史実の目標（P76）
+    case 'histGoalDone': chron(c, 'history', `史実どおり${s('name')}を果たす（${s('target')}の領を取る）`); break;
     case 'imaArrive': chron(c, 'lord', s('text')); break;
     case 'history':
       if (s('text') && (String(v.text).includes(me) || v.choice)) chron(c, 'history', String(v.text));

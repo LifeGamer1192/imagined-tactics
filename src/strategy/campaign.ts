@@ -20,7 +20,7 @@ import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality }
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
 import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated } from './events';
-import { finishHistBattle, histBattleSetup, historyMonth, skipHistBattle, type HistoryHooks } from './history';
+import { finishHistBattle, goalsMonth, histBattleSetup, historyMonth, skipHistBattle, type HistoryHooks } from './history';
 import { trainMonth } from './training';
 import { initScout, scoutMonth, scoutTier } from './scouting';
 
@@ -130,6 +130,8 @@ export interface Campaign {
     diverged?: string[];
     /** 史実の合戦（P75）：自分の家が出る合戦の出来事。戦うか見送るかを選ぶまで止めておく（until を過ぎると見送ったことになる） */
     battles?: HistBattle[];
+    /** 史実の目標（P76）：史実では自分の家が仕掛ける戦。期限までに相手の領を1つ取ると、ほうび */
+    goals?: HistGoal[];
   };
 }
 
@@ -154,6 +156,8 @@ export interface ReelFrame { round: number; units: { pos: number; side: 0 | 1; g
  * absorb：自分の家が他家（from）を併せる（受ければ併せる）
  */
 /** 史実の合戦（P75）。ev は出来事、key は合戦、me は自分の家の側（合戦の sides の番号）、foe は相手の勢力、prov は戦場の領、until は選べる最後の月、deploy は布陣の説明 */
+/** 史実の目標（P76）。target は相手の家、provs は目標を出したときの相手の領、until は期限の月（tick） */
+export interface HistGoal { name: string; target: number; targetName: string; provs: number[]; until: number }
 export interface HistBattle { ev: string; key: string; name: string; me: number; foe: number; prov: number; until: number; deploy: string }
 /** 兆し（P74）。ev は出来事、gid はその人、cause は死因、due は起きる月（年×12+月）、text は出来事の文 */
 export interface Omen { ev: string; gid: string; name: string; cause: string; due: number; text: string; choice?: 'guard' | 'accept' }
@@ -1179,6 +1183,8 @@ export function finishMonth(c: Campaign): void {
   autoPromote(c);
   monthlyEvents(c);
   historyMonth(c, { dies: (g) => generalDies(c, g), note: (key, vars) => note(c, key, vars) });
+  // 史実の目標（P76）：果たしたか、期限が過ぎたか
+  goalsMonth(c);
   refreshIncome(c);
   checkOver(c);
 }
