@@ -77,6 +77,8 @@ export function historyMonth(c: Campaign, hooks: HistoryHooks): void {
   const fid = (key: string): number => c.history.nations?.[key] ?? nationOf[key];
   // 選ばずに月が過ぎた領の動きは、断ったことにする
   for (const ch of [...(c.history.choices ?? [])]) if (ch.until <= gs.tick) chooseHistory(c, ch.id, false);
+  // 兆し（P74）：自分の家の人が、これから非業の死を遂げる出来事の前触れを出す
+  scanOmens(c, sc, fid, now, nationOf, hooks);
   for (const ev of pendingEvents(c.world)) {
     if (done.has(ev.id)) continue;
     const when = eventMonth(sc, ev);
@@ -106,13 +108,23 @@ export function historyMonth(c: Campaign, hooks: HistoryHooks): void {
       }
       if (!APPLIED_OPS.has(kind)) continue;
       const realm = typeof args[0] === 'string' ? gs.factions[fid(args[0])] : undefined;
+      // 自分の家の当主が非業の死を遂げる出来事：兆しで備えたかどうかで決まる（P74）
+      if (kind === 'rulerDies' && realm && realm.id === c.player && c.player && isViolent(args[1])) {
+        const lord = gs.generals[realm.lordId];
+        if (lord) effects.push(fateOf(c, ev, lord, String(args[1]), rng, hooks));
+        continue;
+      }
       if (realm && realm.id === c.player && kind !== 'battle') { playerSpared = true; continue; }
       switch (kind) {
         case 'dies': {
           const name = String(args[0]);
           const g = Object.values(gs.generals).find((x) => x.name.ja === name);
           if (!g) break;
-          if (g.faction === c.player && c.player) { playerSpared = true; break; }
+          if (g.faction === c.player && c.player) {
+            // 自分の家の人の非業の死は、兆しで備えたかどうかで決まる（P74）。それ以外は今までどおり起こさない
+            if (isViolent(args[1])) effects.push(fateOf(c, ev, g, String(args[1]), rng, hooks)); else playerSpared = true;
+            break;
+          }
           hooks.dies(g);
           effects.push(`${name}が世を去った`);
           break;
@@ -515,4 +527,69 @@ export function historyText(c: Campaign, ev: HEvent, nationOf: Record<string, nu
       return kind === 'r' ? gs.generals[f.lordId]?.name.ja ?? f.name.ja : f.name.ja;
     })
     .replace(/\[\[\w+:([^|\]]+)(?:\|([^\]]+))?\]\]/g, (_m, name: string, label?: string) => label ?? name);
+}
+
+// ---------------------------------------------------------------- 兆し（P74）
+
+/** 死因の名前 */
+export const CAUSE_NAME: Record<string, string> = { assassination: '暗殺', battle_wound: '戦死', suicide: '自害', executed: '処刑' };
+const OMEN_TEXT: Record<string, string> = { assassination: '刺客の噂がある', battle_wound: '戦場で討たれる兆しがある', suicide: '追い詰められて自ら命を絶つ兆しがある', executed: '捕らえられて処刑される兆しがある' };
+const isViolent = (cause: unknown): boolean => S.omen.violent.includes(String(cause));
+
+/** これから lead か月のうちに起きる出来事で、自分の家の人が非業の死を遂げるものに、兆しを出す */
+function scanOmens(c: Campaign, sc: Scenario, fid: (key: string) => number, now: number, nationOf: Record<string, number>, hooks: HistoryHooks): void {
+  if (!c.player) return;
+  const gs = c.gs, done = new Set(c.history.done), omens = (c.history.omens ??= []);
+  for (const ev of pendingEvents(c.world)) {
+    if (done.has(ev.id)) continue;
+    const when = eventMonth(sc, ev);
+    if (when <= now) continue;
+    if (when > now + S.omen.lead) break;
+    if (c.history.from !== undefined && when < c.history.from) continue;
+    if ((ev.need ?? []).some((k) => !gs.factions[fid(k)])) continue;
+    for (const op of ev.do ?? []) {
+      const [kind, a0, a1] = op as [string, unknown, unknown];
+      let g: GGeneral | undefined;
+      if (kind === 'dies' && isViolent(a1)) g = Object.values(gs.generals).find((x) => x.name.ja === String(a0) && x.faction === c.player);
+      if (kind === 'rulerDies' && isViolent(a1) && typeof a0 === 'string' && gs.factions[fid(a0)]?.id === c.player) g = gs.generals[gs.factions[c.player].lordId];
+      if (!g || omens.some((o) => o.ev === ev.id && o.gid === g!.id)) continue;
+      const cause = String(a1);
+      omens.push({ ev: ev.id, gid: g.id, name: g.name.ja, cause, due: when, text: historyText(c, ev, nationOf) });
+      hooks.note('omen', { name: g.name.ja, sign: OMEN_TEXT[cause] ?? '不穏な兆しがある', months: when - now });
+    }
+  }
+}
+
+/**
+ * 兆しの出ていた人の運命を決める。史実のままを選んでいれば世を去る。備えた（または選ばなかった）なら、見込み avert で難を逃れ、史実と違う道になる。
+ * 戻り値：知らせに添える文
+ */
+function fateOf(c: Campaign, ev: HEvent, g: GGeneral, cause: string, rng: RNG, hooks: HistoryHooks): string {
+  const omens = c.history.omens ?? [];
+  const o = omens.find((x) => x.ev === ev.id && x.gid === g.id);
+  c.history.omens = omens.filter((x) => x !== o);
+  const averted = o?.choice !== 'accept' && rng.chance(S.omen.avert);
+  const vars = { name: g.name.ja, cause: CAUSE_NAME[cause] ?? cause, guarded: o?.choice === 'guard' ? 1 : 0 };
+  if (averted) {
+    (c.history.diverged ??= []).push(ev.id);
+    hooks.note('omenAverted', vars);
+    return `${g.name.ja}は難を逃れた（史実と違う道）`;
+  }
+  hooks.note('omenFell', vars);
+  hooks.dies(g);
+  return `${g.name.ja}が世を去った（${CAUSE_NAME[cause] ?? cause}）`;
+}
+
+/** 兆しに備える（兵糧を払い、その人はこの月は行動済み）か、史実のままにする。戻り値：選べたか */
+export function chooseOmen(c: Campaign, ev: string, gid: string, choice: 'guard' | 'accept'): boolean {
+  const o = (c.history.omens ?? []).find((x) => x.ev === ev && x.gid === gid);
+  const me = c.gs.factions[c.player];
+  if (!o || !me || o.choice) return false;
+  if (choice === 'guard') {
+    if (me.supply < S.omen.cost) return false;
+    me.supply -= S.omen.cost;
+    c.moved.add(gid);
+  }
+  o.choice = choice;
+  return true;
 }

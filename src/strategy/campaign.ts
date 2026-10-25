@@ -124,6 +124,10 @@ export interface Campaign {
     nations?: Record<string, number>;
     /** 自分の家にかかわる領の動き。受けるか断るかを選ぶ（until の月を過ぎると、断ったことになる） */
     choices?: HistoryChoice[];
+    /** 兆し（P74）：自分の家の人が史実で非業の死を遂げる出来事の前触れ。choice：備える／史実のまま（選ばなければ備える扱い・兵糧なし） */
+    omens?: Omen[];
+    /** 史実と違う道になった出来事の id */
+    diverged?: string[];
   };
 }
 
@@ -147,6 +151,8 @@ export interface ReelFrame { round: number; units: { pos: number; side: 0 | 1; g
  * annex：自分の家が他家（to）に併せられる（受けると、併せられる代わりに to に従う。断ると to と戦になる）
  * absorb：自分の家が他家（from）を併せる（受ければ併せる）
  */
+/** 兆し（P74）。ev は出来事、gid はその人、cause は死因、due は起きる月（年×12+月）、text は出来事の文 */
+export interface Omen { ev: string; gid: string; name: string; cause: string; due: number; text: string; choice?: 'guard' | 'accept' }
 export interface HistoryChoice {
   id: string; kind: 'give' | 'cede' | 'rise' | 'annex' | 'absorb';
   text: string; provs: number[]; to?: number; from?: number; key?: string; parent?: number; until: number;

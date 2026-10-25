@@ -10,7 +10,9 @@ import {
   declareWar, dismissTroop, garrisonOf, recruit, recruitCost, recruitCostFor, recruitTraitMult, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
   S, supplyCap, provinceRecruit, isNativeUnit, isResting, type Campaign, type CampaignLog, type PendingBattle, type ReelBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
-import { chooseHistory, choiceLine, choiceOutcome } from '../strategy/history';
+import { CAUSE_NAME, chooseHistory, chooseOmen, choiceLine, choiceOutcome } from '../strategy/history';
+/** 兆しの文（P74） */
+const OMEN_SIGN: Record<string, string> = { assassination: '刺客の噂がある', battle_wound: '戦場で討たれる兆しがある', suicide: '追い詰められて自ら命を絶つ兆しがある', executed: '捕らえられて処刑される兆しがある' };
 import { profileHtml } from './profile';
 import { toggleTrainAlways, trainMult, trainOnce, trainProblem } from '../strategy/training';
 import { envoyBonus, envoyPlan, envoyProblem, giftBonus, sendEnvoy, type DipKind } from '../strategy/envoy';
@@ -107,6 +109,9 @@ const LOG_TEXT: Record<string, string> = {
   teachDone: '直伝：{learner}が{teacher}から「{art}」を教わった（借り物。戦いで使うと身につく）',
   teachCancel: '直伝：{teacher}から{learner}への「{art}」は取りやめになった',
   teachReset: '直伝：療養のため、{teacher}から{learner}への「{art}」はやり直しになった',
+  omen: '兆し：{name}に{sign}（あと{months}か月ほど）',
+  omenAverted: '{name}は{cause}の難を逃れた（史実と違う道）',
+  omenFell: '{name}は史実どおり{cause}により世を去った',
   captured: '{by}が、{from}の{name}{lord}を{prov}で捕らえた',
   captiveRefuse: '{name}は{by}に仕えることを断った（捕虜のまま）',
   captiveRecruit: '{name}（もと{from}）が{by}に仕えることになった',
@@ -387,18 +392,18 @@ export class CampaignScreen {
     if (!me || c.over) return;
     const KIND: Record<string, string> = {
       death: 'death', succeed: 'succession', newLord: 'succession', abdicate: 'succession', defect: 'defect', alliance: 'envoy', truce: 'envoy', vassal: 'envoy', breakAlliance: 'envoy', joinWar: 'envoy',
-      captured: 'captive', captiveRecruit: 'captive', captiveRelease: 'captive', captiveExecute: 'captive', captiveFreed: 'captive', captiveEscape: 'captive', captiveRefuse: 'captive',
+      omen: 'omen', omenAverted: 'omen', omenFell: 'death', captured: 'captive', captiveRecruit: 'captive', captiveRelease: 'captive', captiveExecute: 'captive', captiveFreed: 'captive', captiveEscape: 'captive', captiveRefuse: 'captive',
       questItem: 'travel', questRonin: 'travel', questExp: 'travel', questNothing: 'travel', roninJoin: 'promote', tieJoin: 'promote', comeOfAge: 'promote', history: 'history',
     };
-    const ORDER = ['death', 'defect', 'captive', 'succession', 'history', 'envoy', 'travel', 'promote'];
+    const ORDER = ['omen', 'death', 'defect', 'captive', 'succession', 'history', 'envoy', 'travel', 'promote'];
     // 史実の出来事は、大きなもの（imp 2 以上）か、自分の勢力の名前が出るものを知らせる
-    const items = c.log.slice(from).filter((e) => KIND[e.key] && (e.key.startsWith('quest') || Object.values(e.vars).some((v) => v === me.name.ja)
+    const items = c.log.slice(from).filter((e) => KIND[e.key] && (e.key.startsWith('quest') || e.key.startsWith('omen') || Object.values(e.vars).some((v) => v === me.name.ja)
       || (e.key === 'history' && (Number(e.vars.imp) >= 2 || String(e.vars.text).includes(me.name.ja)))));
     if (!items.length) return;
     const kind = ORDER.find((k) => items.some((e) => KIND[e.key] === k))!;
-    const TITLE: Record<string, string> = { death: '訃報', defect: '寝返り', captive: '捕虜', succession: '代替わり', history: '史実の出来事', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ' };
+    const TITLE: Record<string, string> = { omen: '兆し', death: '訃報', defect: '寝返り', captive: '捕虜', succession: '代替わり', history: '史実の出来事', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ' };
     void confirmBox(this.frame(), {
-      title: `今月の知らせ：${TITLE[kind]}`, banner: sceneUrl(kind === 'history' ? 'envoy' : kind === 'captive' ? 'defect' : kind, c.gs.variant),
+      title: `今月の知らせ：${TITLE[kind]}`, banner: sceneUrl(kind === 'history' || kind === 'omen' ? 'envoy' : kind === 'captive' ? 'defect' : kind, c.gs.variant),
       body: `<ul class="news">${items.slice(0, 8).map((e) => `<li>${esc(logLine(e))}</li>`).join('')}</ul>`,
       ok: '閉じる', single: true,
     });
@@ -458,7 +463,7 @@ export class CampaignScreen {
     const feats = Object.entries(c.feats ?? {}).map(([id, f]) => ({ g: gs.generals[id], f })).filter((x) => x.g && x.g.faction === me.id)
       .sort((a, b) => b.f.wins - a.f.wins || b.f.foes - a.f.foes || b.f.battles - a.f.battles).slice(0, 5);
     const totalBattles = Object.values(c.feats ?? {}).reduce((s, f) => Math.max(s, f.battles), 0);
-    const TAG: Record<string, string> = { start: '起', capture: '取', lost: '失', fall: '滅', war: '戦', ally: '盟', truce: '和', capital: '移', lord: '主', history: '史', unify: '統', captive: '虜' };
+    const TAG: Record<string, string> = { start: '起', capture: '取', lost: '失', fall: '滅', war: '戦', ally: '盟', truce: '和', capital: '移', lord: '主', history: '史', unify: '統', captive: '虜', diverge: '異' };
     // 年ごとにまとめる（長い年表は、大事な出来事を残して詰める）
     const keep = chron.length > 80 ? chron.filter((e, i) => i === 0 || e.kind !== 'capture' || i % 2 === 0) : chron;
     const years = new Map<number, typeof chron>();
@@ -481,6 +486,7 @@ export class CampaignScreen {
         <div><b>${gens.length}</b><span>武将</span></div>
         <div><b>${count('capture')}</b><span>攻め取った</span></div>
         <div><b>${count('fall')}</b><span>滅ぼした家</span></div>
+        ${(c.history.diverged ?? []).length ? `<div><b>${(c.history.diverged ?? []).length}</b><span>史実と違う道</span></div>` : ''}
         <div><b>${esc(spanText(c))}</b><span>統一まで</span></div>
       </div>
       ${feats.length ? `<h4>功臣</h4><ol class="u-feats">${feats.map((x, i) => `<li>${i === 0 ? '<span class="u-first">筆頭</span>' : ''}<b>${esc(x.g.name.ja)}</b> <span class="dim">Lv${x.g.level}</span>　戦${x.f.battles}・勝${x.f.wins}${x.f.foes ? `・討った敵将${x.f.foes}` : ''}</li>`).join('')}</ol>` : totalBattles ? '' : ''}
@@ -1353,6 +1359,19 @@ export class CampaignScreen {
     this.refresh();
   }
 
+  /** 兆し（P74）：自分の家の人が、史実で非業の死を遂げる出来事の前触れ。備える（兵糧・その月は行動済み）か、史実のままにする */
+  private omensHtml(): string {
+    const c = this.c, now = c.gs.year * 12 + c.gs.month, me = c.gs.factions[c.player];
+    return (c.history.omens ?? []).filter((o) => c.gs.generals[o.gid]).map((o) => {
+      const g = c.gs.generals[o.gid], left = Math.max(0, o.due - now);
+      const chosen = o.choice === 'guard' ? `<b>備えている</b>（${Math.round(S.omen.avert * 100)}%で難を逃れる）` : o.choice === 'accept' ? '<b>史実のままにする</b>' : '';
+      return `<div class="card status omen">
+        ${this.figure(g)}<div><b>兆し：</b>${esc(o.name)}に${esc(OMEN_SIGN[o.cause] ?? '不穏な兆しがある')}。<span class="dim small">史実では、あと${left}か月ほどで${esc(CAUSE_NAME[o.cause] ?? o.cause)}により世を去る。</span>
+        ${chosen ? `<div class="small">${chosen}</div>` : `<div class="dip"><button data-omen="${esc(o.ev)}" data-gid="${esc(o.gid)}" data-c="guard" ${me && me.supply >= S.omen.cost ? '' : 'disabled title="兵糧が足りません"'}>備える（兵糧${S.omen.cost}）</button><button data-omen="${esc(o.ev)}" data-gid="${esc(o.gid)}" data-c="accept">史実のままにする</button></div>
+        <div class="dim small">選ばずに月が過ぎると、備えたことにして（兵糧なし）${Math.round(S.omen.avert * 100)}%で難を逃れる。</div>`}</div>
+      </div>`;
+    }).join('');
+  }
   /** 史実の領の動きで、自分の家にかかわるもの（受けるか断るかを選ぶ。放っておくと断ったことになる） */
   private choicesHtml(): string {
     const c = this.c;
@@ -1367,7 +1386,7 @@ export class CampaignScreen {
   private offersHtml(): string {
     const c = this.c, KIND = { truce: '停戦', alliance: '同盟', vassal: '従属' } as const;
     const envoy = sceneUrl('envoy', c.gs.variant);
-    return this.choicesHtml() + c.offers.filter((o) => c.gs.factions[o.from]).map((o) => `<div class="card status">
+    return this.omensHtml() + this.choicesHtml() + c.offers.filter((o) => c.gs.factions[o.from]).map((o) => `<div class="card status">
         ${envoy ? `<div class="vignette" style="background-image:url('${envoy}')"></div>` : ''}
         <div>${esc(c.gs.factions[o.from].name.ja)}から${KIND[o.kind]}の申し込み${o.months ? `（${o.months}か月）` : ''} <span class="dim small">${o.hist ? '史実の出来事から・' : ''}あと${o.until - c.gs.tick}か月</span></div>
         <div class="dip"><button data-offer="${o.from}" data-yes="1">受ける</button><button data-offer="${o.from}">断る</button></div>
@@ -1734,7 +1753,21 @@ export class CampaignScreen {
         this.refresh();
       };
     });
-    root.querySelectorAll<HTMLButtonElement>('[data-hchoice]').forEach((b) => {
+    root.querySelectorAll<HTMLButtonElement>('[data-omen]').forEach((b) => {
+      b.onclick = async () => {
+        const o = (c.history.omens ?? []).find((x) => x.ev === b.dataset.omen && x.gid === b.dataset.gid);
+        if (!o) return;
+        const guard = b.dataset.c === 'guard';
+        const ok = await confirmBox(this.frame(), {
+          title: guard ? `${esc(o.name)}の身に備える` : `${esc(o.name)}の運命を史実に任せる`, banner: sceneUrl('envoy', gs.variant),
+          body: `<p class="small">${esc(o.text)}</p><p>${guard
+            ? `兵糧${S.omen.cost}を払い、${esc(o.name)}はこの月は行動済みになります。${Math.round(S.omen.avert * 100)}%で難を逃れ、史実と違う道になります（年表に「異」）。`
+            : `史実どおり、${esc(o.name)}は${esc(CAUSE_NAME[o.cause] ?? o.cause)}で世を去ります。`}</p>`,
+          ok: guard ? '備える' : '史実のままにする', danger: !guard,
+        });
+        if (ok && chooseOmen(c, o.ev, o.gid, guard ? 'guard' : 'accept')) { toast(guard ? `${o.name}の身に備えました` : '史実のままにします'); this.picked.delete(o.gid); this.refresh(); }
+      };
+    });    root.querySelectorAll<HTMLButtonElement>('[data-hchoice]').forEach((b) => {
       b.onclick = async () => {
         const ch = (c.history.choices ?? []).find((x) => x.id === b.dataset.hchoice);
         if (!ch) return;

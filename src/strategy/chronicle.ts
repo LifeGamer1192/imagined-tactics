@@ -3,7 +3,7 @@
 
 import type { Campaign, CampaignLog } from './campaign';
 
-export type ChronKind = 'start' | 'capture' | 'lost' | 'fall' | 'war' | 'ally' | 'truce' | 'capital' | 'lord' | 'history' | 'unify' | 'captive';
+export type ChronKind = 'start' | 'capture' | 'lost' | 'fall' | 'war' | 'ally' | 'truce' | 'capital' | 'lord' | 'history' | 'unify' | 'captive' | 'diverge';
 export interface ChronEntry { year: number; month: number; kind: ChronKind; text: string; provs?: number }
 /** 武将ごとの戦の数・勝った数・倒した敵将の数（功臣を決める） */
 export interface Feat { battles: number; wins: number; foes: number }
@@ -74,6 +74,9 @@ export function chronFromLog(c: Campaign, e: CampaignLog): void {
       else if (s('from') === me) chron(c, 'captive', `${s('name')}${s('lord')}が${s('by')}に処断される`);
       break;
     case 'captiveRelease': if (s('by') === me) chron(c, 'captive', `捕虜の${s('name')}を解き放つ`); break;
+    // 兆し（P74）
+    case 'omenAverted': chron(c, 'diverge', `${s('name')}、${s('cause')}の難を逃れる（史実と違う道）`); break;
+    case 'omenFell': chron(c, 'history', `${s('name')}、史実どおり${s('cause')}により世を去る`); break;
     case 'imaArrive': chron(c, 'lord', s('text')); break;
     case 'history':
       if (s('text') && (String(v.text).includes(me) || v.choice)) chron(c, 'history', String(v.text));
