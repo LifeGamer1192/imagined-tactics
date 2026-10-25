@@ -20,7 +20,7 @@ import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality }
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
 import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated } from './events';
-import { historyMonth } from './history';
+import { finishHistBattle, histBattleSetup, historyMonth, skipHistBattle, type HistoryHooks } from './history';
 import { trainMonth } from './training';
 import { initScout, scoutMonth, scoutTier } from './scouting';
 
@@ -128,6 +128,8 @@ export interface Campaign {
     omens?: Omen[];
     /** 史実と違う道になった出来事の id */
     diverged?: string[];
+    /** 史実の合戦（P75）：自分の家が出る合戦の出来事。戦うか見送るかを選ぶまで止めておく（until を過ぎると見送ったことになる） */
+    battles?: HistBattle[];
   };
 }
 
@@ -151,6 +153,8 @@ export interface ReelFrame { round: number; units: { pos: number; side: 0 | 1; g
  * annex：自分の家が他家（to）に併せられる（受けると、併せられる代わりに to に従う。断ると to と戦になる）
  * absorb：自分の家が他家（from）を併せる（受ければ併せる）
  */
+/** 史実の合戦（P75）。ev は出来事、key は合戦、me は自分の家の側（合戦の sides の番号）、foe は相手の勢力、prov は戦場の領、until は選べる最後の月、deploy は布陣の説明 */
+export interface HistBattle { ev: string; key: string; name: string; me: number; foe: number; prov: number; until: number; deploy: string }
 /** 兆し（P74）。ev は出来事、gid はその人、cause は死因、due は起きる月（年×12+月）、text は出来事の文 */
 export interface Omen { ev: string; gid: string; name: string; cause: string; due: number; text: string; choice?: 'guard' | 'accept' }
 export interface HistoryChoice {
@@ -1037,6 +1041,32 @@ export function endMonth(c: Campaign): PendingBattle[] {
   return pending;
 }
 
+// ---- 史実の合戦（P75）：画面から呼ぶ入口
+
+const histHooks = (c: Campaign): HistoryHooks => ({ dies: (g) => generalDies(c, g), note: (k, v) => note(c, k, v) });
+
+/** 史実の合戦の戦場を作る（自分の陣営は mySide。相手は難しさの考え方で動く） */
+export function historicBattle(c: Campaign, evId: string): { st: BattleState; mySide: 0 | 1; atk: string[]; def: string[] } | null {
+  const hb = (c.history.battles ?? []).find((x) => x.ev === evId);
+  if (!hb) return null;
+  const s = histBattleSetup(c, hb, MAX_GENERALS);
+  if (!s) return null;
+  const st = createBattle(c.gs, provinceMap(c, s.prov, s.from), [s.atk, s.def], `h:${evId}`, [c.gs.factions[s.atkF].name.ja, c.gs.factions[s.defF].name.ja]);
+  setAiLevel(st, s.mySide === 0 ? 1 : 0, c.difficulty);
+  return { st, mySide: s.mySide, atk: s.atk, def: s.def };
+}
+
+/** 史実の合戦を戦い終えた：経験値と失った兵、倒された将の深手、勝ち負けで出来事を置き換える */
+export function endHistoricBattle(c: Campaign, evId: string, st: BattleState, mySide: 0 | 1): BattleSummary {
+  const sum = applyBattleResult(c.gs, st);
+  for (const id of sum.beatenIds) if (c.gs.generals[id] && !isGarrison(id)) c.wounded[id] = c.gs.tick + woundMonths(c.gs.generals[id]);
+  finishHistBattle(c, evId, st.winner === mySide, histHooks(c));
+  checkOver(c);
+  return sum;
+}
+
+/** 史実の合戦を見送る（今までどおり出来事を起こす） */
+export function skipHistoricBattle(c: Campaign, evId: string): void { skipHistBattle(c, evId, histHooks(c)); }
 /** 深手の長さ（月）。病弱な武将は長く、勇敢・武人の武将は短い */
 export function woundMonths(g: GGeneral): number {
   const W = S.people.wound;

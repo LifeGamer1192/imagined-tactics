@@ -82,6 +82,8 @@ export const S = strategyJson as unknown as {
     releasePrestige: number; releaseOpinion: number; executeOpinion: number; ransomBase: number; ransomPerLevel: number; recruitLoyalty: number;
     ai: { executeCruelty: number; executeChance: number; retry: number; release: number; releaseCare: number };
   };
+  /** 史実の合戦（P75）：勝った家の名声、負けた家の名声の減り、勝ったときに相手の軍が残る割合（出来事に無いとき）、選べる月 */
+  histBattle: { prestige: number; prestigeLoss: number; foeKeep: number; months: number };
   /** 史実の兆し（P74）：何か月前に出すか、備えたときに防げる見込み、備える兵糧、兆しを出す死因 */
   omen: { lead: number; avert: number; cost: number; violent: string[] };
   /** 当主を譲る（P71）：継げる歳、次に譲れるまでの月、忠誠が下がる名声の差（と大きい差）、下がる量 */

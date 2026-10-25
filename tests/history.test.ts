@@ -1,7 +1,7 @@
 // 史実の出来事（P26）：hist-sim のシナリオの、まだ起きていない出来事を、年月が来たら起こす。勢力がそろわなければ起きない。
 import { describe, expect, it } from 'vitest';
 import { convert, generalsOf } from '../src/convert/convert';
-import { finishMonth, newCampaign, provincesOf, relation, type Campaign } from '../src/strategy/campaign';
+import { finishMonth, newCampaign, provincesOf, relation, skipHistoricBattle, type Campaign } from '../src/strategy/campaign';
 import { acceptOffer, generalDies } from '../src/strategy/events';
 import { chooseHistory, choiceOutcome, eventMonth, historyMonth, historyText, pendingEvents, type HEvent } from '../src/strategy/history';
 import { loadFixture } from './helpers';
@@ -93,6 +93,9 @@ describe('historical events', () => {
     const before = generalsOf(gs, N0.takeda).reduce((s, g) => s + g.troops.length, 0);
     gs.year = 1575; gs.month = 6;
     historyMonth(c, hooks(c));
+    // 自分の家が出る合戦（長篠）は、戦うか見送るかを選ぶまで止まる（P75）。見送ると今までどおり、自分の家は損耗しない
+    expect(c.history.battles?.some((b) => b.key === 'nagashino')).toBe(true);
+    skipHistoricBattle(c, c.history.battles!.find((b) => b.key === 'nagashino')!.ev);
     expect(generalsOf(gs, N0.takeda).reduce((s, g) => s + g.troops.length, 0)).toBe(before);
     expect(c.log.some((l) => l.key === 'history' && l.vars.spared === 1)).toBe(true);
     // 畠山家が無ければ、畠山家にかかわる出来事は起きない

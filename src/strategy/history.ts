@@ -12,7 +12,7 @@ import { makeOfficer, makeTroop, startLevel } from '../convert/convert';
 import type { GFaction, GGeneral } from '../convert/model';
 import { RNG, codeToSeed } from '../core/rng';
 import { D } from '../data/db';
-import { absorb, declareWar, handOver, note, provincesOf, relation, type Campaign, type HistoryChoice } from './campaign';
+import { absorb, declareWar, handOver, homeFor, note, provincesOf, relation, type Campaign, type HistBattle, type HistoryChoice } from './campaign';
 import { S } from './config';
 import { leaveWar, makeTruce } from './events';
 
@@ -23,11 +23,13 @@ interface HRealm {
   id: string; label: Name; root?: Name; gov?: string; color?: string; capital?: string; places?: string[]; house?: Name; parent?: string;
   line?: [string, string, number, number, { ab?: [number, number, number, number]; tr?: string[]; born?: number }?][];
 }
+/** シナリオの合戦（P75）：名・場所・両家（家・将・兵の数）・史実の勝者（sides の番号）・布陣の説明 */
+export interface HBattleDef { name: Name; at: string; sides: { realm: string; generals?: string[]; troops?: number }[]; losses?: number[]; winner: number; deploy?: Name }
 /** シナリオの人物：[名, 英名, 家, 役目, 生まれ, 没年, { from }] */
 type HPeopleRow = [string, string, string, string, number, number, { from?: number }?];
 
 interface Scenario {
-  data?: { events?: HEvent[]; realms?: HRealm[]; people?: HPeopleRow[]; bc?: boolean };
+  data?: { events?: HEvent[]; realms?: HRealm[]; people?: HPeopleRow[]; bc?: boolean; battles?: Record<string, HBattleDef> };
   fired?: Record<string, number>; nationOf?: Record<string, number>; placeProv?: Record<string, number>;
 }
 
@@ -79,6 +81,8 @@ export function historyMonth(c: Campaign, hooks: HistoryHooks): void {
   for (const ch of [...(c.history.choices ?? [])]) if (ch.until <= gs.tick) chooseHistory(c, ch.id, false);
   // 兆し（P74）：自分の家の人が、これから非業の死を遂げる出来事の前触れを出す
   scanOmens(c, sc, fid, now, nationOf, hooks);
+  // 史実の合戦（P75）：選ばずに月が過ぎたものは、見送ったことにする
+  for (const hb of [...(c.history.battles ?? [])]) if (hb.until <= gs.tick) skipHistBattle(c, hb.ev, hooks);
   for (const ev of pendingEvents(c.world)) {
     if (done.has(ev.id)) continue;
     const when = eventMonth(sc, ev);
@@ -88,85 +92,99 @@ export function historyMonth(c: Campaign, hooks: HistoryHooks): void {
     if (c.history.from !== undefined && when < c.history.from) continue;
     // 要る勢力がそろっていなければ、歴史が変わったので起きない
     if ((ev.need ?? []).some((k) => !gs.factions[fid(k)])) continue;
-    const rng = new RNG(codeToSeed(`${gs.seed}:history:${ev.id}`));
-    const effects: string[] = [];
-    let playerSpared = false, choice = false;
-    const text = historyText(c, ev, nationOf);
-    for (const [n, op] of (ev.do ?? []).entries()) {
-      const [kind, ...args] = op as [string, ...unknown[]];
-      if (DIPLOMACY_OPS.has(kind)) {
-        const r = diplomacy(c, kind, args, fid);
-        if (r === SPARED) playerSpared = true;
-        else if (r) effects.push(r);
-        continue;
-      }
-      if (TERRITORY_OPS.has(kind)) {
-        const r = territory(c, { id: `${ev.id}:${n}`, text, kind, args, fid, placeProv, sc, rng });
-        effects.push(...r.effects);
-        if (r.choice) choice = true;
-        continue;
-      }
-      if (!APPLIED_OPS.has(kind)) continue;
-      const realm = typeof args[0] === 'string' ? gs.factions[fid(args[0])] : undefined;
-      // 自分の家の当主が非業の死を遂げる出来事：兆しで備えたかどうかで決まる（P74）
-      if (kind === 'rulerDies' && realm && realm.id === c.player && c.player && isViolent(args[1])) {
-        const lord = gs.generals[realm.lordId];
-        if (lord) effects.push(fateOf(c, ev, lord, String(args[1]), rng, hooks));
-        continue;
-      }
-      if (realm && realm.id === c.player && kind !== 'battle') { playerSpared = true; continue; }
-      switch (kind) {
-        case 'dies': {
-          const name = String(args[0]);
-          const g = Object.values(gs.generals).find((x) => x.name.ja === name);
-          if (!g) break;
-          if (g.faction === c.player && c.player) {
-            // 自分の家の人の非業の死は、兆しで備えたかどうかで決まる（P74）。それ以外は今までどおり起こさない
-            if (isViolent(args[1])) effects.push(fateOf(c, ev, g, String(args[1]), rng, hooks)); else playerSpared = true;
-            break;
-          }
-          hooks.dies(g);
-          effects.push(`${name}が世を去った`);
-          break;
-        }
-        case 'rulerDies': {
-          const lord = realm ? gs.generals[realm.lordId] : undefined;
-          if (!lord) break;
-          hooks.dies(lord);
-          effects.push(`${lord.name.ja}が世を去った`);
-          break;
-        }
-        case 'army': {
-          if (!realm) break;
-          const keep = Math.max(0, Math.min(1, Number(args[1])));
-          let lost = 0;
-          for (const g of Object.values(gs.generals).filter((x) => x.faction === realm.id)) {
-            const n = g.troops.length, k = Math.round(n * keep);
-            for (let i = n - 1; i >= k; i--) { g.troops.splice(rng.int(0, g.troops.length - 1), 1); lost++; }
-          }
-          if (lost) effects.push(`${realm.name.ja}の兵が${lost}隊減った`);
-          break;
-        }
-        case 'add': {
-          if (!realm || args[1] !== 'treasury') break;
-          const v = Math.round(Number(args[2]));
-          realm.supply = Math.max(0, realm.supply + v);
-          effects.push(`${realm.name.ja}の兵糧が${v >= 0 ? '+' : ''}${v}`);
-          break;
-        }
-        case 'capital': {
-          const prov = placeProv[String(args[1])];
-          if (!realm || prov === undefined || gs.provinces[prov]?.owner !== realm.id || realm.capital === prov) break;
-          realm.capital = prov;
-          effects.push(`${realm.name.ja}は本拠を${gs.provinces[prov].name.ja}へ移した`);
-          break;
-        }
-        case 'battle': break;
-      }
-    }
-    hooks.note('history', { text: historyText(c, ev, nationOf), effects: effects.join('・'), spared: playerSpared ? 1 : 0, choice: choice ? 1 : 0, imp: ev.imp ?? 1, y: ev.y, m: ev.m ?? 1 });
+    // 自分の家が出る合戦は、戦うか見送るかを選ぶまで止めておく（P75）
+    if (deferBattle(c, sc, ev, fid)) continue;
+    runEvent(c, ev, hooks);
   }
   c.history.done = [...done];
+}
+
+/**
+ * 出来事の効き目を起こす（知らせも出す）。skip を渡すと、その種類の効き目は起こさない（史実の合戦を戦ったとき、勝ち負けで置き換えるもの）
+ */
+export function runEvent(c: Campaign, ev: HEvent, hooks: HistoryHooks, skip?: (kind: string, args: unknown[]) => boolean): void {
+  const gs = c.gs, sc = scenarioOf(c.world);
+  if (!sc) return;
+  const nationOf = sc.nationOf ?? {}, placeProv = sc.placeProv ?? {};
+  const fid = (key: string): number => c.history.nations?.[key] ?? nationOf[key];
+  const rng = new RNG(codeToSeed(`${gs.seed}:history:${ev.id}`));
+  const effects: string[] = [];
+  let playerSpared = false, choice = false;
+  const text = historyText(c, ev, nationOf);
+  for (const [n, op] of (ev.do ?? []).entries()) {
+    const [kind, ...args] = op as [string, ...unknown[]];
+    if (skip?.(kind, args)) continue;
+    if (DIPLOMACY_OPS.has(kind)) {
+      const r = diplomacy(c, kind, args, fid);
+      if (r === SPARED) playerSpared = true;
+      else if (r) effects.push(r);
+      continue;
+    }
+    if (TERRITORY_OPS.has(kind)) {
+      const r = territory(c, { id: `${ev.id}:${n}`, text, kind, args, fid, placeProv, sc, rng });
+      effects.push(...r.effects);
+      if (r.choice) choice = true;
+      continue;
+    }
+    if (!APPLIED_OPS.has(kind)) continue;
+    const realm = typeof args[0] === 'string' ? gs.factions[fid(args[0])] : undefined;
+    // 自分の家の当主が非業の死を遂げる出来事：兆しで備えたかどうかで決まる（P74）
+    if (kind === 'rulerDies' && realm && realm.id === c.player && c.player && isViolent(args[1])) {
+      const lord = gs.generals[realm.lordId];
+      if (lord) effects.push(fateOf(c, ev, lord, String(args[1]), rng, hooks));
+      continue;
+    }
+    if (realm && realm.id === c.player && kind !== 'battle') { playerSpared = true; continue; }
+    switch (kind) {
+      case 'dies': {
+        const name = String(args[0]);
+        const g = Object.values(gs.generals).find((x) => x.name.ja === name);
+        if (!g) break;
+        if (g.faction === c.player && c.player) {
+          // 自分の家の人の非業の死は、兆しで備えたかどうかで決まる（P74）。それ以外は今までどおり起こさない
+          if (isViolent(args[1])) effects.push(fateOf(c, ev, g, String(args[1]), rng, hooks)); else playerSpared = true;
+          break;
+        }
+        hooks.dies(g);
+        effects.push(`${name}が世を去った`);
+        break;
+      }
+      case 'rulerDies': {
+        const lord = realm ? gs.generals[realm.lordId] : undefined;
+        if (!lord) break;
+        hooks.dies(lord);
+        effects.push(`${lord.name.ja}が世を去った`);
+        break;
+      }
+      case 'army': {
+        if (!realm) break;
+        const keep = Math.max(0, Math.min(1, Number(args[1])));
+        let lost = 0;
+        for (const g of Object.values(gs.generals).filter((x) => x.faction === realm.id)) {
+          const n = g.troops.length, k = Math.round(n * keep);
+          for (let i = n - 1; i >= k; i--) { g.troops.splice(rng.int(0, g.troops.length - 1), 1); lost++; }
+        }
+        if (lost) effects.push(`${realm.name.ja}の兵が${lost}隊減った`);
+        break;
+      }
+      case 'add': {
+        if (!realm || args[1] !== 'treasury') break;
+        const v = Math.round(Number(args[2]));
+        realm.supply = Math.max(0, realm.supply + v);
+        effects.push(`${realm.name.ja}の兵糧が${v >= 0 ? '+' : ''}${v}`);
+        break;
+      }
+      case 'capital': {
+        const prov = placeProv[String(args[1])];
+        if (!realm || prov === undefined || gs.provinces[prov]?.owner !== realm.id || realm.capital === prov) break;
+        realm.capital = prov;
+        effects.push(`${realm.name.ja}は本拠を${gs.provinces[prov].name.ja}へ移した`);
+        break;
+      }
+      case 'battle': break;
+    }
+  }
+  hooks.note('history', { text: historyText(c, ev, nationOf), effects: effects.join('・'), spared: playerSpared ? 1 : 0, choice: choice ? 1 : 0, imp: ev.imp ?? 1, y: ev.y, m: ev.m ?? 1 });
 }
 
 const SPARED = Symbol('spared');
@@ -592,4 +610,84 @@ export function chooseOmen(c: Campaign, ev: string, gid: string, choice: 'guard'
   }
   o.choice = choice;
   return true;
+}
+
+// ---------------------------------------------------------------- 史実の合戦（P75）
+
+const scenarioEvent = (c: Campaign, id: string): HEvent | undefined => scenarioOf(c.world)?.data?.events?.find((e) => e.id === id);
+export const battleDef = (c: Campaign, key: string): HBattleDef | undefined => scenarioOf(c.world)?.data?.battles?.[key];
+
+/** 自分の家が出る合戦の出来事なら、戦うか見送るかを選べるように止めておく。戻り値：止めたか */
+function deferBattle(c: Campaign, sc: Scenario, ev: HEvent, fid: (key: string) => number): boolean {
+  if (!c.player) return false;
+  const op = (ev.do ?? []).find((d) => d[0] === 'battle');
+  const def = op ? sc.data?.battles?.[String(op[1])] : undefined;
+  if (!def || def.sides.length < 2) return false;
+  const me = def.sides.findIndex((s) => fid(s.realm) === c.player);
+  if (me < 0) return false;
+  const foe = c.gs.factions[fid(def.sides[1 - me].realm)];
+  const prov = sc.placeProv?.[def.at] ?? sc.placeProv?.[ev.at ?? ''];
+  if (!foe || foe.id === c.player || prov === undefined || !c.gs.provinces[prov]) return false;
+  const hb: HistBattle = { ev: ev.id, key: String(op![1]), name: def.name.ja, me, foe: foe.id, prov, until: c.gs.tick + S.histBattle.months, deploy: def.deploy?.ja ? historyText(c, { ...ev, ja: def.deploy.ja }, sc.nationOf ?? {}) : '' };
+  (c.history.battles ??= []).push(hb);
+  note(c, 'histBattle', { name: def.name.ja, foe: foe.name.ja, prov: c.gs.provinces[prov].name.ja });
+  return true;
+}
+
+/** 史実の合戦の顔ぶれ：史実の将（いなければ当主と、レベルの高い将）。戦場の領の持ち主が守り手（どちらでもなければ、史実の先の側が攻め手） */
+export function histBattleSetup(c: Campaign, hb: HistBattle, max = 3): { atk: string[]; def: string[]; atkF: number; defF: number; mySide: 0 | 1; prov: number; from: number } | null {
+  const gs = c.gs, def = battleDef(c, hb.key);
+  if (!def || !gs.factions[c.player] || !gs.factions[hb.foe]) return null;
+  const ready = (g: GGeneral | undefined, f: number): g is GGeneral => !!g && g.faction === f && !(g.id in c.wounded) && !(g.id in c.away) && c.resting?.[g.id] === undefined;
+  const pick = (f: number, names: string[] = []): string[] => {
+    let gens = names.map((n) => Object.values(gs.generals).find((g) => g.name.ja === n)).filter((g): g is GGeneral => ready(g, f));
+    if (!gens.length) {
+      const lord = gs.generals[gs.factions[f].lordId];
+      gens = [...(ready(lord, f) ? [lord] : []), ...Object.values(gs.generals).filter((g) => ready(g, f) && g.id !== lord?.id).sort((a, b) => b.level - a.level || a.id.localeCompare(b.id))];
+    }
+    return gens.slice(0, max).map((g) => g.id);
+  };
+  const mine = pick(c.player, def.sides[hb.me].generals), theirs = pick(hb.foe, def.sides[1 - hb.me].generals);
+  if (!mine.length || !theirs.length) return null;
+  const owner = gs.provinces[hb.prov].owner;
+  const iDefend = owner === c.player ? true : owner === hb.foe ? false : hb.me === 1;
+  const atkF = iDefend ? hb.foe : c.player, defF = iDefend ? c.player : hb.foe;
+  return { atk: iDefend ? theirs : mine, def: iDefend ? mine : theirs, atkF, defF, mySide: iDefend ? 1 : 0, prov: hb.prov, from: homeFor(c, atkF, hb.prov) };
+}
+
+/**
+ * 史実の合戦を戦い終えた。勝った家の名声が上がり、負けた家は下がる。勝てば相手の軍が減る。
+ * 勝ち負けが史実どおりなら、出来事の残り（領の動き・外交など）はそのまま起きる。逆なら起きず、史実と違う道になる
+ */
+export function finishHistBattle(c: Campaign, evId: string, won: boolean, hooks: HistoryHooks): void {
+  const hb = (c.history.battles ?? []).find((x) => x.ev === evId), ev = scenarioEvent(c, evId);
+  c.history.battles = (c.history.battles ?? []).filter((x) => x !== hb);
+  if (!hb || !ev) return;
+  const gs = c.gs, def = battleDef(c, hb.key), me = gs.factions[c.player], foe = gs.factions[hb.foe];
+  const H = S.histBattle;
+  if (me) me.prestige = (me.prestige ?? 0) + (won ? H.prestige : -H.prestigeLoss);
+  if (foe) foe.prestige = (foe.prestige ?? 0) + (won ? -H.prestigeLoss : H.prestige);
+  if (won && foe) {
+    const rng = new RNG(codeToSeed(`${gs.seed}:histbattle:${evId}`));
+    const keepOp = (ev.do ?? []).find((d) => d[0] === 'army' && gs.factions[c.history.nations?.[String(d[1])] ?? scenarioOf(c.world)?.nationOf?.[String(d[1])] ?? -1]?.id === foe.id);
+    const keep = Math.max(0, Math.min(1, keepOp ? Number(keepOp[2]) : H.foeKeep));
+    for (const g of Object.values(gs.generals).filter((x) => x.faction === foe.id)) {
+      const n = g.troops.length, k = Math.round(n * keep);
+      for (let i = n - 1; i >= k; i--) g.troops.splice(rng.int(0, g.troops.length - 1), 1);
+    }
+  }
+  hooks.note('histBattleResult', { name: hb.name, foe: foe?.name.ja ?? '', result: won ? '勝った' : '敗れた' });
+  const histWin = def ? def.winner === hb.me : won;
+  if (won === histWin) runEvent(c, ev, hooks, (kind, args) => kind === 'army' || kind === 'battle' || (kind === 'add' && args[1] === 'prestige'));
+  else {
+    (c.history.diverged ??= []).push(ev.id);
+    hooks.note('histBattleDiverged', { name: hb.name, result: won ? '勝った' : '敗れた' });
+  }
+}
+
+/** 史実の合戦を見送る（今までどおり出来事を起こす。自分の家の損耗は起きない） */
+export function skipHistBattle(c: Campaign, evId: string, hooks: HistoryHooks): void {
+  const hb = (c.history.battles ?? []).find((x) => x.ev === evId), ev = scenarioEvent(c, evId);
+  c.history.battles = (c.history.battles ?? []).filter((x) => x !== hb);
+  if (hb && ev) runEvent(c, ev, hooks);
 }

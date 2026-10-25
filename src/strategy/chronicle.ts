@@ -77,6 +77,9 @@ export function chronFromLog(c: Campaign, e: CampaignLog): void {
     // 兆し（P74）
     case 'omenAverted': chron(c, 'diverge', `${s('name')}、${s('cause')}の難を逃れる（史実と違う道）`); break;
     case 'omenFell': chron(c, 'history', `${s('name')}、史実どおり${s('cause')}により世を去る`); break;
+    // 史実の合戦（P75）
+    case 'histBattleResult': chron(c, 'history', `${s('name')}を戦い、${s('foe')}に${s('result')}`); break;
+    case 'histBattleDiverged': chron(c, 'diverge', `${s('name')}、史実と逆の結果（史実と違う道）`); break;
     case 'imaArrive': chron(c, 'lord', s('text')); break;
     case 'history':
       if (s('text') && (String(v.text).includes(me) || v.choice)) chron(c, 'history', String(v.text));
