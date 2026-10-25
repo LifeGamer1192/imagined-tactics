@@ -27,11 +27,13 @@ import { MAX_GENERALS } from '../battle/setup';
 import { snapshot, type HexSave } from '../persist/save';
 import { openSaveMenu, writeSlot } from './saveMenu';
 import { TRAIT_NAME } from './text';
+import { TIE_NAME } from '../strategy/biography';
 import { busy, toast } from './busy';
 import { bannerHtml, sceneUrl, seasonBand, setScene } from './scene';
 import { BGM_LEVEL_NAME, bgm, bgmLevel, jingle, setBgmLevel } from './bgm';
 import { play } from './sound';
 import { confirmBox } from './confirm';
+import { captiveOf, executeCaptive, myCaptives, myCaptured, ransomCaptive, ransomCost, recruitCaptive, recruitChance, releaseCaptive } from '../strategy/captive';
 import { artMp, artName, forgetArt, learnerName, learnersOf, lessonLearner, lessonMonths, maxMpOf, slotsLeft, slotsOfLearner, startLesson, teachableArts, teacherProblem, teachProblem } from '../strategy/teach';
 import { classTip, commandTip, personalityTip, strengthRank, strengthTip, traitTip, unitTip } from './describe';
 import { initTips } from './tip';
@@ -105,6 +107,14 @@ const LOG_TEXT: Record<string, string> = {
   teachDone: '直伝：{learner}が{teacher}から「{art}」を教わった（借り物。戦いで使うと身につく）',
   teachCancel: '直伝：{teacher}から{learner}への「{art}」は取りやめになった',
   teachReset: '直伝：療養のため、{teacher}から{learner}への「{art}」はやり直しになった',
+  captured: '{by}が、{from}の{name}{lord}を{prov}で捕らえた',
+  captiveRefuse: '{name}は{by}に仕えることを断った（捕虜のまま）',
+  captiveRecruit: '{name}（もと{from}）が{by}に仕えることになった',
+  captiveRelease: '{by}は捕虜の{name}を解き放った（{to}へ）',
+  captiveExecute: '{by}は捕虜の{name}{lord}を処断した',
+  captiveRansom: '身代金{cost}で、{by}に捕まっていた{name}を取り戻した',
+  captiveFreed: '{by}に捕まっていた{name}は、領が取り返されて{to}へ戻った',
+  captiveEscape: '{by}に捕まっていた{name}は、隙を見て逃げ出し{to}へ戻った',
   comeOfAge: '{name}が元服し、{faction}に加わった',
   rivalWin: '{name}が好敵手の{rival}を破り、互いに腕を上げた',
   avengeFight: '{name}は仇の{foe}と戦ったが、討ち漏らした',
@@ -377,17 +387,18 @@ export class CampaignScreen {
     if (!me || c.over) return;
     const KIND: Record<string, string> = {
       death: 'death', succeed: 'succession', newLord: 'succession', abdicate: 'succession', defect: 'defect', alliance: 'envoy', truce: 'envoy', vassal: 'envoy', breakAlliance: 'envoy', joinWar: 'envoy',
+      captured: 'captive', captiveRecruit: 'captive', captiveRelease: 'captive', captiveExecute: 'captive', captiveFreed: 'captive', captiveEscape: 'captive', captiveRefuse: 'captive',
       questItem: 'travel', questRonin: 'travel', questExp: 'travel', questNothing: 'travel', roninJoin: 'promote', tieJoin: 'promote', comeOfAge: 'promote', history: 'history',
     };
-    const ORDER = ['death', 'defect', 'succession', 'history', 'envoy', 'travel', 'promote'];
+    const ORDER = ['death', 'defect', 'captive', 'succession', 'history', 'envoy', 'travel', 'promote'];
     // 史実の出来事は、大きなもの（imp 2 以上）か、自分の勢力の名前が出るものを知らせる
     const items = c.log.slice(from).filter((e) => KIND[e.key] && (e.key.startsWith('quest') || Object.values(e.vars).some((v) => v === me.name.ja)
       || (e.key === 'history' && (Number(e.vars.imp) >= 2 || String(e.vars.text).includes(me.name.ja)))));
     if (!items.length) return;
     const kind = ORDER.find((k) => items.some((e) => KIND[e.key] === k))!;
-    const TITLE: Record<string, string> = { death: '訃報', defect: '寝返り', succession: '代替わり', history: '史実の出来事', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ' };
+    const TITLE: Record<string, string> = { death: '訃報', defect: '寝返り', captive: '捕虜', succession: '代替わり', history: '史実の出来事', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ' };
     void confirmBox(this.frame(), {
-      title: `今月の知らせ：${TITLE[kind]}`, banner: sceneUrl(kind === 'history' ? 'envoy' : kind, c.gs.variant),
+      title: `今月の知らせ：${TITLE[kind]}`, banner: sceneUrl(kind === 'history' ? 'envoy' : kind === 'captive' ? 'defect' : kind, c.gs.variant),
       body: `<ul class="news">${items.slice(0, 8).map((e) => `<li>${esc(logLine(e))}</li>`).join('')}</ul>`,
       ok: '閉じる', single: true,
     });
@@ -447,7 +458,7 @@ export class CampaignScreen {
     const feats = Object.entries(c.feats ?? {}).map(([id, f]) => ({ g: gs.generals[id], f })).filter((x) => x.g && x.g.faction === me.id)
       .sort((a, b) => b.f.wins - a.f.wins || b.f.foes - a.f.foes || b.f.battles - a.f.battles).slice(0, 5);
     const totalBattles = Object.values(c.feats ?? {}).reduce((s, f) => Math.max(s, f.battles), 0);
-    const TAG: Record<string, string> = { start: '起', capture: '取', lost: '失', fall: '滅', war: '戦', ally: '盟', truce: '和', capital: '移', lord: '主', history: '史', unify: '統' };
+    const TAG: Record<string, string> = { start: '起', capture: '取', lost: '失', fall: '滅', war: '戦', ally: '盟', truce: '和', capital: '移', lord: '主', history: '史', unify: '統', captive: '虜' };
     // 年ごとにまとめる（長い年表は、大事な出来事を残して詰める）
     const keep = chron.length > 80 ? chron.filter((e, i) => i === 0 || e.kind !== 'capture' || i % 2 === 0) : chron;
     const years = new Map<number, typeof chron>();
@@ -739,7 +750,8 @@ export class CampaignScreen {
       win = side === 0 && sum && c.player && gs.provinces[pb.prov].owner === c.player && prevOwner !== c.player ? { sum } : null;
       return sum;
     };
-    const then = (): void => { after(); if (win) this.celebrate(pb, win.sum, mark, prevOwner); };
+    // 捕らえた将がいれば、先に決める窓を出す（P73）
+    const then = (): void => this.captiveWindows(() => { after(); if (win) this.celebrate(pb, win.sum, mark, prevOwner); });
     box.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
       b.onclick = () => {
         this.alarm = null;
@@ -749,7 +761,7 @@ export class CampaignScreen {
           void busy('戦っています…', () => {
             const sum = won(resolveBattle(c, pb));
             // 攻められた戦いと、攻めて負けた戦いは、結果を詳しく窓で出す（P55）。攻めて勝ったときは祝いの窓
-            if (sum && !win) { this.mount(); this.battleReport(pb, sum, side, mark, prevOwner, roster, after); } else then();
+            if (sum && !win) { this.mount(); this.battleReport(pb, sum, side, mark, prevOwner, roster, () => this.captiveWindows(after)); } else then();
           });
           return;
         }
@@ -773,6 +785,7 @@ export class CampaignScreen {
     const lostProv = side === 1 && prevOwner === c.player && p.owner !== c.player;
     const chain = logs.filter((l) => l.key === 'chainCapture').flatMap((l) => String(l.vars.ids).split(',')).map((n) => gs.provinces[Number(n)]).filter((q) => q && q.owner !== c.player);
     const wounded = logs.filter((l) => l.key === 'wounded').map((l) => `${l.vars.names}（深手・${l.vars.months}か月）`);
+    const taken = logs.filter((l) => l.key === 'captured').map((l) => `${l.vars.by}が${l.vars.from}の${l.vars.name}${l.vars.lord ?? ''}を捕らえた`);
     const caught = logs.filter((l) => l.key === 'caught').map((l) => `${l.vars.from}の${l.vars.unit}`);
     const fell = logs.filter((l) => l.key === 'fall').map((l) => String(l.vars.faction));
     // 自分の武将の、いまいる領（退いた先）
@@ -804,6 +817,7 @@ export class CampaignScreen {
       <h4>領の行方</h4><ul class="small">${li(fate)}</ul>
       ${whereNow.length ? `<h4>自分の武将</h4><ul class="small">${li(whereNow)}</ul>` : ''}
       ${wounded.length ? `<h4>深手</h4><ul class="small">${li(wounded)}</ul>` : ''}
+      ${taken.length ? `<h4>捕らえた将</h4><ul class="small">${li(taken)}</ul>` : ''}
       ${caught.length ? `<h4>捕まえた兵</h4><ul class="small">${li(caught)}</ul>` : ''}
       ${fell.length ? `<h4>滅んだ家</h4><ul class="small">${li(fell)}</ul>` : ''}
       <p class="cbtns"><button class="primary" data-a="ok">確かめた</button></p>`;
@@ -848,6 +862,7 @@ export class CampaignScreen {
     const fresh = Object.keys(provinceRecruit(c, p.id)).filter((u) => D.byUnit[u] && !isNativeUnit(me, u));
     const fell = logs.filter((l) => l.key === 'fall').map((l) => String(l.vars.faction));
     const reserve = logs.filter((l) => l.key === 'reserveTaken').reduce((s, l) => s + Number(l.vars.n ?? 0), 0);
+    const taken = logs.filter((l) => l.key === 'captured').map((l) => `${l.vars.by}が${l.vars.from}の${l.vars.name}${l.vars.lord ?? ''}を捕らえた`);
     const caught = logs.filter((l) => l.key === 'caught').map((l) => `${l.vars.from}の${l.vars.unit}`);
     // 一気に取った領（P48）
     const chain = logs.filter((l) => l.key === 'chainCapture').flatMap((l) => String(l.vars.ids).split(',')).map((n) => gs.provinces[Number(n)]).filter((q) => q && q.owner === c.player);
@@ -1112,6 +1127,78 @@ export class CampaignScreen {
       this.picked.delete(teacher.id); this.picked.delete(learners[li].g.id);
       this.refresh();
     }
+  }
+
+  /** 捕らえて、まだ決めていない将を順に決める（P73）。全部決めたら next。当主は必ず決める */
+  private captiveWindows(next: () => void): void {
+    const c = this.c;
+    const id = (c.captivePending ?? []).find((x) => captiveOf(c, x));
+    if (!id) { next(); return; }
+    this.captiveWindow(id, true, () => this.captiveWindows(next));
+  }
+
+  /** 捕虜を決める窓（P73）：顔・能力・縁・登用の見込み。当主は「解き放つ／処断する」だけ */
+  private captiveWindow(id: string, fromBattle: boolean, done: () => void): void {
+    const c = this.c, gs = c.gs, cap = captiveOf(c, id);
+    if (!cap) { done(); return; }
+    const g = cap.g, from = gs.factions[cap.from], cls = D.byClass[g.classId];
+    const ties = g.ties.filter((t) => gs.generals[t.with]?.faction === c.player).map((t) => `${gs.generals[t.with].name.ja}（${TIE_NAME[t.kind] ?? t.kind}）`);
+    const chance = recruitChance(c, cap), months = Math.max(0, gs.tick - cap.since);
+    const box = document.createElement('div');
+    box.className = 'result ask captive';
+    box.innerHTML = `<h2 class="wrap">${cap.lord ? '敵の当主を捕らえた' : '捕虜をどうするか'}</h2>
+      <div class="pf-head">${this.figure(g)}<div>
+        <div class="pf-name">${esc(g.name.ja)}${cap.lord ? ' <span class="tag">当主</span>' : ''}</div>
+        <div class="dim">${esc(from?.name.ja ?? '滅んだ家')}・${esc(L(cls.name))} Lv${g.level}・${g.age}歳${months ? `・捕らえて${months}か月` : ''}</div>
+        <div class="small">${g.traits.length ? `特性：${g.traits.map((t) => esc(TRAIT_NAME[t] ?? t)).join('・')}` : ''}${ties.length ? `　こちらとの縁：${ties.map(esc).join('・')}` : ''}</div>
+      </div></div>
+      ${cap.lord
+        ? `<p>当主は家臣にはできません。解き放つか、処断するかを、いま決めます。</p>`
+        : `<p>登用の見込み：<b>${Math.round(chance * 100)}%</b><span class="dim small">（もとの家への忠誠・特性・こちらとの縁・当主の魅力${cap.tries ? `・断られた${cap.tries}回` : ''}で決まる）</span></p>`}
+      <ul class="small">
+        ${cap.lord ? '' : `<li><b>登用する</b>：家臣にする（成功すると忠誠が低めで仕える。断られると捕虜のまま、次の見込みが下がる）</li>`}
+        <li><b>解き放つ</b>：${esc(from?.name.ja ?? 'もとの家')}へ帰す。名声と相手の心証が上がり、恩が残る（のちに登用しやすい）</li>
+        <li><b>処断する</b>：世を去らせる。${esc(from?.name.ja ?? '相手')}と戦になり、縁のある者に仇とされ、こちらの公正・優しい武将の忠誠が下がる${cap.lord ? '。相手の家は代替わりする' : ''}</li>
+        ${cap.lord ? '' : '<li><b>保留</b>：捕虜のまま置く（上の「捕虜」から、あとで決められる）</li>'}
+      </ul>
+      <p class="cbtns">${cap.lord ? '' : '<button class="primary" data-a="recruit">登用する</button> '}<button data-a="release">解き放つ</button> <button data-a="execute">処断する</button>${cap.lord ? '' : ' <button data-a="hold">保留</button>'}</p>`;
+    this.frame().querySelector('.result.ask')?.remove();
+    this.frame().appendChild(box);
+    const finish = (msg: string): void => { box.remove(); if (msg) toast(msg); this.refresh(); done(); };
+    box.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.onclick = async () => {
+        const a = b.dataset.a;
+        if (a === 'recruit') finish(recruitCaptive(c, id) ? `${g.name.ja}が家臣になりました` : `${g.name.ja}は仕えることを断りました（捕虜のまま）`);
+        else if (a === 'release') finish(releaseCaptive(c, id) ? `${g.name.ja}を解き放ちました` : '');
+        else if (a === 'execute') {
+          box.style.display = 'none';
+          const sure = await confirmBox(this.frame(), { title: `${esc(g.name.ja)}を処断する`, body: `<p>${esc(g.name.ja)}は世を去ります。戻せません。</p>`, ok: '処断する', cancel: 'やめる', danger: true });
+          if (sure && executeCaptive(c, id)) finish(`${g.name.ja}を処断しました`);
+          else { box.style.display = ''; this.frame().appendChild(box); }
+        } else { c.captivePending = (c.captivePending ?? []).filter((x) => x !== id); finish(fromBattle ? `${g.name.ja}を捕虜のまま置きます` : ''); }
+      };
+    });
+  }
+
+  /** 捕虜の一覧（P73）：自分が捕らえている将（決める）と、よその家に捕まっている自分の将（身代金） */
+  private captiveList(): void {
+    const c = this.c, gs = c.gs, me = gs.factions[c.player];
+    const mine = myCaptives(c), lost = myCaptured(c);
+    const row1 = (x: ReturnType<typeof myCaptives>[number]): string => `<li>${this.figure(x.g)}<span><b>${esc(x.g.name.ja)}</b> <span class="dim">${esc(gs.factions[x.from]?.name.ja ?? '滅んだ家')}・Lv${x.g.level}・${Math.max(0, gs.tick - x.since)}か月・登用の見込み${Math.round(recruitChance(c, x) * 100)}%</span></span> <button data-cap="${x.g.id}">決める</button></li>`;
+    const row2 = (x: ReturnType<typeof myCaptives>[number]): string => { const cost = ransomCost(x); return `<li>${this.figure(x.g)}<span><b>${esc(x.g.name.ja)}</b> <span class="dim">${esc(gs.factions[x.by]?.name.ja ?? '')}に捕まっている・${esc(gs.provinces[x.prov]?.name.ja ?? '')}・${Math.max(0, gs.tick - x.since)}か月</span></span> <button data-ransom="${x.g.id}" ${me && me.supply >= cost ? '' : 'disabled'}>身代金 兵糧${cost}</button></li>`; };
+    const box = document.createElement('div');
+    box.className = 'result ask captives';
+    box.innerHTML = `<h2>捕虜</h2>
+      <h4>捕らえている将（${mine.length}人）</h4>${mine.length ? `<ul class="caplist">${mine.map(row1).join('')}</ul>` : '<p class="dim small">いません</p>'}
+      <h4>捕まっている自分の将（${lost.length}人）</h4>${lost.length ? `<ul class="caplist">${lost.map(row2).join('')}</ul><p class="dim small">その領を攻め取れば解き放たれます。毎月まれに自分で逃げ帰ります。</p>` : '<p class="dim small">いません</p>'}
+      <p class="cbtns"><button class="primary" data-a="ok">閉じる</button></p>`;
+    this.frame().querySelector('.result.ask')?.remove();
+    this.frame().appendChild(box);
+    box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => box.remove();
+    box.querySelectorAll<HTMLButtonElement>('[data-cap]').forEach((b) => { b.onclick = () => { box.remove(); this.captiveWindow(b.dataset.cap!, false, () => this.captiveList()); }; });
+    box.querySelectorAll<HTMLButtonElement>('[data-ransom]').forEach((b) => {
+      b.onclick = () => { const x = captiveOf(c, b.dataset.ransom!); if (x && ransomCaptive(c, x.g.id)) { toast(`${x.g.name.ja}を取り戻しました`); box.remove(); this.refresh(); if (myCaptives(c).length || myCaptured(c).length) this.captiveList(); } };
+    });
   }
 
   /** 采配バー（P45）：右端が最大の采配。兵ごとの区切りに、その兵が使う采配。横に「采配 使用／最大（残り）」 */
@@ -1447,6 +1534,7 @@ export class CampaignScreen {
         ${c.player ? `<button id="autoMonth" class="${this.autoOn ? 'on autoing' : ''}" ${c.over ? 'disabled' : ''} data-tip="押すと、自分の勢力の動きもおまかせにして1か月進めます。2度押すと、ずっとおまかせで進みます（どこかを押すと手動に戻ります）。">${this.autoOn ? 'ずっとオート中…（押すと手動）' : '1か月オート'}</button>` : ''}
         ${c.player ? '' : '<button id="run">12か月進める</button>'}
         <span class="dim">勢力${Object.keys(gs.factions).length}・${c.months}か月・<span class="${c.difficulty === 'oni' ? 'oni' : ''}" title="難しさ">${S.difficulty[c.difficulty].name}</span></span>
+        ${c.player && (myCaptives(c).length || myCaptured(c).length) ? `<button id="captiveBtn" data-tip="捕らえている敵の将と、捕まっている自分の将。押すと一覧（登用・解き放つ・処断・身代金）">捕虜 ${myCaptives(c).length}人${myCaptured(c).length ? `・捕まった将 ${myCaptured(c).length}人` : ''}</button>` : ''}
         ${c.player ? `<button id="planBtn" data-tip="味方をおまかせで戦わせるとき（おまかせ・観戦・1か月オート）の動き方。押すと切り替えられます">方針：${esc(planLabel(getPlan()))}</button>` : ''}
         ${c.player ? `<button id="reelBtn" title="月を進めたあと、ほかの国どうしの戦いを1つずつ見せるか">他国の戦い：${reelOn() ? '見る' : '見ない'}</button>` : ''}
         <button id="saves">セーブ</button>
@@ -1706,6 +1794,7 @@ export class CampaignScreen {
     on('#bgmBtn', () => { setBgmLevel((bgmLevel() + 1) % BGM_LEVEL_NAME.length); this.refresh(); });
     on('#reelBtn', () => { setReel(!reelOn()); this.refresh(); });
     on('#planBtn', () => this.openPlan());
+    on('#captiveBtn', () => this.captiveList());
     on('#chronBtn', () => { if (c.over === 'win') this.unifyWindow(); });
     on('#saves', () => { void openSaveMenu(root.querySelector<HTMLElement>('.battle')!, { current: () => snapshot(this.c), onLoad: (s) => { clearTimeout(this.watchTimer); this.runToken++; void busy('読み込んでいます…', () => this.host.loadHexSave(s)); } }); });
     on('#exit', async () => {

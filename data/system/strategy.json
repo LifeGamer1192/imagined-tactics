@@ -52,6 +52,10 @@
   "supply": { "capMonths": 24, "capMin": 1500 },
   "teach": { "slotsByInt": [[64, 1], [79, 2], [94, 3]], "maxSlots": 4, "troopSlots": 1, "months": { "lord": 2, "general": 3, "troop": 4 }, "borrowedMpMult": 1.2, "masterUses": 5,
     "aiChance": { "easy": 0.04, "normal": 0.08, "hard": 0.12, "veryHard": 0.18, "oni": 0.25 } },
+  "captive": { "base": 0.3, "lordBase": 0.15, "noRetreat": 0.3, "provLost": 0.1, "cravenEscape": 0.1, "escape": 0.02,
+    "recruit": { "base": 0.35, "perLoyalty": 0.15, "honorTraits": ["just", "warrior", "brave"], "honor": -0.15, "greedyTraits": ["greedy", "ambitious", "cynical"], "greedy": 0.15, "tieKinds": ["sworn", "friend", "lord", "servant", "spouse", "mentor", "pupil"], "tie": 0.25, "perCha": 0.03, "fallen": 0.3, "retry": -0.1, "debt": 0.2, "min": 0.05, "max": 0.9 },
+    "releasePrestige": 5, "releaseOpinion": 20, "executeOpinion": -60, "ransomBase": 150, "ransomPerLevel": 15, "recruitLoyalty": 0,
+    "ai": { "executeCruelty": 0.3, "executeChance": 0.5, "retry": 0.1, "release": 0.05, "releaseCare": 0.2 } },
   "abdicate": { "minAge": 15, "cooldown": 24, "fameGap": 2, "fameGapBig": 4, "drop": 1, "dropBig": 2 },
   "tactical": { "lines": [17, 18], "capPerGeneral": 1 },
   "traits": {

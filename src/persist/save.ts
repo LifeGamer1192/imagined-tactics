@@ -54,6 +54,8 @@ export interface HexSave {
     realms?: Campaign['realms'];
     abdicatedAt?: number;
     lessons?: Campaign['lessons'];
+    captives?: Campaign['captives'];
+    captivePending?: Campaign['captivePending'];
   };
 }
 
@@ -76,7 +78,7 @@ export function snapshot(c: Campaign): HexSave {
       gs, player: c.player, months: c.months, over: c.over, moved: [...c.moved],
       log: c.log.slice(-LOG_KEEP), rng: [c.rng.seed0, c.rng.state],
       items: c.items, sieges: c.sieges, away: c.away, difficulty: c.difficulty, offers: c.offers, wounded: c.wounded, reserve: c.reserve, built: c.built, relocations: c.relocations, history: c.history,
-      training: c.training, trainedThisMonth: c.trainedThisMonth, trainBonus: c.trainBonus, scout: c.scout, scoutMissions: c.scoutMissions, offices: c.offices, resting: c.resting, autoPlan: c.autoPlan, chronicle: c.chronicle, feats: c.feats, unified: c.unified, realms: c.realms, abdicatedAt: c.abdicatedAt, lessons: c.lessons,
+      training: c.training, trainedThisMonth: c.trainedThisMonth, trainBonus: c.trainBonus, scout: c.scout, scoutMissions: c.scoutMissions, offices: c.offices, resting: c.resting, autoPlan: c.autoPlan, chronicle: c.chronicle, feats: c.feats, unified: c.unified, realms: c.realms, abdicatedAt: c.abdicatedAt, lessons: c.lessons, captives: c.captives, captivePending: c.captivePending,
     },
   };
 }
@@ -95,7 +97,7 @@ export function restore(s: HexSave): Campaign {
     gs: k.gs, world: data.world, player: k.player, months: k.months, over: k.over,
     moved: new Set(k.moved), log: [...k.log], rng: RNG.restore(k.rng[0], k.rng[1]),
     items: k.items ?? {}, sieges: k.sieges ?? {}, away: k.away ?? {}, difficulty: validDifficulty(k.difficulty), offers: k.offers ?? [], wounded: k.wounded ?? {}, reserve: k.reserve ?? {}, built: k.built ?? {}, relocations: k.relocations ?? {}, history: k.history ?? { done: [] },
-    training: k.training ?? {}, trainedThisMonth: k.trainedThisMonth ?? [], trainBonus: k.trainBonus ?? {}, scout: k.scout, scoutMissions: k.scoutMissions ?? [], offices: k.offices ?? {}, resting: k.resting ?? {}, autoPlan: k.autoPlan, chronicle: k.chronicle, feats: k.feats, unified: k.unified, realms: k.realms, abdicatedAt: k.abdicatedAt, lessons: k.lessons ?? [],
+    training: k.training ?? {}, trainedThisMonth: k.trainedThisMonth ?? [], trainBonus: k.trainBonus ?? {}, scout: k.scout, scoutMissions: k.scoutMissions ?? [], offices: k.offices ?? {}, resting: k.resting ?? {}, autoPlan: k.autoPlan, chronicle: k.chronicle, feats: k.feats, unified: k.unified, realms: k.realms, abdicatedAt: k.abdicatedAt, lessons: k.lessons ?? [], captives: k.captives ?? [], captivePending: k.captivePending ?? [],
   };
   // 始めから上の役職にいた人にも、下の役職の熟練度と軍略を揃える（何度やっても同じ）
   for (const g of Object.values(c.gs.generals)) fillLowerClasses(g);

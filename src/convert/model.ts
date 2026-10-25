@@ -62,6 +62,8 @@ export interface GGeneral {
   mastery: Record<string, number>;
   /** 直伝で教わった技・軍略（枠は知略で決まる。P68） */
   taught?: Taught[];
+  /** 捕虜のときに解き放ってくれた家（恩。のちにその家からの登用の見込みが上がる。P72） */
+  debts?: number[];
   /** 今の能力値（役職の補正を足す前） */
   stats: StatBlock;
   command: number;

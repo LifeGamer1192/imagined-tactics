@@ -14,6 +14,7 @@ import { D, L } from '../data/db';
 import { TRAITS } from '../rules/traits';
 import { addLevels, classMod } from '../rules/growth';
 import { aiTeach, lessonsBusy, lessonsMonth } from './teach';
+import { captivesMonth, takeCaptives } from './captive';
 import { addFeats, chronFromLog, realmEvent, realmFell, realmFromLog, sampleRealms, type ChronEntry, type Feat, type RealmHist } from './chronicle';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
@@ -31,6 +32,11 @@ export interface CampaignLog { key: string; vars: Record<string, string | number
  * 直伝（P68）：teacher が learner（将、または teacher の配下の兵 tid）に art を教えている。
  * months かかり、progress が進んだ月（療養に入るとやり直しで0）。prov は教えている領
  */
+/**
+ * 捕虜（P72）：g は捕まっている将（gs.generals からは外している）。by は捕らえた家、prov は置かれている領、from はもとの家、
+ * since は捕まった月、tries は登用を断られた回数、lord はもとは当主だったか
+ */
+export interface Captive { g: GGeneral; by: number; prov: number; from: number; since: number; tries: number; lord: boolean }
 export interface Lesson { teacher: string; learner: string; tid?: string; art: string; kind: 'skill' | 'tactic'; months: number; progress: number; prov: number }
 
 export interface PendingBattle {
@@ -98,6 +104,10 @@ export interface Campaign {
   abdicatedAt?: number;
   /** 進んでいる直伝（P68） */
   lessons?: Lesson[];
+  /** 捕虜（P72）：捕まっている将（ふつうの武将の一覧からは外してここに置く） */
+  captives?: Captive[];
+  /** 自分の家が捕らえて、まだ決めていない捕虜（戦いのあとに窓で決める。当主は必ず決める） */
+  captivePending?: string[];
   /** 滅んだが、まだ滅亡の窓を出していない家（P60） */
   fallen?: number[];
   /** この月の、ほかの勢力どうしの戦い（演出用。セーブしない） */
@@ -752,6 +762,8 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
     attacker: c.gs.factions[pb.attacker].name.ja, defender: c.gs.factions[pb.defender]?.name.ja ?? '在地の兵',
     prov: c.gs.provinces[pb.prov].name.ja, winner: battle.sideNames[sum.winner],
   });
+  // 捕虜（P72）：倒された負けた側の将は、勝った側に捕まることがある（捕まった将は深手にはしない。ここで一覧から外れる）
+  takeCaptives(c, pb, sum);
   // 倒された武将は深手を負い、しばらく戦えない（翌月すぐ元どおりに出てこないように）
   const hurt = sum.beatenIds.filter((id) => c.gs.generals[id] && !isGarrison(id));
   for (const id of hurt) {
@@ -1113,6 +1125,8 @@ export function finishMonth(c: Campaign): void {
   trainMonth(c);
   scoutMonth(c);
   lessonsMonth(c);
+  // 捕虜（P72）：取り返された・逃げた・相手の国の判断・決めていない当主は解き放つ
+  captivesMonth(c);
   c.moved.clear();
   // 退却して休養中の武将は、この月も動けない（守りの出陣はできる）
   for (const [gid, until] of Object.entries(c.resting ?? {})) { if (until >= gs.tick && gs.generals[gid]) c.moved.add(gid); else delete c.resting![gid]; }

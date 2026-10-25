@@ -3,7 +3,7 @@
 
 import type { Campaign, CampaignLog } from './campaign';
 
-export type ChronKind = 'start' | 'capture' | 'lost' | 'fall' | 'war' | 'ally' | 'truce' | 'capital' | 'lord' | 'history' | 'unify';
+export type ChronKind = 'start' | 'capture' | 'lost' | 'fall' | 'war' | 'ally' | 'truce' | 'capital' | 'lord' | 'history' | 'unify' | 'captive';
 export interface ChronEntry { year: number; month: number; kind: ChronKind; text: string; provs?: number }
 /** 武将ごとの戦の数・勝った数・倒した敵将の数（功臣を決める） */
 export interface Feat { battles: number; wins: number; foes: number }
@@ -63,6 +63,17 @@ export function chronFromLog(c: Campaign, e: CampaignLog): void {
     case 'abdicate':
       if (s('faction') === me) chron(c, 'lord', `${s('late')}が隠居し、${s('name')}が当主となる（譲り）`);
       break;
+    // 捕虜（P72）
+    case 'captured':
+      if (s('by') === me) chron(c, 'captive', `${s('from')}の${s('name')}${s('lord')}を捕らえる`);
+      else if (s('from') === me) chron(c, 'captive', `${s('name')}${s('lord')}が${s('by')}に捕らえられる`);
+      break;
+    case 'captiveRecruit': if (s('by') === me) chron(c, 'captive', `${s('name')}（もと${s('from')}）を家臣とする`); break;
+    case 'captiveExecute':
+      if (s('by') === me) chron(c, 'captive', `捕虜の${s('name')}${s('lord')}を処断する`);
+      else if (s('from') === me) chron(c, 'captive', `${s('name')}${s('lord')}が${s('by')}に処断される`);
+      break;
+    case 'captiveRelease': if (s('by') === me) chron(c, 'captive', `捕虜の${s('name')}を解き放つ`); break;
     case 'imaArrive': chron(c, 'lord', s('text')); break;
     case 'history':
       if (s('text') && (String(v.text).includes(me) || v.choice)) chron(c, 'history', String(v.text));
@@ -146,6 +157,9 @@ export function realmFromLog(c: Campaign, e: CampaignLog): void {
     case 'abdicate': realmEvent(c, s('faction'), `${s('late')}が隠居し、${s('name')}が当主となる（譲り）`); break;
     case 'defect': realmEvent(c, s('from'), `${s('name')}が${s('to')}へ寝返る`); realmEvent(c, s('to'), `${s('name')}が寝返ってくる`); break;
     case 'death': realmEvent(c, s('faction'), `${s('name')}が世を去る（${s('age')}歳）`); break;
+    case 'captured': realmEvent(c, s('from'), `${s('name')}${s('lord')}が${s('by')}に捕らえられる`); realmEvent(c, s('by'), `${s('from')}の${s('name')}${s('lord')}を捕らえる`); break;
+    case 'captiveRecruit': realmEvent(c, s('by'), `捕虜の${s('name')}を家臣とする`); break;
+    case 'captiveExecute': realmEvent(c, s('from'), `${s('name')}${s('lord')}が${s('by')}に処断される`); break;
     // 史実の出来事は、本文に名が出てくる家すべての歩みに書く
     case 'history': case 'historyChoice': {
       const text = s('text') || s('result');

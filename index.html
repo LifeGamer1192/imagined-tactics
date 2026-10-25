@@ -140,6 +140,11 @@ body .result.low .banner { height: clamp(60px, 10vh, 110px); }
 details.pf-more { max-height: none; margin: 0 0 4px; } details.pf-more > summary { cursor: pointer; color: var(--gold, #c9a227); font-size: 12px; }
 .pf-head { display: flex; gap: 10px; align-items: center; }
 .pf-head .fig { width: 64px; height: auto; }
+/* 捕虜（P73） */
+.caplist { list-style: none; padding: 0; margin: 6px 0; display: flex; flex-direction: column; gap: 6px; }
+.caplist li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.caplist li > span { flex: 1 1 160px; }
+.result.captive .pf-head .fig { width: 96px; }
 /* 直伝の窓（P68） */
 .teach .tarts { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; max-height: 46vh; overflow-y: auto; }
 .teach .tart { display: block; padding: 4px 6px; border-radius: 4px; background: rgba(255,255,255,0.04); cursor: pointer; }

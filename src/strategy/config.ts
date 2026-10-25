@@ -75,6 +75,13 @@ export const S = strategyJson as unknown as {
    * aiChance：相手の国が1か月に教え始める見込み（難しさごと）
    */
   teach: { slotsByInt: [number, number][]; maxSlots: number; troopSlots: number; months: { lord: number; general: number; troop: number }; borrowedMpMult: number; masterUses: number; aiChance: Record<string, number> };
+  /** 捕虜（P72）：捕まる見込み・逃げる見込み・登用の見込みの足し引き・解き放つ／処断の効き目・身代金・相手の国の判断 */
+  captive: {
+    base: number; lordBase: number; noRetreat: number; provLost: number; cravenEscape: number; escape: number;
+    recruit: { base: number; perLoyalty: number; honorTraits: string[]; honor: number; greedyTraits: string[]; greedy: number; tieKinds: string[]; tie: number; perCha: number; fallen: number; retry: number; debt: number; min: number; max: number };
+    releasePrestige: number; releaseOpinion: number; executeOpinion: number; ransomBase: number; ransomPerLevel: number; recruitLoyalty: number;
+    ai: { executeCruelty: number; executeChance: number; retry: number; release: number; releaseCare: number };
+  };
   /** 当主を譲る（P71）：継げる歳、次に譲れるまでの月、忠誠が下がる名声の差（と大きい差）、下がる量 */
   abdicate: { minAge: number; cooldown: number; fameGap: number; fameGapBig: number; drop: number; dropBig: number };
   tactical: { lines: number[]; capPerGeneral: number };
