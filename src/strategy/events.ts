@@ -7,7 +7,7 @@ import type { GGeneral } from '../convert/model';
 import { D } from '../data/db';
 import { fillLowerClasses, gainGeneralExp, generalPromotions, promoteGeneral, promoteTroop, troopPromotions } from '../rules/growth';
 import {
-  holderOf, neighborsOf, note, relation, reserveOf, strengthOf, toReserve,
+  extinguish, holderOf, neighborsOf, note, relation, reserveOf, strengthOf, toReserve,
   type Campaign, type Offer, type PendingBattle,
 } from './campaign';
 import { S, traitsOf } from './config';
@@ -285,7 +285,8 @@ function succeed(c: Campaign, fid: number, late: string): void {
   const heirs = Object.values(gs.generals).filter((g) => g.faction === fid)
     .sort((a, b) => Number(b.role === 'heir') - Number(a.role === 'heir') || b.fame - a.fame || b.level - a.level || a.id.localeCompare(b.id));
   const next = heirs[0];
-  if (!next) { f.lordId = ''; return; }
+  // 跡を継ぐ武将が一人もいなければ、家が絶える（領は在地に戻る。自分の家なら負け）
+  if (!next) { f.lordId = ''; extinguish(c, fid, late); return; }
   // 当主の役職・采配の上乗せも付け替える（譲るのと共通。P70）
   crown(gs, fid, next);
   delete c.away[next.id];

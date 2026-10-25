@@ -78,7 +78,7 @@ const LOG_TEXT: Record<string, string> = {
   capture: '{faction}が{prov}を取った',
   imaArrive: '【ima-rpg から】{text}',
   chainCapture: '{faction}は、勢いに乗って{from}の{provs}（守る武将のいない領）も一気に取った',
-  fall: '{faction}が滅んだ',
+  fall: '{faction}が滅んだ{why}',
   battle: '{prov}の戦い：{attacker} 対 {defender} → {winner}の勝ち',
   month: '── {date} ──',
   siege: '{faction}が{prov}を囲んでいる（{pct}%）',
@@ -531,7 +531,7 @@ export class CampaignScreen {
     box.className = 'result fall';
     box.innerHTML = `${bannerHtml(sceneUrl('defeat', gs.variant))}
       <div class="fall-title">${esc(r.name)}、滅亡</div>
-      <p class="vsub">${esc(yr(r.fell.year))}${r.fell.month}月　${r.fell.by ? `${esc(r.fell.by)}に滅ぼされる` : '領をすべて失う'}${mine ? '　<b>あなたの家</b>' : ''}</p>
+      <p class="vsub">${esc(yr(r.fell.year))}${r.fell.month}月　${r.fell.why ? esc(r.fell.why) : r.fell.by ? `${esc(r.fell.by)}に滅ぼされる` : '領をすべて失う'}${mine ? '　<b>あなたの家</b>' : ''}</p>
       <div class="u-stats">
         <div><b>${esc(span)}</b><span>見届けた年月</span></div>
         <div><b>${r.start.provs} → 0</b><span>領</span></div>

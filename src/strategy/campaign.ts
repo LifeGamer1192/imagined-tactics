@@ -573,11 +573,11 @@ export function battleSupply(c: Campaign, pb: PendingBattle): [number, number] {
   return [atkCut ? m : 1, defCut ? m : 1];
 }
 
-function eliminate(c: Campaign, f: GFaction, by: number): void {
+function eliminate(c: Campaign, f: GFaction, by: number, why?: string): void {
   const gs = c.gs;
-  // 滅亡の窓（P60）：家を消す前に、最後のようすを書き留める
-  realmFell(c, f.id, gs.factions[by]?.name.ja ?? '');
-  note(c, 'fall', { faction: f.name.ja, by: gs.factions[by]?.name.ja ?? '' });
+  // 滅亡の窓（P60）：家を消す前に、最後のようすを書き留める。why：滅ぼされたのでないときの理由（跡継ぎが絶えた、など）
+  realmFell(c, f.id, gs.factions[by]?.name.ja ?? '', why);
+  note(c, 'fall', { faction: f.name.ja, by: gs.factions[by]?.name.ja ?? '', why: why ? `（${why}）` : '' });
   const freed = Object.values(gs.generals).filter((g) => g.faction === f.id);
   for (const g of freed) { g.faction = 0; g.prov = -1; g.isLord = false; delete c.away[g.id]; }
   for (const x of Object.values(gs.factions)) if (x.overlord === f.id) x.overlord = 0;
@@ -590,6 +590,20 @@ function eliminate(c: Campaign, f: GFaction, by: number): void {
   onEliminated(c, freed, by);
 }
 
+/**
+ * 家が絶える：当主が世を去り（処断・史実の死など）、跡を継ぐ武将が一人もいないとき。
+ * その家の領はすべて在地（持ち主なし）に戻り、家は滅ぶ（自分の家なら負け）。予備兵は領に残る
+ */
+export function extinguish(c: Campaign, fid: number, late: string): void {
+  const gs = c.gs, f = gs.factions[fid];
+  if (!f) return;
+  for (const p of provincesOf(c, fid)) { p.owner = 0; p.controller = 0; delete c.sieges[p.id]; }
+  for (const k of Object.keys(c.sieges)) if (c.sieges[Number(k)].by === fid) delete c.sieges[Number(k)];
+  eliminate(c, f, 0, `${late ? `当主の${late}が世を去り、` : '当主がおらず、'}跡を継ぐ者がいない`);
+  // 滅亡の窓の「最後の当主」は、世を去った当主
+  const fell = c.realms?.[fid]?.fell;
+  if (fell && late && !fell.lord) fell.lord = late;
+}
 /**
  * 領を別の勢力へ渡す（史実の割譲など。戦いは無い）。領にいたほかの家の武将は自分の領へ帰る。
  * 渡した側の領が無くなれば、その家は滅ぶ（武将は浪人になる）

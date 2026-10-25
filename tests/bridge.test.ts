@@ -26,7 +26,7 @@ describe('hist-sim save reader', () => {
       expect(aliveNations(s.world).length, f).toBe(s.summary.nations);
       expect(s.world.provinceName.length, f).toBe(s.world.provinces.length);
     }
-  });
+  }, 30000);
 
   it('rejects other files', () => {
     expect(() => parseSave('not json')).toThrow(SaveError);

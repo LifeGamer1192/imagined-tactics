@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { BattleSummary } from '../src/battle/result';
 import { convert } from '../src/convert/convert';
+import { D } from '../src/data/db';
 import { restore, snapshot } from '../src/persist/save';
 import { captiveOf, captivesMonth, executeCaptive, ransomCaptive, recruitCaptive, recruitChance, releaseCaptive, takeCaptives } from '../src/strategy/captive';
 import { newCampaign, relation, S, type Campaign, type PendingBattle } from '../src/strategy/campaign';
@@ -84,6 +85,35 @@ describe('captives', () => {
     const f = c.gs.factions[foe];
     expect(f.lordId).not.toBe(lord.id);
     expect(c.gs.generals[f.lordId]?.isLord).toBe(true);
+  });
+
+  it('executing a lord: the heir takes the lord class; with no general left the house dies out (provinces go ownerless, the player loses)', async () => {
+    for (const [victimIsMe, strip] of [[false, false], [false, true], [true, false], [true, true]] as const) {
+      const { c, me, foe } = await setup();
+      const victim = victimIsMe ? me : foe, captor = victimIsMe ? foe : me;
+      const provs = c.gs.provinces.filter((p) => p.owner === victim).map((p) => p.id);
+      if (strip) for (const g of Object.values(c.gs.generals)) if (g.faction === victim && !g.isLord) delete c.gs.generals[g.id];
+      const lord = c.gs.generals[c.gs.factions[victim].lordId];
+      S.captive.lordBase = 1; S.captive.ai.executeChance = 1; S.captive.ai.executeCruelty = -9;
+      const at = c.gs.factions[captor].capital;
+      takeCaptives(c, { attacker: victim, defender: captor, prov: at, from: c.gs.factions[victim].capital, atk: [lord.id], def: [] }, { winner: 1, rounds: 3, levelUps: [], lost: [], beaten: [lord.name.ja], beatenSides: [0], beatenIds: [lord.id] });
+      if (!victimIsMe) executeCaptive(c, lord.id);
+      expect(c.gs.generals[lord.id]).toBeUndefined();
+      const f = c.gs.factions[victim];
+      if (!strip) {
+        const heir = c.gs.generals[f.lordId];
+        expect(heir?.isLord).toBe(true);
+        expect(D.byClass[heir.classId].unique).toBe('lord');
+        expect(c.log.some((e) => e.key === 'succeed')).toBe(true);
+      } else {
+        expect(f).toBeUndefined();
+        expect(provs.every((p) => c.gs.provinces[p].owner === 0)).toBe(true);
+        expect(c.realms?.[victim]?.fell?.why).toContain('跡を継ぐ者がいない');
+        expect(c.realms?.[victim]?.fell?.lord).toBe(lord.name.ja);
+        expect(c.over).toBe(victimIsMe ? 'lose' : null);
+      }
+      Object.assign(S.captive, structuredClone(saved));
+    }
   });
 
   it('an undecided captured lord is released at the end of the month; held captives are freed when the province is lost', async () => {

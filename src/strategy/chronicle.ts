@@ -40,6 +40,7 @@ export function chronFromLog(c: Campaign, e: CampaignLog): void {
       break;
     case 'fall':
       if (s('by') === me) chron(c, 'fall', `${s('faction')}を滅ぼす`);
+      else if (s('why') && s('faction') !== me) chron(c, 'fall', `${s('faction')}が絶える${s('why')}`);
       break;
     case 'war':
       if (s('a') === me) chron(c, 'war', `${s('b')}に戦を仕掛ける`);
@@ -112,7 +113,7 @@ export interface RealmHist {
   samples: RealmSample[];
   events: { year: number; month: number; text: string }[];
   /** 滅んだときのこと */
-  fell?: { year: number; month: number; by: string; lord: string; ronin: number };
+  fell?: { year: number; month: number; by: string; lord: string; ronin: number; /** 滅ぼされたのでないときの理由（跡継ぎが絶えた、など） */ why?: string };
 }
 // セーブが大きくなりすぎないよう、月ごとの記録は120件まで（超えたら1つおきに間引く）、出来事は80件まで
 const SAMPLE_MAX = 120, EVENT_MAX = 80;
@@ -184,14 +185,14 @@ export function realmFromLog(c: Campaign, e: CampaignLog): void {
 }
 
 /** 家が滅んだときに、最後のようすを書き留める（eliminate から、家を消す前に呼ぶ） */
-export function realmFell(c: Campaign, fid: number, by: string): void {
+export function realmFell(c: Campaign, fid: number, by: string, why?: string): void {
   const f = c.gs.factions[fid];
   if (!f) return;
   const h = (c.realms ??= {});
   const r = (h[fid] ??= { name: f.name.ja, color: f.color, start: sampleOf(c, fid), samples: [], events: [] });
   const gens = Object.values(c.gs.generals).filter((g) => g.faction === fid);
   r.samples.push({ ...dateOf(c), provs: 0, gens: gens.length, troops: gens.reduce((s, g) => s + g.troops.length, 0) });
-  r.fell = { ...dateOf(c), by, lord: c.gs.generals[f.lordId]?.name.ja ?? '', ronin: gens.length };
+  r.fell = { ...dateOf(c), by, lord: c.gs.generals[f.lordId]?.name.ja ?? '', ronin: gens.length, ...(why ? { why } : {}) };
   (c.fallen ??= []).push(fid);
 }
 
