@@ -1066,7 +1066,7 @@ export class CampaignScreen {
       ups.push(`<button data-train-always="${g.id}" class="${always ? 'on' : ''}" title="${esc(`毎月の終わりに訓練します（その月に移動・攻めるなどで動かしたときは訓練しません）。${multText}`)}">ずっと訓練：${always ? '入' : '切'}</button>`);
       // 相国（偵察度を毎月上げる役。1人だけ）
       const chan = c.offices?.chancellor === g.id;
-      ups.push(`<button data-chancellor="${g.id}" class="${chan ? 'on' : ''}" title="${esc(`相国は、自分の領から${S.scout.officeRange}つ先までの他国の領の偵察度を、毎月+${officeGain(g)}上げます（外交${g.ab[2]}から）。1人だけ任じられます`)}">${chan ? '相国を解く' : '相国に任じる'}</button>`);
+      if (!g.isLord) ups.push(`<button data-chancellor="${g.id}" class="${chan ? 'on' : ''}" title="${esc(`相国は、自分の領から${S.scout.officeRange}つ先までの他国の領の偵察度を、毎月+${officeGain(g)}上げます（外交${g.ab[2]}から）。1人だけ任じられます`)}">${chan ? '相国を解く' : '相国に任じる'}</button>`);
       // 直伝（P68）：教えられるものと相手がいて、今月教え始められる将に
       if (!teacherProblem(c, g) && learnersOf(c, g).length && teachableArts(g).some((x) => !x.why)) ups.push(`<button data-teach="${g.id}" title="${esc('ほかの将や配下の兵に、技・軍略を教えます。押すと、教わる相手と技・軍略を選ぶ窓が出ます')}">直伝（技・軍略）</button>`);
       // 当主を譲る（P71）：譲れる人だけ（前に譲ってから間が無いあいだは出さない。遊び方に書く）

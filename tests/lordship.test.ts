@@ -6,6 +6,7 @@ import { RNG } from '../src/core/rng';
 import { gainTroopExp, lowerClasses, MAX_MASTERY, troopExpToNext } from '../src/rules/growth';
 import { newCampaign } from '../src/strategy/campaign';
 import { abdicate, abdicateProblem } from '../src/strategy/events';
+import { appointChancellor } from '../src/strategy/scouting';
 import { loadFixture } from './helpers';
 
 describe('mastery', () => {
@@ -24,6 +25,20 @@ describe('mastery', () => {
     for (let i = 0; i < 8; i++) gainTroopExp(t, troopExpToNext(t), rng);
     expect(t.level).toBe(9);
     expect(t.mastery?.u01a).toBe(MAX_MASTERY);
+  });
+});
+
+describe('chancellor and the lord', () => {
+  it('the lord cannot be made chancellor; a chancellor who becomes lord loses the office', async () => {
+    const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
+    const me = Object.values(gs.factions).find((f) => f.name.ja === '織田家')!;
+    const c = newCampaign(gs, save.world, me.id);
+    expect(appointChancellor(c, me.lordId)).toBe(false);
+    expect(c.offices?.chancellor).toBeUndefined();
+    const g = Object.values(gs.generals).find((x) => x.faction === me.id && !x.isLord && !abdicateProblem(c, x))!;
+    expect(appointChancellor(c, g.id)).toBe(true);
+    expect(abdicate(c, g.id)).toBe(true);
+    expect(c.offices?.chancellor).toBeUndefined();
   });
 });
 

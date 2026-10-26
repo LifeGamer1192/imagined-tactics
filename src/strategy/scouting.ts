@@ -68,6 +68,8 @@ export function appointChancellor(c: Campaign, gid: string): boolean {
   const g = c.gs.generals[gid];
   if (!g || g.faction !== c.player) return false;
   c.offices ??= {};
+  // 当主は相国に任じられない（解くことだけはできる）
+  if (g.isLord && c.offices.chancellor !== gid) return false;
   if (c.offices.chancellor === gid) { delete c.offices.chancellor; return false; }
   c.offices.chancellor = gid;
   return true;
@@ -100,8 +102,9 @@ export function scoutMonth(c: Campaign): void {
   c.scoutMissions = [];
   // 相国：自分の領から officeRange 歩までの他国の領
   const ch = c.offices?.chancellor ? gs.generals[c.offices.chancellor] : undefined;
-  if (c.offices?.chancellor && (!ch || ch.faction !== me)) delete c.offices.chancellor;
-  if (ch && ch.faction === me) {
+  // 相国が他家に移った・世を去った・当主になった（譲り・代替わり）なら、相国の任を解く
+  if (c.offices?.chancellor && (!ch || ch.faction !== me || ch.isLord)) delete c.offices.chancellor;
+  if (ch && ch.faction === me && !ch.isLord) {
     const gain = officeGain(ch);
     let frontier = mine.map((p) => p.id);
     const seen = new Set(frontier);

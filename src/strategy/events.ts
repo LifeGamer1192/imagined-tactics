@@ -290,6 +290,7 @@ function succeed(c: Campaign, fid: number, late: string): void {
   // 当主の役職・采配の上乗せも付け替える（譲るのと共通。P70）
   crown(gs, fid, next);
   delete c.away[next.id];
+  if (c.offices?.chancellor === next.id) delete c.offices.chancellor;
   note(c, late ? 'succeed' : 'newLord', { faction: f.name.ja, late, name: next.name.ja });
 }
 
@@ -681,6 +682,8 @@ export function abdicate(c: Campaign, gid: string): boolean {
   const f = c.gs.factions[g.faction];
   const loss = abdicateLoyaltyLoss(c, g);
   const old = crown(c.gs, f.id, g) ?? '';
+  // 相国だった将が当主になったら、相国の任を解く
+  if (c.offices?.chancellor === g.id) delete c.offices.chancellor;
   for (const x of loss) x.g.loyalty -= x.drop;
   for (const x of Object.values(c.gs.generals)) if (x.faction === f.id) c.moved.add(x.id);
   c.abdicatedAt = c.months;
