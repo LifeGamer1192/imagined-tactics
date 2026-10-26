@@ -71,7 +71,10 @@ export function appointChancellor(c: Campaign, gid: string): boolean {
   // 当主は相国に任じられない（解くことだけはできる）
   if (g.isLord && c.offices.chancellor !== gid) return false;
   if (c.offices.chancellor === gid) { delete c.offices.chancellor; return false; }
+  // 直伝で教えている最中の将は任じられない。任じたら、ずっと訓練は外す（相国は訓練・直伝・攻めができない。P77）
+  if ((c.lessons ?? []).some((x) => x.teacher === gid)) return false;
   c.offices.chancellor = gid;
+  if (c.training?.[gid]) delete c.training[gid];
   return true;
 }
 

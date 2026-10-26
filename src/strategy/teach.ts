@@ -11,6 +11,7 @@ import { classMod, MAX_MASTERY } from '../rules/growth';
 import { skillOf } from '../rules/stats';
 import { note, type Campaign, type Lesson } from './campaign';
 import { S } from './config';
+import { officeBlocks } from './office';
 
 const T = () => S.teach;
 
@@ -94,6 +95,8 @@ export function teacherProblem(c: Campaign, g: GGeneral): string | null {
   if (!g.faction || !c.gs.factions[g.faction]) return '勢力に仕えていません';
   if (g.id in c.away) return '諸国巡りに出ています';
   if (resting(c, g.id)) return '療養中です';
+  const ob = officeBlocks(c, g.id, 'teach');
+  if (ob) return ob;
   if (inLesson(c, g.id)) return '直伝の最中です';
   if (c.moved.has(g.id)) return '今月は行動済みです';
   if ((c.lessons ?? []).some((x) => x.prov === g.prov)) return 'この領では、いま直伝が進んでいます（1つの領で同時に1つまで）';

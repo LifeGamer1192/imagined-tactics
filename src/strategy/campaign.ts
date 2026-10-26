@@ -15,6 +15,7 @@ import { TRAITS } from '../rules/traits';
 import { addLevels, classMod } from '../rules/growth';
 import { aiTeach, lessonsBusy, lessonsMonth } from './teach';
 import { captivesMonth, takeCaptives } from './captive';
+import { nearChancellor, officeBlocks, officeFx, officeMonth } from './office';
 import { addFeats, chronFromLog, realmEvent, realmFell, realmFromLog, sampleRealms, type ChronEntry, type Feat, type RealmHist } from './chronicle';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
@@ -366,7 +367,9 @@ export function recruit(c: Campaign, gid: string, unitId: string): boolean {
   if (!g || recruitProblem(c, g, unitId)) return false;
   const f = c.gs.factions[g.faction];
   f.supply -= recruitCostFor(c, g, unitId);
-  g.troops.push(makeTroop(D.byUnit[unitId], recruitLevel(c, unitId, f, c.player && f.id !== c.player ? S.difficulty[c.difficulty].aiTroopLevel : 0)));
+  // 本拠で雇う兵はレベルが上がる（P77）
+  const capitalBonus = g.prov === f.capital ? S.capitalBonus.recruitLevel : 0;
+  g.troops.push(makeTroop(D.byUnit[unitId], recruitLevel(c, unitId, f, (c.player && f.id !== c.player ? S.difficulty[c.difficulty].aiTroopLevel : 0) + capitalBonus)));
   return true;
 }
 
@@ -412,7 +415,8 @@ export function planAttack(c: Campaign, faction: number, from: number, to: numbe
   const near = new Set(neighborsOf(c, to));
   const atk = gids.filter((id) => {
     const g = c.gs.generals[id];
-    return g && g.faction === faction && near.has(g.prov) && c.gs.provinces[g.prov]?.owner === faction && !c.moved.has(id) && !(id in c.away) && !(id in c.wounded);
+    // 相国は攻めに出られない（P77）
+    return g && g.faction === faction && near.has(g.prov) && c.gs.provinces[g.prov]?.owner === faction && !c.moved.has(id) && !(id in c.away) && !(id in c.wounded) && !(faction === c.player && officeBlocks(c, id, 'attack'));
   }).slice(0, MAX_GENERALS);
   if (!atk.length) return null;
   const def = target.owner ? generalsAt(c, to, target.owner).slice(0, MAX_GENERALS).map((g) => g.id) : [];
@@ -705,7 +709,10 @@ function refreshIncome(c: Campaign): void {
     const mult = traitsOf(f).reduce((m, t) => m * (t.incomeMult ?? 1), 1) * (f.id === c.player ? dif.playerIncome : c.player ? dif.aiIncome ?? 1 : 1);
     // 飛び地の収入は大きく減る
     const ex = exclavesOf(c, f.id);
-    f.income = Math.round(provincesOf(c, f.id).reduce((s, p) => s + p.income * (ex.has(p.id) ? S.exclave.incomeMult : 1), 0) * mult);
+    // 本拠の領は収入が多い。自分の家は、相国の内政（家じゅう）と膝元（相国のいる領とその隣）のぶんも足す（P77）
+    const fx = f.id === c.player ? officeFx(c) : null;
+    const provMult = (p: GProvince): number => (ex.has(p.id) ? S.exclave.incomeMult : 1) * (p.id === f.capital ? 1 + S.capitalBonus.incomeBonus : 1) * (fx && nearChancellor(c, p.id) ? 1 + fx.localIncome : 1);
+    f.income = Math.round(provincesOf(c, f.id).reduce((s, p) => s + p.income * provMult(p), 0) * mult * (fx ? 1 + fx.income : 1));
   }
 }
 
@@ -1188,6 +1195,8 @@ export function finishMonth(c: Campaign): void {
   gs.truces = gs.truces.filter((t) => t.until > gs.tick);
   trainMonth(c);
   scoutMonth(c);
+  // 相国の外交：隣の国の心証（P77）
+  officeMonth(c);
   lessonsMonth(c);
   // 捕虜（P72）：取り返された・逃げた・相手の国の判断・決めていない当主は解き放つ
   captivesMonth(c);

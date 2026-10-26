@@ -56,6 +56,8 @@
     "recruit": { "base": 0.35, "perLoyalty": 0.15, "honorTraits": ["just", "warrior", "brave"], "honor": -0.15, "greedyTraits": ["greedy", "ambitious", "cynical"], "greedy": 0.15, "tieKinds": ["sworn", "friend", "lord", "servant", "spouse", "mentor", "pupil"], "tie": 0.25, "perCha": 0.03, "fallen": 0.3, "retry": -0.1, "debt": 0.2, "min": 0.05, "max": 0.9 },
     "releasePrestige": 5, "releaseOpinion": 20, "executeOpinion": -60, "ransomBase": 150, "ransomPerLevel": 15, "recruitLoyalty": 0,
     "ai": { "executeCruelty": 0.3, "executeChance": 0.5, "retry": 0.1, "release": 0.05, "releaseCare": 0.2 } },
+  "office": { "incomePerAdmin": 0.01, "envoyPerDip": 2, "driftFrom": 4, "driftDiv": 2, "driftCap": 20, "defectPerCha": 0.05, "recruitPerDip": 0.01, "trainPerMil": 0.03, "localIncomePerAdmin": 0.02, "localTrainPerMil": 0.03 },
+  "capitalBonus": { "incomeBonus": 0.5, "recruitLevel": 1 },
   "histGoal": { "months": 12, "prestige": 20, "supply": 200 },
   "histBattle": { "prestige": 15, "prestigeLoss": 10, "foeKeep": 0.7, "months": 1 },
   "omen": { "lead": 2, "avert": 0.7, "cost": 60, "violent": ["assassination", "battle_wound", "suicide", "executed"] },

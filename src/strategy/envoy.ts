@@ -8,6 +8,7 @@
 import type { GGeneral } from '../convert/model';
 import { note, relation, type Campaign } from './campaign';
 import { S } from './config';
+import { officeFx } from './office';
 import { allianceProblem, callProblem, callToArms, factionStrength, makeTruce, proposeAlliance, truceProblem } from './events';
 
 export type DipKind = 'ally' | 'truce' | 'call' | 'goodwill';
@@ -41,7 +42,8 @@ export function envoyProblem(c: Campaign, g: GGeneral | undefined): string | nul
 /** 見込み：申し込めるか・受けてもらえるか・心証がいくつになるか */
 export function envoyPlan(c: Campaign, kind: DipKind, other: number, envoyId: string, gift: number, enemy?: number): EnvoyPlan {
   const me = c.player, g = c.gs.generals[envoyId], f = c.gs.factions[me];
-  const bonus = envoyBonus(g) + giftBonus(gift);
+  // 相国の外交の上乗せ（P77）
+  const bonus = envoyBonus(g) + giftBonus(gift) + (officeFx(c)?.envoy ?? 0);
   const now = opinionOf(c, other, me), after = Math.max(-100, Math.min(100, now + bonus));
   let blocked = envoyProblem(c, g);
   if (!blocked && (!f || f.supply < gift)) blocked = '兵糧が足りません';

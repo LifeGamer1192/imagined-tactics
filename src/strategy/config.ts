@@ -82,6 +82,13 @@ export const S = strategyJson as unknown as {
     releasePrestige: number; releaseOpinion: number; executeOpinion: number; ransomBase: number; ransomPerLevel: number; recruitLoyalty: number;
     ai: { executeCruelty: number; executeChance: number; retry: number; release: number; releaseCare: number };
   };
+  /**
+   * 相国（P77）：内政（政治×incomePerAdmin の収入）・外交（使者に（外交−5）×envoyPerDip、戦をしていない隣の国の心証が毎月（外交−driftFrom）÷driftDiv、driftCap まで）・
+   * 家中（寝返り −魅力×defectPerCha、捕虜の登用 +外交×recruitPerDip）・訓練（訓練の経験値 +軍事×trainPerMil）。相国のいる領とその隣は、収入と訓練がさらに local〜 ぶん
+   */
+  office: { incomePerAdmin: number; envoyPerDip: number; driftFrom: number; driftDiv: number; driftCap: number; defectPerCha: number; recruitPerDip: number; trainPerMil: number; localIncomePerAdmin: number; localTrainPerMil: number };
+  /** 本拠：本拠の領の収入の上乗せ、本拠で雇う兵のレベルの上乗せ（守備兵の上乗せは garrison.levelCapital） */
+  capitalBonus: { incomeBonus: number; recruitLevel: number };
   /** 史実の目標（P76）：期限の月数、果たしたときの名声と兵糧 */
   histGoal: { months: number; prestige: number; supply: number };
   /** 史実の合戦（P75）：勝った家の名声、負けた家の名声の減り、勝ったときに相手の軍が残る割合（出来事に無いとき）、選べる月 */

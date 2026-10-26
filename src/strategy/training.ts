@@ -14,6 +14,7 @@ import { D, L } from '../data/db';
 import { gainGeneralExp, gainTroopExp, generalExpToNext, troopExpToNext } from '../rules/growth';
 import { MAX_TROOPS, note, provinceRecruit, recruitLevel, toReserve, troopLoad, type Campaign } from './campaign';
 import { S } from './config';
+import { nearChancellor, officeBlocks, officeFx } from './office';
 
 export type TrainMode = 'once' | 'always';
 
@@ -23,7 +24,7 @@ export function trainProblem(c: Campaign, g: GGeneral): string | null {
   if (g.id in c.away) return '諸国巡り中です';
   if (g.id in c.wounded) return '深手を負っています';
   if (c.moved.has(g.id)) return '今月は行動済みです';
-  return null;
+  return officeBlocks(c, g.id, 'train');
 }
 
 /** 1か月訓練を命じる（行動済みになる） */
@@ -58,6 +59,13 @@ export function trainMult(c: Campaign, g: GGeneral): { mult: number; why: string
   if (why.length) mult *= T.bonusMult;
   const extra = c.trainBonus?.[g.id] ?? 0;
   if (extra) { mult *= 1 + extra; why.push(`鍛錬の成果+${Math.round(extra * 100)}%`); }
+  // 相国の訓練（家じゅう）と膝元（相国のいる領とその隣）（P77）
+  const fx = g.faction === c.player ? officeFx(c) : null;
+  if (fx) {
+    const local = nearChancellor(c, g.prov) ? fx.localTrain : 0;
+    mult *= 1 + fx.train + local;
+    why.push(`相国+${Math.round((fx.train + local) * 100)}%`);
+  }
   return { mult, why };
 }
 
@@ -68,7 +76,7 @@ export function trainMonth(c: Campaign): void {
     const g = gs.generals[gid];
     if (!g || g.faction !== c.player) { delete c.training![gid]; continue; }
     // ずっと訓練でも、その月ほかの命令で動いたときは訓練しない（1か月訓練を命じた月は訓練する）
-    const trains = once.has(gid) || (mode === 'always' && !c.moved.has(gid) && !(gid in c.away) && !(gid in c.wounded));
+    const trains = !officeBlocks(c, gid, 'train') && (once.has(gid) || (mode === 'always' && !c.moved.has(gid) && !(gid in c.away) && !(gid in c.wounded)));
     if (mode === 'once') delete c.training![gid];
     if (!trains) continue;
     let { mult } = trainMult(c, g);

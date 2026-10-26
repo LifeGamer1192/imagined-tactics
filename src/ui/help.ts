@@ -84,6 +84,10 @@ function strategy(): string {
     <h3>偵察度</h3>
     <p>ほかの国の領は、偵察度（0〜100）に応じて見える量が変わります。${S.scout.full}以上はすべて、${S.scout.names}以上は武将の名とレベル・兵の数（兵種とレベルは分からない）と、おおよその人口・収入、${S.scout.rough}以上は武将と兵がおおまかにどれくらいか、それ未満は持ち主しか分かりません。地図の武将の人数も、偵察度が${S.scout.names}未満の領には出ません。</p>
     <p>自分の領に隣り合う領は毎月+${S.scout.adjacentGain}、それ以外は毎月−${S.scout.decay}ずつ薄れます（始めたとき、隣の領は${S.scout.start}）。味方の領は少なくとも${S.scout.allyFloor}です。ほかの国の領を選ぶと「偵察度」の欄が出て、武将を選んで「偵察させる」と、その武将はその月は行動済みになり、月の終わりにその領の偵察度が上がります（${S.scout.missionBase}＋知略×${S.scout.missionPerInt}）。自分の武将を「相国に任じる」と（1人だけ）、自分の領から${S.scout.officeRange}つ先までの他国の領が、毎月その武将の外交×${S.scout.officeGain}ずつ上がります。</p>
+    <h3>相国</h3>
+    <p>相国は家の政を預かる将です（1人だけ。当主はなれない。毎月替えられる）。どの領にいても効き、もとの能力で効き目が決まります。<b>内政</b>：家の収入+政治×${Math.round(S.office.incomePerAdmin * 100)}%。<b>外交</b>：使者の心証の上乗せ+（外交−5）×${S.office.envoyPerDip}、戦をしていない隣の国の心証が毎月少しずつ上がる（${S.office.driftCap}まで）。<b>家中</b>：自分の家の寝返り−魅力×${Math.round(S.office.defectPerCha * 100)}%、捕虜を登用する見込み+外交×${Math.round(S.office.recruitPerDip * 100)}%。<b>訓練</b>：家じゅうの訓練の経験値+軍事×${Math.round(S.office.trainPerMil * 100)}%。<b>偵察</b>：上のとおり。さらに、相国のいる領とその隣（膝元）は、収入が+政治×${Math.round(S.office.localIncomePerAdmin * 100)}%、訓練の経験値が+軍事×${Math.round(S.office.localTrainPerMil * 100)}%増えます（領の欄に書かれます）。その代わり、相国は攻めに出られず、訓練も直伝（教える）もできません（守りと移動はできる）。任じる前に、効き目の見込みとできなくなることが出ます。</p>
+    <h3>本拠</h3>
+    <p>本拠の領は、収入が+${Math.round(S.capitalBonus.incomeBonus * 100)}%、守備兵が強く（Lv+${S.garrison.levelCapital}）、ここで雇う兵はLv+${S.capitalBonus.recruitLevel}です（領の欄に書かれます）。</p>
     <h3>訓練</h3>
     <p>自分の武将の欄の「1か月訓練」を押すと、その武将はその月は行動済みになり、月の終わりに本人と配下の兵に経験値が入ります（武将は次のレベルまでの${S.train.generalShare * 100}%、兵は${S.train.troopShare * 100}%）。「ずっと訓練」を入れると、毎月の終わりに訓練します（その月に移動・攻めるなどで動かしたときは訓練しません）。武勇・勇敢などの特性があるか、もとの軍事が${S.train.bonusMilitary}以上か、規律を重んじる性格なら、毎回${S.train.bonusMult}倍です。まれに出来事が起きます：昇進の品を見つける、兵が1隊増える、その武将の訓練の経験値がずっと増える、その月の経験値が倍になる。</p>
     <h3>徴兵</h3>

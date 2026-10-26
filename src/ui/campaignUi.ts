@@ -17,6 +17,7 @@ import { profileHtml } from './profile';
 import { toggleTrainAlways, trainMult, trainOnce, trainProblem } from '../strategy/training';
 import { envoyBonus, envoyPlan, envoyProblem, giftBonus, sendEnvoy, type DipKind } from '../strategy/envoy';
 import { abdicate, abdicateLoyaltyLoss, abdicateProblem, factionStrength } from '../strategy/events';
+import { chancellorOf, nearChancellor, officeBlocks, officeFx, officeLines } from '../strategy/office';
 import { appointChancellor, approx, missionGain, officeGain, roughCount, scoutOf, scoutProblem, scoutTier, sendScout, type ScoutTier } from '../strategy/scouting';
 import { BM } from '../battle/map';
 import { mapPreviewUrl } from '../render/mapPreview';
@@ -718,6 +719,9 @@ export class CampaignScreen {
       });
       if (!ok) { this.order = 'none'; this.refresh(); return; }
     }
+    // 相国は攻めに出られない（P77）：選んでいても外す
+    const ch = gens.find((g) => officeBlocks(c, g.id, 'attack'));
+    if (ch) toast(`相国の${ch.name.ja}は政務で城を離れられないので、攻めには出しません`);
     const pb = planAttack(c, c.player, from, prov, gens.map((g) => g.id));
     this.order = 'none'; this.picked.clear();
     if (pb) { void busy('攻め込んでいます…', () => this.fight(pb, 0, () => this.mount())); return; }
@@ -1066,7 +1070,7 @@ export class CampaignScreen {
       ups.push(`<button data-train-always="${g.id}" class="${always ? 'on' : ''}" title="${esc(`毎月の終わりに訓練します（その月に移動・攻めるなどで動かしたときは訓練しません）。${multText}`)}">ずっと訓練：${always ? '入' : '切'}</button>`);
       // 相国（偵察度を毎月上げる役。1人だけ）
       const chan = c.offices?.chancellor === g.id;
-      if (!g.isLord) ups.push(`<button data-chancellor="${g.id}" class="${chan ? 'on' : ''}" title="${esc(`相国は、自分の領から${S.scout.officeRange}つ先までの他国の領の偵察度を、毎月+${officeGain(g)}上げます（外交${g.ab[2]}から）。1人だけ任じられます`)}">${chan ? '相国を解く' : '相国に任じる'}</button>`);
+      if (!g.isLord) ups.push(`<button data-chancellor="${g.id}" class="${chan ? 'on' : ''}" title="${esc(chan ? `相国を解きます` : `相国は家の政を預かります（内政・外交・家中・訓練・偵察。1人だけ、毎月替えられる）。相国になると、攻め・訓練・直伝ができなくなります。押すと、効き目の見込みと説明が出ます`)}">${chan ? '相国を解く' : '相国に任じる'}</button>`);
       // 直伝（P68）：教えられるものと相手がいて、今月教え始められる将に
       if (!teacherProblem(c, g) && learnersOf(c, g).length && teachableArts(g).some((x) => !x.why)) ups.push(`<button data-teach="${g.id}" title="${esc('ほかの将や配下の兵に、技・軍略を教えます。押すと、教わる相手と技・軍略を選ぶ窓が出ます')}">直伝（技・軍略）</button>`);
       // 当主を譲る（P71）：譲れる人だけ（前に譲ってから間が無いあいだは出さない。遊び方に書く）
@@ -1479,6 +1483,15 @@ export class CampaignScreen {
       <div class="dim small">北が上で、地形は本当の地理のままです。攻め手は攻めてきた方角の端（「攻」）から入り、守り手と城は反対側。どこから攻めるかで、山や川の有利・不利が変わります。領の地形・人口・収入・不穏・城の強さ・建物で形が決まり、普請や本拠の移りでも変わります。</div></details>`;
   }
 
+  /** 本拠と相国の膝元の説明（P77）：その領にかかる効き目 */
+  private seatHtml(prov: number): string {
+    const c = this.c, gs = c.gs, p = gs.provinces[prov], owner = gs.factions[p.owner];
+    const out: string[] = [];
+    if (owner && owner.capital === prov) out.push(`本拠：この領の収入+${Math.round(S.capitalBonus.incomeBonus * 100)}%・守備兵が強い（Lv+${S.garrison.levelCapital}）・ここで雇う兵はLv+${S.capitalBonus.recruitLevel}`);
+    const ch = chancellorOf(c), fx = officeFx(c);
+    if (ch && fx && p.owner === c.player && nearChancellor(c, prov)) out.push(`相国（${ch.name.ja}）の膝元：この領の収入がさらに+${Math.round(fx.localIncome * 100)}%、ここで訓練する将の経験値がさらに+${Math.round(fx.localTrain * 100)}%`);
+    return out.map((t) => `<div class="small seatfx">${esc(t)}</div>`).join('');
+  }
   /** 本拠を移す欄：移している最中なら残りの月、そうでなければ費用と月数とボタン */
   private capitalHtml(prov: number): string {
     const c = this.c, gs = c.gs, me = gs.factions[c.player], p = gs.provinces[prov];
@@ -1554,6 +1567,7 @@ export class CampaignScreen {
           ${town ? `<img class="town" src="${town}" alt="" draggable="false">` : ''}
           <div><b>${esc(p.name.ja)}</b> ${owner ? factionBadge(owner.name.ja, owner.color) : '<span class="dim">持ち主なし</span>'}<span class="dim">${rel}${owner?.capital === p.id ? '・本拠' : ''}</span></div>
           <div class="dim">${this.provStats(p.id, tier)}</div>
+          ${this.seatHtml(p.id)}
           ${this.recruitLine(p.id, own, tier)}
           ${owner && isExclave(c, p.id) ? this.exclaveHtml(p.id) : ''}
           ${this.previewHtml(p.id)}
@@ -1677,7 +1691,27 @@ export class CampaignScreen {
       };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-chancellor]').forEach((b) => {
-      b.onclick = () => { const on = appointChancellor(c, b.dataset.chancellor!); toast(on ? '相国に任じました' : '相国を解きました'); this.refresh(); };
+      b.onclick = async () => {
+        const g = gs.generals[b.dataset.chancellor!];
+        if (!g) return;
+        // 解くのはすぐ。任じる前に、効き目とできなくなることを見せる（P77）
+        if (c.offices?.chancellor !== g.id) {
+          const prev = c.offices?.chancellor ? gs.generals[c.offices.chancellor] : undefined;
+          const ok = await confirmBox(this.frame(), {
+            title: `${esc(g.name.ja)}を相国に任じる`,
+            body: `<p>相国は家の政を預かります（1人だけ。毎月替えられます）。どの領にいても効きます。</p>
+              <ul class="small">${officeLines(c, g).map((l) => `<li>${esc(l)}</li>`).join('')}</ul>
+              <p><b>相国になると、できなくなること</b></p>
+              <ul class="small"><li>攻めに出られない（守り・移動はできる）</li><li>訓練できない（ずっと訓練も外れる）</li><li>直伝で教えられない</li></ul>
+              ${prev ? `<p class="small dim">いまの相国の${esc(prev.name.ja)}は、相国を外れます。</p>` : ''}`,
+            ok: '相国に任じる',
+          });
+          if (!ok) return;
+        }
+        const on = appointChancellor(c, g.id);
+        if (!on && c.offices?.chancellor !== g.id && (c.lessons ?? []).some((x) => x.teacher === g.id)) { toast('直伝で教えている最中なので、相国には任じられません'); return; }
+        toast(on ? `${g.name.ja}を相国に任じました` : '相国を解きました'); this.refresh();
+      };
     });
     const scoutGo = root.querySelector<HTMLButtonElement>('#scoutGo');
     if (scoutGo && p) scoutGo.onclick = () => {

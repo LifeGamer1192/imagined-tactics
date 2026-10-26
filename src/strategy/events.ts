@@ -11,6 +11,7 @@ import {
   type Campaign, type Offer, type PendingBattle,
 } from './campaign';
 import { S, traitsOf } from './config';
+import { officeFx } from './office';
 
 const P = S.people, DIP = S.diplomacy;
 
@@ -363,7 +364,8 @@ function defections(c: Campaign): void {
     if (!rivals.length) continue;
     const to = rivals.sort((a, b) => pullOf(c, g, b) - pullOf(c, g, a) || factionStrength(c, b) - factionStrength(c, a) || a - b)[0];
     const pressure = factionStrength(c, to) > factionStrength(c, f.id) ? 2 : 1;
-    const mult = traitsOf(f).reduce((m, t) => m * (t.defectMult ?? 1), 1);
+    // 相国の家中：自分の家の寝返りが減る（P77）
+    const mult = traitsOf(f).reduce((m, t) => m * (t.defectMult ?? 1), 1) * (f.id === c.player ? 1 - (officeFx(c)?.defect ?? 0) : 1);
     if (!c.rng.chance(P.defectChance * pressure * mult * (P.defectLoyalty - loyalty) * (1 + Math.max(0, pullOf(c, g, to))))) continue;
     // 本拠にいる当主以外の最後の1人は残る（勢力が武将なしにならないように）
     if (Object.values(gs.generals).filter((x) => x.faction === f.id).length <= 1) continue;

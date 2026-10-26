@@ -10,6 +10,7 @@ import type { BattleSummary } from '../battle/result';
 import { declareWar, homeFor, isGarrison, neighborsOf, note, relation, toReserve, type Campaign, type Captive, type PendingBattle } from './campaign';
 import { S } from './config';
 import { effectiveLoyalty, generalDies } from './events';
+import { officeFx } from './office';
 
 const K = () => S.captive;
 const clamp = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v));
@@ -80,6 +81,8 @@ export function recruitChance(c: Campaign, cap: Captive): number {
   if (lord) p += (lord.ab[3] - 5) * R.perCha;
   if (g.debts?.includes(cap.by)) p += R.debt;
   p += cap.tries * R.retry;
+  // 相国の家中：捕虜を登用しやすい（P77）
+  if (cap.by === c.player) p += officeFx(c)?.recruit ?? 0;
   return clamp(p, R.min, R.max);
 }
 
