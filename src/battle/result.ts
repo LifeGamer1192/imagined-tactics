@@ -19,6 +19,8 @@ export interface BattleSummary {
   beatenSides: (0 | 1)[];
   /** 倒された武将の番号（戦略パートで、しばらく戦えなくするのに使う） */
   beatenIds: string[];
+  /** 倒された武将ごとの、負わされた相手の将（とどめを刺した将を先に、あとは与えたダメージの多い順に3人まで） */
+  beatenBy?: Record<string, string[]>;
 }
 
 export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary {
@@ -39,7 +41,11 @@ export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary
     const addUses = (ts: Taught[] | undefined): void => { for (const [id, n] of Object.entries(u.artUses ?? {})) { const x = ts?.find((q) => q.id === id); if (x) x.uses += n; } };
     if (u.kind === 'general') {
       // 退却した武将は、倒されたのではない（深手にしない）
-      if (!u.alive && !st.withdrawn?.includes(u.id)) { sum.beaten.push(g.name.ja); sum.beatenSides.push(u.home); sum.beatenIds.push(g.id); }
+      if (!u.alive && !st.withdrawn?.includes(u.id)) {
+        sum.beaten.push(g.name.ja); sum.beatenSides.push(u.home); sum.beatenIds.push(g.id);
+        const by = [...(u.killedBy ? [u.killedBy] : []), ...Object.entries(u.hurtBy ?? {}).sort((a, b) => b[1] - a[1]).map(([id]) => id)];
+        (sum.beatenBy ??= {})[g.id] = [...new Set(by)].filter((id) => id !== g.id).slice(0, 3);
+      }
       addUses(g.taught);
       const from = g.level;
       if (u.expGained > 0 && gainGeneralExp(g, u.expGained * D.combat.expGain, rng) > 0) sum.levelUps.push({ name: g.name.ja, from, to: g.level, side: u.home });

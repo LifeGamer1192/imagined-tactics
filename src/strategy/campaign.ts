@@ -797,7 +797,7 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
   for (const id of hurt) {
     const months = woundMonths(c.gs.generals[id]);
     c.wounded[id] = c.gs.tick + months;
-    note(c, 'wounded', { names: c.gs.generals[id].name.ja, months });
+    note(c, 'wounded', { names: c.gs.generals[id].name.ja, months, by: woundedBy(c, sum, id) });
   }
   restWithdrawn(c, battle);
   retreatPenalty(c, pb, battle, sum);
@@ -1077,7 +1077,11 @@ export function historicBattle(c: Campaign, evId: string): { st: BattleState; my
 /** 史実の合戦を戦い終えた：経験値と失った兵、倒された将の深手、勝ち負けで出来事を置き換える */
 export function endHistoricBattle(c: Campaign, evId: string, st: BattleState, mySide: 0 | 1): BattleSummary {
   const sum = applyBattleResult(c.gs, st);
-  for (const id of sum.beatenIds) if (c.gs.generals[id] && !isGarrison(id)) c.wounded[id] = c.gs.tick + woundMonths(c.gs.generals[id]);
+  for (const id of sum.beatenIds) if (c.gs.generals[id] && !isGarrison(id)) {
+    const months = woundMonths(c.gs.generals[id]);
+    c.wounded[id] = c.gs.tick + months;
+    note(c, 'wounded', { names: c.gs.generals[id].name.ja, months, by: woundedBy(c, sum, id) });
+  }
   finishHistBattle(c, evId, st.winner === mySide, histHooks(c));
   checkOver(c);
   return sum;
@@ -1085,6 +1089,12 @@ export function endHistoricBattle(c: Campaign, evId: string, st: BattleState, my
 
 /** 史実の合戦を見送る（今までどおり出来事を起こす） */
 export function skipHistoricBattle(c: Campaign, evId: string): void { skipHistBattle(c, evId, histHooks(c)); }
+/** 深手の記録に添える「負わされた相手」（とどめの将を先に3人まで）。無ければ空 */
+function woundedBy(c: Campaign, sum: BattleSummary, id: string): string {
+  const names = (sum.beatenBy?.[id] ?? []).map((x) => c.gs.generals[x]?.name.ja).filter((n): n is string => !!n);
+  return names.length ? `・相手：${names.join('・')}` : '';
+}
+
 /** 深手の長さ（月）。病弱な武将は長く、勇敢・武人の武将は短い */
 export function woundMonths(g: GGeneral): number {
   const W = S.people.wound;

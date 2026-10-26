@@ -85,6 +85,7 @@ function defeat(st: BattleState, victim: BUnit, killer: BUnit | null): void {
   const exp = killer && killer.alive ? killExp(victim) : 0;
   log(st, 'defeat', killer && killer.alive ? { unit: victim.name, uid: victim.id, by: killer.id, exp } : { unit: victim.name, uid: victim.id });
   if (killer && killer.alive) killer.expGained += exp;
+  if (killer && victim.kind === 'general' && killer.side !== victim.side) victim.killedBy = killer.generalId;
   if (victim.kind === 'general') {
     // 率いていた兵は戦場を離れる。寝返り中・収容された敗残兵は失われる
     for (const t of st.units) {
@@ -98,6 +99,8 @@ function defeat(st: BattleState, victim: BUnit, killer: BUnit | null): void {
 }
 
 function damage(st: BattleState, t: BUnit, amount: number, by: BUnit | null): void {
+  // 将が受けたダメージを、相手の将（兵なら率いる将）ごとに数える（深手の記録の「負わされた相手」）
+  if (by && t.kind === 'general' && by.side !== t.side && amount > 0) (t.hurtBy ??= {})[by.generalId] = (t.hurtBy[by.generalId] ?? 0) + Math.min(amount, t.hp);
   t.hp = Math.max(0, t.hp - amount);
   if (has(t, 'stun')) expire(st, t, 'stun');   // 気絶は攻撃を受けると解ける
   if (t.hp <= 0) defeat(st, t, by);

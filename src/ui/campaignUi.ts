@@ -82,7 +82,7 @@ const LOG_TEXT: Record<string, string> = {
   battle: '{prov}の戦い：{attacker} 対 {defender} → {winner}の勝ち',
   month: '── {date} ──',
   siege: '{faction}が{prov}を囲んでいる（{pct}%）',
-  wounded: '{names}が深手を負った（{months}か月は戦えない）',
+  wounded: '{names}が深手を負った（{months}か月は戦えない{by}）',
   raised: '{by}の{unit}から、{name}が武将に取り立てられた',
   reserveTaken: '{faction}は、{prov}の予備兵{n}隊を手に入れた',
   lowered: '{name}は武将をやめ、予備兵の{unit}になった（兵糧{refund}が戻った）',
@@ -796,7 +796,7 @@ export class CampaignScreen {
     const defName = defF?.name.ja ?? '守備兵';
     const lostProv = side === 1 && prevOwner === c.player && p.owner !== c.player;
     const chain = logs.filter((l) => l.key === 'chainCapture').flatMap((l) => String(l.vars.ids).split(',')).map((n) => gs.provinces[Number(n)]).filter((q) => q && q.owner !== c.player);
-    const wounded = logs.filter((l) => l.key === 'wounded').map((l) => `${l.vars.names}（深手・${l.vars.months}か月）`);
+    const wounded = logs.filter((l) => l.key === 'wounded').map((l) => `${l.vars.names}（深手・${l.vars.months}か月${l.vars.by ?? ''}）`);
     const taken = logs.filter((l) => l.key === 'captured').map((l) => `${l.vars.by}が${l.vars.from}の${l.vars.name}${l.vars.lord ?? ''}を捕らえた`);
     const caught = logs.filter((l) => l.key === 'caught').map((l) => `${l.vars.from}の${l.vars.unit}`);
     const fell = logs.filter((l) => l.key === 'fall').map((l) => String(l.vars.faction));

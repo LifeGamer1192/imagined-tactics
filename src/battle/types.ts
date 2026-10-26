@@ -51,6 +51,9 @@ export interface BUnit {
   mpCostPct?: number;
   supportMpCostPct?: number;
   /** 戦いの始めに特性で変わった能力の書き留め（P58）。stat：能力の名前の鍵、value：「+12%」など、traits：効いた特性の id */
+  /** 将が受けたダメージを、相手の将（兵なら率いる将）ごとに足したもの、と倒したとどめの相手の将（深手の記録で「負わされた相手」に出す） */
+  hurtBy?: Record<string, number>;
+  killedBy?: string;
   /** 直伝で教わった技・軍略（P68）。taught：すべて、borrowed：まだ身についていない借り物（気力が borrowMult 倍）、artUses：この戦いで借り物を使った回数 */
   taught?: string[];
   borrowed?: string[];
