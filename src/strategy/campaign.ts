@@ -20,7 +20,7 @@ import { addFeats, chronFromLog, realmEvent, realmFell, realmFromLog, sampleReal
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
 export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
-import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated } from './events';
+import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated, promoNotices } from './events';
 import { finishHistBattle, goalsMonth, histBattleSetup, historyMonth, skipHistBattle, type HistoryHooks } from './history';
 import { trainMonth } from './training';
 import { initScout, scoutMonth, scoutTier } from './scouting';
@@ -1211,9 +1211,14 @@ export function finishMonth(c: Campaign): void {
     sg.progress *= S.siege.idleDecay;
     if (sg.progress < 20 || !gs.factions[sg.by]) delete c.sieges[Number(k)];
   }
-  for (const id of Object.keys(c.wounded)) if (c.wounded[id] <= gs.tick || !gs.generals[id]) delete c.wounded[id];
+  for (const id of Object.keys(c.wounded)) {
+    if (c.wounded[id] > gs.tick && gs.generals[id]) continue;
+    if (c.player && gs.generals[id]?.faction === c.player) note(c, 'recovered', { name: gs.generals[id].name.ja });
+    delete c.wounded[id];
+  }
   finishRelocations(c);
   autoPromote(c);
+  promoNotices(c);
   monthlyEvents(c);
   historyMonth(c, { dies: (g) => generalDies(c, g), note: (key, vars) => note(c, key, vars) });
   // 史実の目標（P76）：果たしたか、期限が過ぎたか

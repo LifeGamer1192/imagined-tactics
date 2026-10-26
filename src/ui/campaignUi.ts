@@ -32,7 +32,7 @@ import { openSaveMenu, writeSlot } from './saveMenu';
 import { TRAIT_NAME } from './text';
 import { TIE_NAME } from '../strategy/biography';
 import { busy, toast } from './busy';
-import { bannerHtml, sceneUrl, seasonBand, setScene } from './scene';
+import { bannerHtml, sceneUrl, seasonBand, seasonUrl, setScene } from './scene';
 import { BGM_LEVEL_NAME, bgm, bgmLevel, jingle, setBgmLevel } from './bgm';
 import { play } from './sound';
 import { confirmBox } from './confirm';
@@ -149,6 +149,9 @@ const LOG_TEXT: Record<string, string> = {
   capitalMoveStart: '{faction}は本拠を{prov}へ移し始めた（{months}か月かかる）',
   capitalMoved: '{faction}は本拠を{prov}へ移した',
   capitalMoveFailed: '{faction}は{prov}を失い、本拠を移すのを取りやめた',
+  recovered: '{name}が深手から回復し、また戦えるようになった',
+  canPromote: '{name}が{to}に昇進できる（役職名の隣の▲から）',
+  canUpgrade: '{name}の{unit}が{to}に進める（兵の札の隣の▲から）',
 };
 const logLine = (e: CampaignLog): string => {
   // 史実の出来事：本文と、起きた効果。自分の勢力への効果は、いまは起こさない（知らせだけ）
@@ -401,17 +404,29 @@ export class CampaignScreen {
       death: 'death', succeed: 'succession', newLord: 'succession', abdicate: 'succession', defect: 'defect', alliance: 'envoy', truce: 'envoy', vassal: 'envoy', breakAlliance: 'envoy', joinWar: 'envoy',
       histGoal: 'hgoal', histGoalDone: 'hgoal', histGoalMissed: 'hgoal', histBattle: 'hbattle', histBattleResult: 'hbattle', histBattleDiverged: 'hbattle', omen: 'omen', omenAverted: 'omen', omenFell: 'death', captured: 'captive', captiveRecruit: 'captive', captiveRelease: 'captive', captiveExecute: 'captive', captiveFreed: 'captive', captiveEscape: 'captive', captiveRefuse: 'captive',
       questItem: 'travel', questRonin: 'travel', questExp: 'travel', questNothing: 'travel', roninJoin: 'promote', tieJoin: 'promote', comeOfAge: 'promote', history: 'history',
+      recovered: 'recover', teachDone: 'teach', teachCancel: 'teach', teachReset: 'teach', capitalMoved: 'capital', capitalMoveFailed: 'capital', canPromote: 'classup', canUpgrade: 'classup',
     };
-    const ORDER = ['hbattle', 'omen', 'hgoal', 'death', 'defect', 'captive', 'succession', 'history', 'envoy', 'travel', 'promote'];
+    const ORDER = ['hbattle', 'omen', 'hgoal', 'death', 'defect', 'captive', 'succession', 'capital', 'recover', 'teach', 'classup', 'history', 'envoy', 'travel', 'promote'];
+    // 自分の家のことだけ書き留める出来事（療養明け・直伝・昇進できる）は、そのまま知らせる
+    const MINE = new Set(['recovered', 'teachDone', 'teachCancel', 'teachReset', 'canPromote', 'canUpgrade']);
     // 史実の出来事は、大きなもの（imp 2 以上）か、自分の勢力の名前が出るものを知らせる
-    const items = c.log.slice(from).filter((e) => KIND[e.key] && (e.key.startsWith('quest') || e.key.startsWith('omen') || e.key.startsWith('histBattle') || e.key.startsWith('histGoal') || Object.values(e.vars).some((v) => v === me.name.ja)
+    const items = c.log.slice(from).filter((e) => KIND[e.key] && (MINE.has(e.key) || e.key.startsWith('quest') || e.key.startsWith('omen') || e.key.startsWith('histBattle') || e.key.startsWith('histGoal') || Object.values(e.vars).some((v) => v === me.name.ja)
       || (e.key === 'history' && (Number(e.vars.imp) >= 2 || String(e.vars.text).includes(me.name.ja)))));
     if (!items.length) return;
-    const kind = ORDER.find((k) => items.some((e) => KIND[e.key] === k))!;
-    const TITLE: Record<string, string> = { hgoal: '史実の目標', hbattle: '史実の合戦', omen: '兆し', death: '訃報', defect: '寝返り', captive: '捕虜', succession: '代替わり', history: '史実の出来事', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ' };
+    const kinds = ORDER.filter((k) => items.some((e) => KIND[e.key] === k));
+    const TITLE: Record<string, string> = { hgoal: '史実の目標', hbattle: '史実の合戦', omen: '兆し', death: '訃報', defect: '寝返り', captive: '捕虜', succession: '代替わり', history: '史実の出来事', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ', capital: '遷都', recover: '療養明け', teach: '直伝', classup: '昇進できる' };
+    const SCENE: Record<string, string> = { hbattle: 'setup', hgoal: 'setup', history: 'envoy', omen: 'envoy', captive: 'defect', death: 'death', defect: 'defect', succession: 'succession', envoy: 'envoy', travel: 'travel', promote: 'promote' };
+    // 出来事の種類ごとに見出しを付けて並べる（種類が1つなら見出しは窓の題に）
+    const list = (k: string): string => {
+      const es = items.filter((e) => KIND[e.key] === k), more = es.length - 8;
+      return `<ul class="news">${es.slice(0, 8).map((e) => `<li>${esc(logLine(e))}</li>`).join('')}${more > 0 ? `<li class="dim">ほか${more}件（記録に残っています）</li>` : ''}</ul>`;
+    };
+    const one = kinds.length === 1, top = kinds[0];
     void confirmBox(this.frame(), {
-      title: `今月の知らせ：${TITLE[kind]}`, banner: sceneUrl(kind === 'hbattle' || kind === 'hgoal' ? 'setup' : kind === 'history' || kind === 'omen' ? 'envoy' : kind === 'captive' ? 'defect' : kind, c.gs.variant),
-      body: `<ul class="news">${items.slice(0, 8).map((e) => `<li>${esc(logLine(e))}</li>`).join('')}</ul>`,
+      title: one ? `今月の知らせ：${TITLE[top]}` : '今月の知らせ',
+      // 絵はいちばん大きな知らせに合わせる（合う絵が無い知らせだけなら、季節の絵）
+      banner: SCENE[top] ? sceneUrl(SCENE[top], c.gs.variant) : seasonUrl(c.gs.month),
+      body: one ? list(top) : kinds.map((k) => `<h4 class="newshead">${TITLE[k]}</h4>${list(k)}`).join(''),
       ok: '閉じる', single: true,
     });
   }

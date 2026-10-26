@@ -148,6 +148,24 @@ export function autoPromote(c: Campaign): void {
   }
 }
 
+/** 自分の家の武将・兵が新たに昇進できるようになったら、月の知らせに出す（同じ進む先は1回だけ。P79） */
+export function promoNotices(c: Campaign): void {
+  const v = c.gs.variant;
+  for (const g of Object.values(c.gs.generals)) {
+    if (!c.player || g.faction !== c.player) continue;
+    for (const p of generalPromotions(g).filter((x) => x.ok && !g.promoSeen?.includes(x.to.id))) {
+      (g.promoSeen ??= []).push(p.to.id);
+      note(c, 'canPromote', { name: g.name.ja, to: p.to.name[v] });
+    }
+    g.troops.forEach((t, i) => {
+      for (const p of troopUpgrades(g, i, c.items).filter((x) => x.ok && !t.promoSeen?.includes(x.to))) {
+        (t.promoSeen ??= []).push(p.to);
+        note(c, 'canUpgrade', { name: g.name.ja, unit: t.name ?? D.byUnit[t.unitId].name[v], to: D.byUnit[p.to].name[v] });
+      }
+    });
+  }
+}
+
 // ---------------------------------------------------------------- 諸国巡り
 
 /** 諸国巡りに出せるか。出せないときは理由を返す */
