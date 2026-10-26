@@ -3,6 +3,7 @@
 import { personalityLabel, personalityOf } from '../ai/personality';
 import type { GGeneral, Taught } from '../convert/model';
 import { S } from '../strategy/config';
+import { dateText } from '../persist/save';
 import { artName, intOf, isMastered, slotsOf } from '../strategy/teach';
 import { D, L } from '../data/db';
 import { biography } from '../strategy/biography';
@@ -28,7 +29,16 @@ export function profileHtml(c: Campaign, g: GGeneral, fig: string, line: (e: Cam
     const rest = items.slice(show);
     return `<h4>${title}</h4><ul>${li(items.slice(0, show))}</ul>${rest.length ? `<details class="pf-more"><summary>ほか${rest.length}件</summary><ul>${li(rest)}</ul></details>` : ''}`;
   };
-  const deeds = c.log.filter((e) => Object.values(e.vars).some((v) => v === g.name.ja)).slice(-12).map((e) => esc(line(e)));
+  // この国での出来事（深手・手柄など）に年月を付ける。記録は月が明けるたびに「month」の目印が入るので、後ろから数えて1つ越えるごとに1か月さかのぼる
+  const deeds: string[] = [];
+  let cur = c.gs.year * 12 + c.gs.month;
+  for (let i = c.log.length - 1; i >= 0 && deeds.length < 12; i--) {
+    const e = c.log[i];
+    if (e.key === 'month') { cur--; continue; }
+    if (!Object.values(e.vars).some((v) => v === g.name.ja || String(v).split('・').includes(g.name.ja))) continue;
+    const y = Math.floor((cur - 1) / 12), m = (((cur - 1) % 12) + 12) % 12 + 1;
+    deeds.unshift(`<b>${dateText(y, m)}</b>　${esc(line(e))}`);
+  }
   const row = (k: string, v: string | number): string => `<tr><th>${k}</th><td>${v}</td></tr>`;
   const allStr = Object.values(c.gs.generals).filter((x) => x.faction).map(strengthOf);
   return `<div class="profile">

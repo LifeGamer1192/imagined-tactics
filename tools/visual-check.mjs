@@ -690,6 +690,12 @@ async function run(tag, ctxOpts) {
     await page.waitForTimeout(1200);
     ok(`[${tag}] 押すと手動に戻る`, !(await page.evaluate(() => window.__campaign.autoOn)));
   }
+  // オートのあとに出た知らせ・捕虜などの窓は閉じておく
+  for (let i = 0; i < 6; i++) {
+    const box = await page.$('.result.ask [data-a="ok"], .result.captive [data-a="hold"], .result.captive [data-a="release"]');
+    if (!box) break;
+    await box.click().catch(() => {}); await page.waitForTimeout(300);
+  }
   // 記録の欄・やめるの窓
   await press('#exit');
   await page.waitForSelector('.confirm');

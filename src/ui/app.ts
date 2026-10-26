@@ -20,7 +20,7 @@ import { applyIma, imaRealm, imaVariant, readImaFile, type ImaFile } from '../br
 import { convert, generalsOf, variantOf } from '../convert/convert';
 import type { GGeneral, GameStart } from '../convert/model';
 import { D, L, setVariant } from '../data/db';
-import type { SkillDef, TacticDef, Variant } from '../data/types';
+import type { SkillDef, TacticDef, TerrainKind, Variant } from '../data/types';
 import { BAD_STATUS, BattleView, generalIndex, genColor, GOOD_STATUS, SIDE_COLOR, TERRAIN_NAME } from '../render/battleView';
 import type { CrestSpec } from '../render/crest';
 import { css, tint } from '../render/ink';
@@ -1202,7 +1202,36 @@ export class App {
     const on = unitAt(st, cell);
     if (on && on.alive) return this.unitBrief(on);
     const hs = st.structures?.[cell];
-    return `<div class="dim">マス：${TERRAIN_NAME[st.map.terrain[cell]]}${hs ? `（耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}）` : ''}</div>`;
+    // 駒を選んでいないとき：地形の効き目（兵の得意地形で違うものは、範囲と内訳）
+    const k = st.map.terrain[cell];
+    const lines = this.terrainSummary(k);
+    if (hs) lines.push(`造り：耐久 ${hs.hp}／${hs.max}${hs.closed ? '・攻め手は壊すまで通れない' : ''}`);
+    if (st.hold && cell === st.hold.cell) lines.push(`${seatName(k)}（要のマス）：攻め手が${st.hold.need}巡いれば攻め手の勝ち`);
+    return `<div class="cellinfo"><b>${TERRAIN_NAME[k]}</b>　${lines.map(esc).join('<br>')}</div>`;
+  }
+
+  /** 地形の効き目のまとめ（駒を選んでいないとき）：命中・回避と移動の手間は、得意地形ごとに違えば範囲と内訳。回復・櫓・攻撃の種類の強まる・弱まる */
+  private terrainSummary(k: TerrainKind): string[] {
+    const affs = Object.keys(AFFINITY_NAME), hm = D.terrain.hitMod[k] ?? {}, mc = D.terrain.moveCost[k] ?? {};
+    const sg = (v: number): string => `${v >= 0 ? '+' : ''}${v}`;
+    const out: string[] = [];
+    const hits = affs.map((a) => hm[a as keyof typeof hm] ?? 0);
+    if (hits.every((v) => v === hits[0])) out.push(`命中・回避 ${sg(hits[0])}（どの兵も同じ）`);
+    else out.push(`命中・回避 ${sg(Math.min(...hits))}〜${sg(Math.max(...hits))}（${affs.map((a, i) => `${AFFINITY_NAME[a]}${sg(hits[i])}`).join('・')}。兵の得意地形で違う）`);
+    const costs = affs.map((a) => mc[a as keyof typeof mc] ?? null);
+    const fmtCost = (v: number | null): string => (v === null ? '入れない' : String(v));
+    if (costs.every((v) => v === costs[0])) out.push(`移動の手間 ${fmtCost(costs[0])}（どの兵も同じ）`);
+    else {
+      const ok = costs.filter((v): v is number => v !== null);
+      out.push(`移動の手間 ${ok.length ? `${Math.min(...ok)}〜${Math.max(...ok)}` : '入れない'}（${affs.map((a, i) => `${AFFINITY_NAME[a]}${fmtCost(costs[i])}`).join('・')}）`);
+    }
+    const regen = D.terrain.regen[k], perch = D.terrain.ranged[k];
+    if (regen) out.push(`番の始めに体力${regen}%回復`);
+    if (perch) out.push(`射程2以上の技は命中+${perch.hit}・射程+${perch.range}`);
+    const fe = FIELD.terrain[k], fmt = (t?: Record<string, number>) => Object.entries(t ?? {}).map(([kk, v]) => `${L(FIELD.kinds[kk])}×${v}`).join('・');
+    if (fe?.target) out.push(`ここにいて受ける${fmt(fe.target)}`);
+    if (fe?.attacker) out.push(`ここから攻める${fmt(fe.attacker)}${FIELD.native[k] ? `（${AFFINITY_NAME[FIELD.native[k]] ?? ''}が得意な兵は弱まらない）` : ''}`);
+    return out;
   }
 
   /** 駒を選んでいるとき、乗せたマスで起きること：行けるか、地形の命中・回避、回復、射程、攻撃の種類の強まる・弱まる、采配の外、造り */
@@ -1414,14 +1443,17 @@ export class App {
       if (this.undo && this.undo.unit === u.id && !u.acted) actions += `<button id="undo">移動を取り消す</button>`;
     }
     const cell = `<div id="cellinfo">${this.hoverCellHtml()}</div>`;
+    // 指で操作するとき：駒を選ばずにマスを押したら、地形の説明を欄のいちばん上に出す（下だと送らないと見えない）
+    const cellTop = this.coarse && !shown && this.hoverCell >= 0;
     this.root.querySelector('#panel')!.innerHTML = `
       <div class="turn" style="background:${SIDE_COLOR[st.turn]}">${esc(st.sideNames[st.turn])}の番 <small>${st.round}／${st.maxRounds}巡</small></div>
+      ${cellTop ? cell : ''}
       ${this.skyLine()}
-      ${shown ? this.unitCard(shown) : '<div class="card dim">ユニットをクリックすると情報が出ます。<br>自軍のユニットを選び、青いマスで移動、技・軍略を選んで赤いマスで対象を決めます。<br>取り消しは「選択を解く」か、右クリック・Esc。<br>指で操作するときは、対象のマスを1度押すと見込みが出て、もう1度押すと実行します。</div>'}
+      ${shown ? this.unitCard(shown) : cellTop ? '' : '<div class="card dim">ユニットをクリックすると情報が出ます。<br>自軍のユニットを選び、青いマスで移動、技・軍略を選んで赤いマスで対象を決めます。<br>取り消しは「選択を解く」か、右クリック・Esc。<br>指で操作するときは、対象のマスを1度押すと見込みが出て、もう1度押すと実行します。</div>'}
       <div id="forecast">${fc.text}${this.coarse && fc.text && this.mode.type !== 'idle' ? '<br><span class="dim">同じマスをもう1度押すと実行</span>' : ''}</div>
       <div class="actions">${actions}</div>
       ${this.modeInfo()}
-      ${cell}
+      ${cellTop ? '' : cell}
       <div class="foot">
         ${human && this.autoUnits.size ? `<button id="autoOff" data-tip="おまかせにした駒をやめて、全員を手動に戻します">おまかせを外す（全員手動・${this.autoUnits.size}隊）</button>` : ''}
         ${human ? '<button id="end" class="primary" data-tip="まだ動いていない自分の駒をすべて待機にして、自分の番を終えます">巡を終える（全員待機）</button>' : st.winner === null ? '<span class="dim">相手が行動中…</span>' : ''}
