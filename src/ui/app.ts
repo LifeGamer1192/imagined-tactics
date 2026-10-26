@@ -1301,19 +1301,20 @@ export class App {
       const s = skillOf(this.mode.id);
       if (!skillTargetCells(st, u, s).includes(this.hoverCell)) return none;
       const vs = skillVictims(st, u, s, this.hoverCell);
-      const lines = vs.map((t) => {
+      // 見込みを図で：相手の体力の棒に、期待値で削れる分と当たれば削れる分を重ねる。命中率は棒で。反撃は自分の体力の棒（小さめ）
+      const cards = vs.map((t) => {
         const f = forecastSkill(st, u, s, t, basicSkill(t));
-        const c = f.counter ? ` ／反撃 ${f.counter.damage}（${f.counter.hit}%）` : '';
-        return `${esc(t.name)}${t.side === u.side ? '（味方）' : ''}：${s.noDamage ? '効果のみ' : `${f.damage} 命中${f.hit}% 期待値${Math.round((f.damage * f.hit) / 100)}`}${c}`;
+        if (s.noDamage) return this.fcCard(`${t.name}${t.side === u.side ? '（味方）' : ''}`, t, 0, f.hit, '効果のみ');
+        return this.fcCard(`${t.name}${t.side === u.side ? '（味方）' : ''}`, t, f.damage, f.hit, '', f.counter ? { who: u, damage: f.counter.damage, hit: f.counter.hit } : null);
       });
-      return { text: lines.join('<br>') || '対象なし', area: new Set(vs.map((t) => t.pos)) };
+      return { text: cards.join('') || '対象なし', area: new Set(vs.map((t) => t.pos)) };
     }
     const tac = D.byTactic[this.mode.id];
     if (!tacticTargetCells(st, u, tac).includes(this.hoverCell)) return none;
     const vs = tacticVictims(st, u, tac, this.hoverCell);
     const lines = vs.map((t) => {
       const who = `${esc(t.name)}${t.side === u.side && tacticSide(tac) !== 'ally' ? '（味方）' : ''}`;
-      if (tac.kind === 'damage') return `${who}：${tacticDamage(st, u, tac, t)}`;
+      if (tac.kind === 'damage') return this.fcCard(`${t.name}${t.side === u.side && tacticSide(tac) !== 'ally' ? '（味方）' : ''}`, t, tacticDamage(st, u, tac, t), 100, '必ず当たる');
       if (tac.kind === 'heal') return `${who}：回復 ${Math.min(healAmount(u, tac.power), t.maxHp - t.hp)}`;
       if ((tac.kind === 'status' && !tac.sure) || tac.kind === 'displace') return `${who}：成功率 ${tacticSuccess(st, u, t)}%`;
       return who;
@@ -1322,6 +1323,30 @@ export class App {
     return { text: lines.join('<br>') || '対象なし', area };
   }
 
+  /**
+   * 攻撃の見込みの図（P78）：相手の体力の棒（残る分・期待値で削れる分・当たれば削れる分・もう減っている分）、命中率の棒、
+   * 反撃があれば自分の体力の棒（小さめ）と反撃の命中率
+   */
+  private fcCard(name: string, t: BUnit, damage: number, hit: number, note: string, counter: { who: BUnit; damage: number; hit: number } | null = null): string {
+    const bar = (x: BUnit, dmg: number, h: number, small = false): string => {
+      const max = Math.max(1, x.maxHp), hp = Math.max(0, x.hp), hitDmg = Math.min(hp, dmg), exp = Math.round((hitDmg * h) / 100);
+      const pc = (v: number) => `${((v / max) * 100).toFixed(2)}%`;
+      return `<div class="hpbar${small ? ' small' : ''}" title="体力 ${hp}／${max}"><i class="keep" style="width:${pc(hp - hitDmg)}"></i><i class="exp" style="width:${pc(exp)}"></i><i class="maybe" style="width:${pc(hitDmg - exp)}"></i><i class="lost" style="width:${pc(max - hp)}"></i></div>`;
+    };
+    const pbar = (h: number): string => `<span class="pbar"><i style="width:${Math.max(0, Math.min(100, h))}%"></i></span><b>${h}%</b>`;
+    const hp = Math.max(0, t.hp), kill = damage > 0 && damage >= hp;
+    const exp = Math.round((Math.min(hp, damage) * hit) / 100);
+    let html = `<div class="fcard"><div class="fname">${esc(name)}${kill ? `<span class="fkill">当たれば倒せる（${hit}%）</span>` : ''}</div>`;
+    if (note && !damage) return `${html}<div class="fline">${esc(note)}　命中 ${pbar(hit)}</div></div>`;
+    html += bar(t, damage, hit);
+    html += `<div class="fline">体力 ${hp}／${t.maxHp} → 当たれば <b>${Math.max(0, hp - damage)}</b>　<span class="fdmg">ダメージ ${damage}・期待値 −${exp}</span></div>`;
+    html += `<div class="fline">命中 ${pbar(hit)}${note ? `　<span class="dim">${esc(note)}</span>` : ''}</div>`;
+    if (counter) {
+      const c = counter.who, chp = Math.max(0, c.hp), cexp = Math.round((Math.min(chp, counter.damage) * counter.hit) / 100);
+      html += `<div class="fcounter"><div>反撃（自分の${esc(c.name)}）：ダメージ ${counter.damage}・期待値 −${cexp}${counter.damage >= chp ? '　<b class="fkill">当たると倒される</b>' : ''}</div>${bar(c, counter.damage, counter.hit, true)}<div>反撃の命中 ${pbar(counter.hit)}</div></div>`;
+    } else if (damage > 0) html += `<div class="fcounter dim">反撃は受けない</div>`;
+    return `${html}</div>`;
+  }
   /**
    * 選んでいる技・軍略の説明と、届く相手ごとの見込み（ダメージ・命中・期待値）。
    * 指で触る画面には「重ねる」が無いので、ボタンを押したときにここで詳しく出す

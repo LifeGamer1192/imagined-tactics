@@ -140,6 +140,23 @@ body .result.low .banner { height: clamp(60px, 10vh, 110px); }
 details.pf-more { max-height: none; margin: 0 0 4px; } details.pf-more > summary { cursor: pointer; color: var(--gold, #c9a227); font-size: 12px; }
 .pf-head { display: flex; gap: 10px; align-items: center; }
 .pf-head .fig { width: 64px; height: auto; }
+/* 攻撃の見込みの図（P78） */
+.fcard { border: 1px solid rgba(201,162,39,0.65); background: rgba(0,0,0,0.28); border-radius: 6px; padding: 6px 8px; margin: 4px 0; }
+.fcard .fname { font-weight: bold; font-size: 15px; }
+.fcard .fkill { color: #ff8a5c; margin-left: 8px; font-size: 13px; font-weight: bold; }
+.fcard .fline { margin-top: 2px; }
+.fcard .fdmg { color: #f0b49e; }
+.hpbar { display: flex; height: 16px; background: #222; border-radius: 4px; overflow: hidden; margin: 4px 0 2px; border: 1px solid rgba(255,255,255,0.15); }
+.hpbar i { display: block; height: 100%; }
+.hpbar .keep { background: #5aa65a; }
+.hpbar .exp { background: #d0442c; }
+.hpbar .maybe { background: repeating-linear-gradient(45deg, rgba(208,68,44,0.75) 0 4px, rgba(208,68,44,0.3) 4px 8px); }
+.hpbar .lost { background: #1a1a1a; }
+.hpbar.small { height: 10px; }
+.hpbar.small .keep { background: #4f7fb5; }
+.pbar { display: inline-block; width: 96px; height: 9px; background: #333; border-radius: 4px; vertical-align: middle; overflow: hidden; margin: 0 6px 0 4px; }
+.pbar i { display: block; height: 100%; background: #c9a227; }
+.fcounter { margin-top: 6px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.15); font-size: 13px; }
 /* 本拠と相国の膝元（P77） */
 .seatfx { color: #d9c08a; margin-top: 2px; }
 /* 史実の目標（P76） */
@@ -416,7 +433,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .actions .arts-more summary { cursor: pointer; font-size: 13px; color: #e9c98a; padding: 3px 0; }
     .actions .arts-more .arts { margin: 4px 0; max-height: 260px; overflow-y: auto; }
     .actions .arts-more.off summary { color: #b8ab90; }
-    #forecast { min-height: 2.5em; font-size: 13px; color: #e9c98a; }
+    #forecast { min-height: 2.5em; font-size: 14px; color: #e9c98a; }
     .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; margin: 10px 0; }
     .sides .side { border-left: 4px solid; background: var(--card); border-radius: 3px; padding: 8px 10px; min-width: 200px; font-size: 13px; }
     .sides h3 { margin: 0 0 4px; font-size: 15px; font-family: var(--mincho); }
