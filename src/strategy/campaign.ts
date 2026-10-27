@@ -23,6 +23,7 @@ export { S, traitsOf, type Difficulty, type FactionTrait } from './config';
 import { afterBattle, autoPromote, generalDies, monthlyEvents, onEliminated, promoNotices } from './events';
 import { finishHistBattle, goalsMonth, histBattleSetup, historyMonth, skipHistBattle, type HistoryHooks } from './history';
 import { trainMonth } from './training';
+import { autoPlayerMonth } from './autoplay';
 import { initScout, scoutMonth, scoutTier } from './scouting';
 
 const SUPPLY = (cfgJson as unknown as { supply: { recruitCostMult: number } }).supply;
@@ -293,7 +294,7 @@ export function strengthOf(g: GGeneral): number {
   for (const t of g.troops) s += D.byUnit[t.unitId].cost * 0.6 + t.level * 3;
   return s;
 }
-const strengthSum = (gs: GGeneral[]): number => gs.slice(0, MAX_GENERALS).reduce((s, g) => s + strengthOf(g), 0);
+export const strengthSum = (gs: GGeneral[]): number => gs.slice(0, MAX_GENERALS).reduce((s, g) => s + strengthOf(g), 0);
 
 /** 領で雇える兵種と選ばれやすさ（P37）。無い古いセーブは、持ち主の勢力の一覧 */
 export function provinceRecruit(c: Campaign, prov: number): Record<string, number> {
@@ -530,7 +531,7 @@ export function garrisonOf(c: Campaign, prov: number): { level: number; troops: 
 }
 
 /** 守備兵の強さの目安（勢力が、攻めるかどうかを決めるのに使う） */
-const garrisonStrength = (c: Campaign, prov: number): number => { const g = garrisonOf(c, prov); return 40 + g.level * 10 + g.troops * (28 + g.level * 3); };
+export const garrisonStrength = (c: Campaign, prov: number): number => { const g = garrisonOf(c, prov); return 40 + g.level * 10 + g.troops * (28 + g.level * 3); };
 
 /** 守備兵を立てる：その戦いのあいだだけ居る仮の武将を作り、守り手にする */
 function raiseGarrison(c: Campaign, pb: PendingBattle): void {
@@ -978,7 +979,7 @@ export function lordPersonality(c: Campaign, f: GFaction): Personality {
 }
 
 /** その領が敵と接しているか、包囲されているか（守りを置くべき領） */
-function threatened(c: Campaign, f: number, prov: number): boolean {
+export function threatened(c: Campaign, f: number, prov: number): boolean {
   if (c.sieges[prov]) return true;
   return neighborsOf(c, prov).some((n) => { const o = c.gs.provinces[n].owner; return o !== f && o !== 0 && canAttack(c, o, f); });
 }
@@ -1231,6 +1232,13 @@ export function finishMonth(c: Campaign): void {
 export function autoMonth(c: Campaign): void {
   const player = c.player;
   if (player && c.gs.factions[player]) aiFaction(c, c.gs.factions[player]).forEach((pb) => resolveBattle(c, pb));
+  for (const pb of endMonth(c)) resolveBattle(c, pb);
+  finishMonth(c);
+}
+
+/** 画面の「オート」：自分の家は、おまかせの考え（雇う・普請・攻める・前線へ・訓練。P81）で動き、1か月進める */
+export function autoPlayMonth(c: Campaign): void {
+  if (c.player && c.gs.factions[c.player]) autoPlayerMonth(c);
   for (const pb of endMonth(c)) resolveBattle(c, pb);
   finishMonth(c);
 }

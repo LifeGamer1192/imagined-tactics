@@ -58,6 +58,7 @@
     "ai": { "executeCruelty": 0.3, "executeChance": 0.5, "retry": 0.1, "release": 0.05, "releaseCare": 0.2 } },
   "office": { "incomePerAdmin": 0.01, "envoyPerDip": 2, "driftFrom": 4, "driftDiv": 2, "driftCap": 20, "defectPerCha": 0.05, "recruitPerDip": 0.01, "trainPerMil": 0.03, "localIncomePerAdmin": 0.02, "localTrainPerMil": 0.03 },
   "capitalBonus": { "incomeBonus": 0.5, "recruitLevel": 1 },
+  "auto": { "roles": { "front": 0.4, "ranged": 0.3, "cavalry": 0.15, "support": 0.15 }, "lines": { "front": [1, 9, 11, 12, 14], "ranged": [6, 4, 15], "cavalry": [7, 13, 5], "support": [8, 2, 17, 18] }, "skipLines": [3, 10, 16], "attackRatio": 1.0, "attackRatioPeace": 2.0, "build": true, "train": true, "move": true },
   "histGoal": { "months": 12, "prestige": 20, "supply": 200 },
   "histBattle": { "prestige": 15, "prestigeLoss": 10, "foeKeep": 0.7, "months": 1 },
   "omen": { "lead": 2, "avert": 0.7, "cost": 60, "violent": ["assassination", "battle_wound", "suicide", "executed"] },

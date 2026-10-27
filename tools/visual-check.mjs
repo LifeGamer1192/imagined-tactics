@@ -682,7 +682,10 @@ async function run(tag, ctxOpts) {
   await page.waitForTimeout(700); await idle();
   await shot('after_auto_month');
   if (!touch) {
-    await page.dblclick('#autoMonth');
+    // 長さで「ずっと」を選んでオート（P81）
+    for (let i = 0; i < 6; i++) { const b = await page.$('.result.ask [data-a="ok"]'); if (!b) break; await b.click().catch(() => {}); await page.waitForTimeout(300); }
+    await page.selectOption('#autoLen', '0');
+    await page.click('#autoMonth');
     await page.waitForTimeout(1500);
     ok(`[${tag}] ずっとオート中の表示`, await page.$eval('#autoMonth', (el) => el.classList.contains('autoing')));
     await shot('autoing');

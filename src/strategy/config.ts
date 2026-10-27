@@ -89,6 +89,7 @@ export const S = strategyJson as unknown as {
   office: { incomePerAdmin: number; envoyPerDip: number; driftFrom: number; driftDiv: number; driftCap: number; defectPerCha: number; recruitPerDip: number; trainPerMil: number; localIncomePerAdmin: number; localTrainPerMil: number };
   /** 本拠：本拠の領の収入の上乗せ、本拠で雇う兵のレベルの上乗せ（守備兵の上乗せは garrison.levelCapital） */
   capitalBonus: { incomeBonus: number; recruitLevel: number };
+  auto: { roles: { front: number; ranged: number; cavalry: number; support: number }; lines: { front: number[]; ranged: number[]; cavalry: number[]; support: number[] }; skipLines: number[]; attackRatio: number; attackRatioPeace: number; build: boolean; train: boolean; move: boolean };
   /** 史実の目標（P76）：期限の月数、果たしたときの名声と兵糧 */
   histGoal: { months: number; prestige: number; supply: number };
   /** 史実の合戦（P75）：勝った家の名声、負けた家の名声の減り、勝ったときに相手の軍が残る割合（出来事に無いとき）、選べる月 */

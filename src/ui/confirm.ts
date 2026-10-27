@@ -15,6 +15,8 @@ export interface ConfirmOptions {
   danger?: boolean;
   /** 知らせるだけ（決めるボタンだけを出す） */
   single?: boolean;
+  /** ボタンを題のすぐ下に置く（本文が長くても、送らずに押せる。P81） */
+  btnTop?: boolean;
 }
 
 /** 窓を出して、決めたら true、やめたら false を返す */
@@ -22,9 +24,10 @@ export function confirmBox(host: Element, o: ConfirmOptions): Promise<boolean> {
   host.querySelector('.result.ask')?.remove();
   const box = document.createElement('div');
   box.className = 'result ask confirm';
+  const btns = `<p class="cbtns"><button data-a="ok" class="${o.danger ? '' : 'primary'}">${o.ok ?? '決める'}</button> ${o.single ? '' : `<button data-a="no" class="${o.danger ? 'primary' : ''}">${o.cancel ?? 'やめる'}</button>`}</p>`;
   box.innerHTML = `${o.banner ? bannerHtml(o.banner) : ''}<h2 class="wrap">${o.title}</h2>
-    <div class="cbody">${o.body}</div>
-    <p class="cbtns"><button data-a="ok" class="${o.danger ? '' : 'primary'}">${o.ok ?? '決める'}</button> ${o.single ? '' : `<button data-a="no" class="${o.danger ? 'primary' : ''}">${o.cancel ?? 'やめる'}</button>`}</p>`;
+    ${o.btnTop ? btns : ''}<div class="cbody">${o.body}</div>
+    ${o.btnTop ? '' : btns}`;
   host.appendChild(box);
   return new Promise((resolve) => {
     const done = (v: boolean): void => { box.remove(); window.removeEventListener('keydown', key, true); resolve(v); };

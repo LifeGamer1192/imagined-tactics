@@ -358,6 +358,8 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .cc-table th, .cc-table td { padding: 2px 8px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.08); white-space: nowrap; }
     @media (max-width: 520px) { .cc-table { font-size: 12.5px; } .cc-table th, .cc-table td { padding: 2px 4px; } }
     .cc-table th:first-child { text-align: left; color: #e9c98a; font-weight: 600; }
+    /* 軍略の行のような長い字は折り返す（表が窓からはみ出さないように） */
+    .cc-table td:nth-child(2), .cc-table td:nth-child(4) { white-space: normal; max-width: 13em; overflow-wrap: anywhere; }
     .cc-table .up { color: #8ff0b0; font-weight: 700; }
     .cc-table .down { color: #ff9a8a; font-weight: 700; }
     .warn { color: #ffb08a; font-weight: 700; }

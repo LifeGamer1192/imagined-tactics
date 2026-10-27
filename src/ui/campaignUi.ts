@@ -6,7 +6,7 @@ import type { GGeneral, GTroop } from '../convert/model';
 import { D, L } from '../data/db';
 import { StrategyView } from '../render/strategyView';
 import {
-  autoMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
+  autoMonth, autoPlayMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
   declareWar, dismissTroop, garrisonOf, recruit, recruitCost, recruitCostFor, recruitTraitMult, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
   S, supplyCap, provinceRecruit, isNativeUnit, isResting, historicBattle, endHistoricBattle, skipHistoricBattle, type Campaign, type CampaignLog, type PendingBattle, type ReelBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
@@ -32,6 +32,7 @@ import { openSaveMenu, writeSlot } from './saveMenu';
 import { TRAIT_NAME } from './text';
 import { TIE_NAME } from '../strategy/biography';
 import { busy, toast } from './busy';
+import { autoRecruit, ROLE_NAME, unitRole } from '../strategy/autoplay';
 import { bannerHtml, sceneUrl, seasonBand, seasonUrl, setScene } from './scene';
 import { BGM_LEVEL_NAME, bgm, bgmLevel, jingle, setBgmLevel } from './bgm';
 import { play } from './sound';
@@ -174,9 +175,14 @@ export class CampaignScreen {
   private drag: { gid: string; i: number } | null = null;
   private justDragged = false;
   private townRetry = 0;
-  /** 「1か月オート」：押した時刻（2度押しでずっとオート）、ずっとオート中か */
-  private autoClick = 0;
+  /** オート（P81）：進める長さ（1〜3か月、0 はずっと）、オート中か、残りの月数、始めたときの記録の位置（終わってから知らせを出す） */
+  private autoLen = 1;
+  /** 徴兵の選択を覚えておく（武将ごと・最後に選んだもの。P81） */
+  private lastUnit: Record<string, string> = {};
+  private lastUnitAny = '';
   private autoOn = false;
+  private autoLeft = 0;
+  private autoMark = 0;
   /** 今月の知らせを拾う、月の初めの記録の位置 */
   private logMark = 0;
   /** 攻め込む・攻められる窓を出している間、地図で目立たせる二つの領 */
@@ -358,7 +364,7 @@ export class CampaignScreen {
     if (c.over) { this.stopAuto(); return; }
     this.order = 'none'; this.picked.clear();
     const mark = c.log.length;
-    autoMonth(c);
+    autoPlayMonth(c);
     c.reel = [];
     c.log.push({ key: 'month', vars: { date: this.date() } });
     this.autosave();
@@ -366,9 +372,11 @@ export class CampaignScreen {
     if (news) this.showNews(mark);
   }
 
-  /** ずっとオート：どこかを押すまで、1か月ずつおまかせで進める */
-  private startAuto(): void {
+  /** オート：months か月（0 はずっと）、どこかを押すまで、1か月ずつおまかせで進める。終わったら、その間の知らせをまとめて出す */
+  private startAuto(months = 0): void {
     this.autoOn = true;
+    this.autoLeft = months;
+    this.autoMark = this.c.log.length;
     this.refresh();
     const token = ++this.runToken;
     const stop = (e: Event): void => { e.stopPropagation(); e.preventDefault(); this.stopAuto(); };
@@ -379,6 +387,8 @@ export class CampaignScreen {
       if (!this.autoOn || token !== this.runToken) return;
       this.autoOne(false);
       if (this.c.over) { this.stopAuto(); return; }
+      if (this.autoLeft > 0 && --this.autoLeft === 0) { this.stopAuto('オートで進め終えました'); return; }
+      if (this.autoLeft > 0) this.refresh();
       this.watchTimer = window.setTimeout(step, 450);
     };
     this.watchTimer = window.setTimeout(step, 60);
@@ -386,14 +396,17 @@ export class CampaignScreen {
 
   private stopListener: ((e: Event) => void) | null = null;
 
-  private stopAuto(): void {
+  private stopAuto(msg = '手動に戻しました'): void {
     if (!this.autoOn) return;
     this.autoOn = false;
+    this.autoLeft = 0;
     clearTimeout(this.watchTimer);
     if (this.stopListener) window.removeEventListener('pointerdown', this.stopListener, { capture: true });
     this.stopListener = null;
-    toast('手動に戻しました');
+    toast(msg);
     this.refresh();
+    // オートの間の大きな出来事を、まとめて知らせる
+    this.showNews(this.autoMark);
   }
 
   /** 今月の、自分の勢力にかかわる大きな出来事を、絵を添えた窓で知らせる（亡くなった・代替わり・寝返り・外交・諸国巡り・仕官） */
@@ -458,8 +471,8 @@ export class CampaignScreen {
       ${img ? `<div class="cc-fig"><img src="${img}" alt=""></div>` : ''}
       <h2 class="wrap">${esc(title)}</h2>
       <p class="vsub">${esc(sub)}</p>
-      ${changeTable(rows)}
-      <p class="cbtns"><button class="primary" data-a="ok">見事！</button></p>`;
+      <p class="cbtns"><button class="primary" data-a="ok">見事！</button></p>
+      ${changeTable(rows)}`;
     this.frame().appendChild(box);
     play('win');
     box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };
@@ -1069,12 +1082,14 @@ export class CampaignScreen {
     if (own) {
       const f = c.gs.factions[g.faction];
       // 武将のいる領で雇える兵種から（P37）。初めから雇えた兵種でなければ、兵糧が2倍
-      const opts = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u))
-        .sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))
-        .map((u) => `<option value="${u}">${L(D.byUnit[u].name)}（采配${D.byUnit[u].cost}・兵糧${recruitCostFor(c, g, u)}${isNativeUnit(f, u) ? '' : '・新しい兵種で2倍'}）</option>`).join('');
+      const can = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u))
+        .sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b));
+      // 前に選んだ兵種を選んだままにする（同じ兵種を続けて雇いやすいように。武将ごと、なければ最後に選んだ兵種。P81）
+      const pick = [this.lastUnit[g.id], this.lastUnitAny].find((u) => u && can.includes(u)) ?? can[0];
+      const opts = can.map((u) => `<option value="${u}" ${u === pick ? 'selected' : ''}>${L(D.byUnit[u].name)}（采配${D.byUnit[u].cost}・兵糧${recruitCostFor(c, g, u)}${isNativeUnit(f, u) ? '' : '・新しい兵種で2倍'}）</option>`).join('');
       // 選ぶ前から、いま選ばれている兵種の采配と兵糧、雇ったあとの残りの采配を出す（P51）
-      const first = Object.keys(provinceRecruit(c, g.prov)).filter((u) => !recruitProblem(c, g, u)).sort((a, b) => Number(isNativeUnit(f, b)) - Number(isNativeUnit(f, a)) || a.localeCompare(b))[0];
-      rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button><span class="recinfo" data-recinfo="${g.id}">${first ? this.recruitInfo(g, first) : ''}</span></span>` : '';
+      // おまかせ登用（P81）：采配の範囲で、前衛・飛び道具・騎馬・支えがつり合うように雇う
+      rec = opts ? `<span class="rec"><select data-unit="${g.id}">${opts}</select><button data-recruit="${g.id}">徴兵</button><button data-autorec="${g.id}" data-tip="${esc('采配の範囲で、この領で雇える兵から、前衛・飛び道具・騎馬・支えがつり合うように雇います（城攻め・水の上の兵は雇いません）')}">おまかせ登用</button><span class="recinfo" data-recinfo="${g.id}">${pick ? this.recruitInfo(g, pick) : ''}</span></span>` : '';
       // 昇進：武将の役職は役職名の隣、兵の兵種は兵の札の隣にボタンを出す（P52）
       const ups: string[] = [];
       if (!g.isLord && !(g.id in c.away)) ups.push(`<button data-lower="${g.id}" title="武将ではなくなり、この領の予備兵1隊になります。兵糧が${lowerRefund(g.level)}戻ります">兵にする</button>`);
@@ -1607,7 +1622,7 @@ export class CampaignScreen {
       <div class="turn" style="background:${seasonBand(me ? me.color : null, gs.month)}">${this.date()} <small>${me ? `${esc(me.name.ja)}　兵糧${me.supply}／${supplyCap(me)}（+${me.income}／月）　領${provincesOf(c, me.id).length}` : '観戦'}</small></div>
       <div class="foot">
         <button id="next" class="primary" ${c.over || this.autoOn ? 'disabled' : ''}>月を進める</button>
-        ${c.player ? `<button id="autoMonth" class="${this.autoOn ? 'on autoing' : ''}" ${c.over ? 'disabled' : ''} data-tip="押すと、自分の勢力の動きもおまかせにして1か月進めます。2度押すと、ずっとおまかせで進みます（どこかを押すと手動に戻ります）。">${this.autoOn ? 'ずっとオート中…（押すと手動）' : '1か月オート'}</button>` : ''}
+        ${c.player ? `<span class="autogrp"><button id="autoMonth" class="${this.autoOn ? 'on autoing' : ''}" ${c.over ? 'disabled' : ''} data-tip="押すと、自分の家もおまかせで動かして月を進めます（兵を雇う・兵糧に余りがあれば普請・弱い隣を攻める・将を前線へ移す・残りは訓練）。オート中は、どこかを押すと手動に戻ります。">${this.autoOn ? `オート中…${this.autoLeft > 0 ? `あと${this.autoLeft}か月` : ''}（押すと手動）` : 'オート'}</button><select id="autoLen" title="オートで進める長さ" ${this.autoOn ? 'disabled' : ''}>${[[1, '1か月'], [2, '2か月'], [3, '3か月'], [0, 'ずっと']].map(([v, n]) => `<option value="${v}" ${this.autoLen === v ? 'selected' : ''}>${n}</option>`).join('')}</select></span>` : ''}
         ${c.player ? '' : '<button id="run">12か月進める</button>'}
         <span class="dim">勢力${Object.keys(gs.factions).length}・${c.months}か月・<span class="${c.difficulty === 'oni' ? 'oni' : ''}" title="難しさ">${S.difficulty[c.difficulty].name}</span></span>
         ${c.player && (myCaptives(c).length || myCaptured(c).length) ? `<button id="captiveBtn" data-tip="捕らえている敵の将と、捕まっている自分の将。押すと一覧（登用・解き放つ・処断・身代金）">捕虜 ${myCaptives(c).length}人${myCaptured(c).length ? `・捕まった将 ${myCaptured(c).length}人` : ''}</button>` : ''}
@@ -1627,12 +1642,26 @@ export class CampaignScreen {
       b.onclick = (e) => {
         e.preventDefault();
         const sel = root.querySelector<HTMLSelectElement>(`[data-unit="${b.dataset.recruit}"]`);
-        if (sel && recruit(c, b.dataset.recruit!, sel.value)) this.refresh();
+        if (!sel) return;
+        this.lastUnit[b.dataset.recruit!] = this.lastUnitAny = sel.value;
+        if (recruit(c, b.dataset.recruit!, sel.value)) this.refresh();
       };
     });
-    // 徴兵の選択を変えたら、必要な采配と兵糧を書き換える（P51）
+    root.querySelectorAll<HTMLButtonElement>('[data-autorec]').forEach((b) => {
+      b.onclick = (e) => {
+        e.preventDefault();
+        const got = autoRecruit(c, b.dataset.autorec!);
+        if (!got.length) { toast('雇える兵がいません（采配・兵糧・兵の数を確かめてください）'); return; }
+        const n = new Map<string, number>();
+        for (const u of got) n.set(u, (n.get(u) ?? 0) + 1);
+        toast(`${gs.generals[b.dataset.autorec!].name.ja}が雇った：${[...n].map(([u, k]) => `${L(D.byUnit[u].name)}${k > 1 ? `×${k}` : ''}（${ROLE_NAME[unitRole(u)]}）`).join('、')}`);
+        this.refresh();
+      };
+    });
+    // 徴兵の選択を変えたら、必要な采配と兵糧を書き換える（P51）。選んだ兵種は覚えておく
     root.querySelectorAll<HTMLSelectElement>('select[data-unit]').forEach((sel) => {
       sel.onchange = () => {
+        this.lastUnit[sel.dataset.unit!] = this.lastUnitAny = sel.value;
         const g = gs.generals[sel.dataset.unit!], box = root.querySelector<HTMLElement>(`[data-recinfo="${sel.dataset.unit}"]`);
         if (g && box) box.innerHTML = this.recruitInfo(g, sel.value);
       };
@@ -1646,7 +1675,7 @@ export class CampaignScreen {
         const ok = await confirmBox(this.frame(), {
           title: `${esc(g.name.ja)}を ${esc(next)} に昇進させる`, banner: sceneUrl('setup', gs.variant),
           body: `<p><b>${esc(from)}</b> → <b>${esc(next)}</b></p><p class="warn">⚠ 昇進すると、元の役職には戻れません。</p>${changeTable(rows)}<p class="small">${esc(classTip(to)).replace(/\n/g, '<br>')}</p>`,
-          ok: '昇進させる', cancel: 'やめる',
+          ok: '昇進させる', cancel: 'やめる', btnTop: true,
         });
         if (!ok || !promoteGeneral(g, to)) return;
         this.refresh();
@@ -1663,7 +1692,7 @@ export class CampaignScreen {
         const ok = await confirmBox(this.frame(), {
           title: `${esc(name)}を ${esc(next)} に進める`, banner: sceneUrl('setup', gs.variant),
           body: `<p>${this.icon(t.unitId)}<b>${esc(from)}</b> → ${this.icon(to)}<b>${esc(next)}</b>（${esc(g.name.ja)}の兵・Lv${t.level}）</p><p class="warn">⚠ 進めると、元の兵種には戻れません。${useItem}</p>${changeTable(rows)}<p class="small">${esc(unitTip(to)).replace(/\n/g, '<br>')}</p>`,
-          ok: '進める', cancel: 'やめる',
+          ok: '進める', cancel: 'やめる', btnTop: true,
         });
         if (!ok || !upgradeTroop(c, g.id, i, to)) return;
         this.refresh();
@@ -1935,11 +1964,12 @@ export class CampaignScreen {
     const autoBtn = root.querySelector<HTMLButtonElement>('#autoMonth');
     if (autoBtn) autoBtn.onclick = () => {
       if (this.autoOn) { this.stopAuto(); return; }
-      // 2度押し（0.3秒以内）なら、ずっとオート
-      if (this.autoClick) { clearTimeout(this.autoClick); this.autoClick = 0; this.startAuto(); return; }
-      autoBtn.classList.add('on');
-      this.autoClick = window.setTimeout(() => { this.autoClick = 0; void busy('おまかせで1か月進めています…', () => this.autoOne(true)); }, 300);
+      // 1か月なら、その月の知らせまで出す。2か月以上・ずっとは、どこかを押すまで続ける
+      if (this.autoLen === 1) { autoBtn.classList.add('on'); void busy('おまかせで1か月進めています…', () => this.autoOne(true)); return; }
+      this.startAuto(this.autoLen);
     };
+    const autoLen = root.querySelector<HTMLSelectElement>('#autoLen');
+    if (autoLen) autoLen.onchange = () => { this.autoLen = Number(autoLen.value); };
     const logEl = root.querySelector<HTMLElement>('#log')!;
     logEl.innerHTML = c.log.slice(-80).map((e) => `<div class="${e.key === 'month' ? 'sep' : ''}">${esc(logLine(e))}</div>`).join('');
     logEl.scrollTop = logEl.scrollHeight;
