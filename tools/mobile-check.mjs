@@ -116,7 +116,7 @@ for (const [tag, name] of LIST) {
     const log0 = await page.evaluate(() => window.__app.st.log.length);
     await tapXY(...(await showCell(plan.target)));
     const fc = (await page.textContent('#forecast')) ?? '';
-    ok('対象を1度押すと、見込みが出るだけで実行はされない', /命中\d+%/.test(fc) && fc.includes('もう1度押すと実行') && (await page.evaluate(() => window.__app.st.log.length)) === log0, fc.slice(0, 30));
+    ok('対象を1度押すと、見込みが出るだけで実行はされない', /命中\s*\d+%/.test(fc) && fc.includes('もう1度押すと実行') && (await page.evaluate(() => window.__app.st.log.length)) === log0, fc.slice(0, 30));
     await shot('2_forecast');
     // 「技・軍略をやめる」で取り消せる
     await page.tap('#cancel');

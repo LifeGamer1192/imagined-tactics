@@ -141,6 +141,11 @@ export class App {
   private imaOpts: { faction: number; king: boolean } = { faction: 0, king: false };
   /** おまかせの方針の欄を開いているか（P50） */
   private planOpen = false;
+  /** 情報欄で押している・ボタンに乗せている間は書き換えを待たせる（holdOnPress） */
+  private held = false;
+  private heldPending = false;
+  /** おまかせが動いている間に、最後に情報欄を書き換えた時刻 */
+  private panelAt = 0;
   /** 畳んだ技・軍略の欄を開いているか（ほかの技・軍略、使えない技・軍略） */
   private artsFold = { more: false, off: false };
   /** 記録の細かさ（0 簡易・1 通常・2 詳細）。速さとは別に選ぶ。記録の元データは1つで、表示だけが変わる */
@@ -633,9 +638,10 @@ export class App {
       <div class="battle">
         <canvas></canvas>
         ${this.compassHtml(st)}
-        <aside><div id="panel"></div><div id="ctl" class="speed"></div><div id="log"></div></aside>
+        <aside><div id="ctl"></div><div id="panel"></div><div id="log"></div></aside>
       </div>`;
     this.renderCtl();
+    this.holdOnPress(this.root.querySelector('aside')!);
     initSound();
     initTips();
     const canvas = this.root.querySelector('canvas')!;
@@ -910,10 +916,12 @@ export class App {
         // 速さ5は演出が無いので、画面の1コマぶんの時間に入るだけ、まとめて手を進める（1手ごとに画面を書き換えて待つと、待ち時間ばかりになる）
         if (st.winner !== null || FX_SCALE[this.aiSpeed] !== 0 || performance.now() - t0 > 8) break;
       }
-      this.refresh();
+      // 情報欄（文字の多い部分）の書き換えは1秒に7回ほどまで。地図はそのつど描く
+      const now = performance.now();
+      if (now - this.panelAt >= 150 || st.winner !== null) { this.panelAt = now; this.refresh(); } else this.refresh(false);
       if (st.winner !== null) { this.finish(); return; }
-      // 演出が終わってから次の手に進む
-      this.aiTimer = window.setTimeout(step, Math.max(AI_DELAY[this.aiSpeed], dur));
+      // 演出が終わってから次の手に進む。手を進めるのにかかった時間と同じだけは空けて、そのあいだに画面の描き直しと、押したボタンの処理をさせる（遅い端末で速さ5にしても押せるように）
+      this.aiTimer = window.setTimeout(step, Math.max(AI_DELAY[this.aiSpeed], dur, performance.now() - t0));
     };
     this.aiTimer = window.setTimeout(step, Math.min(400, AI_DELAY[this.aiSpeed] * 1.5));
   }
@@ -926,13 +934,14 @@ export class App {
     const box = this.root.querySelector<HTMLElement>('#ctl');
     if (!box) return;
     if (!this.st || this.st.winner !== null) { box.innerHTML = ''; return; }
+    // おまかせの方針は、速さ・音の並び（狭い画面では横に送る1行）とは別の行に置く（同じ行だと、横持ちで観戦のボタンが外へ押し出される）
     box.innerHTML = `
       ${this.st.autoPlan?.some(Boolean) ? `<details class="planfold" ${this.planOpen ? 'open' : ''}><summary data-tip="味方をおまかせで動かすときの動き方。押すと開いて切り替えられます">おまかせの方針：<b>${esc(planLabel(getPlan()))}</b></summary>${planPickerHtml(getPlan())}</details>` : ''}
-      <button id="watch">${this.watching ? '手動にする' : '観戦にする'}</button>
+      <div class="speed"><button id="watch">${this.watching ? '手動にする' : '観戦にする'}</button>
       <span class="dim">速さ</span>${AI_DELAY.map((_d, i) => `<button data-speed="${i}" class="${i === this.aiSpeed ? 'on' : ''}">${i + 1}</button>`).join('')}
       <span class="vol"><span class="dim">音</span>${VOLUME_NAME.map((name, i) => `<button data-vol="${i}" class="${i === volume() ? 'on' : ''}">${name}</button>`).join('')}</span>
       <span class="vol"><span class="dim">曲</span>${BGM_LEVEL_NAME.map((name, i) => `<button data-bgm="${i}" class="${i === bgmLevel() ? 'on' : ''}">${name}</button>`).join('')}</span>
-      <span class="lvl"><span class="dim">記録</span>${LOG_LEVEL_NAME.map((name, i) => `<button data-log="${i}" class="${i === this.logLevel ? 'on' : ''}" title="${['1件を1行で', 'だれがだれに、ダメージと体力', '計算式と途中の値まで'][i]}">${name}</button>`).join('')}</span>`;
+      <span class="lvl"><span class="dim">記録</span>${LOG_LEVEL_NAME.map((name, i) => `<button data-log="${i}" class="${i === this.logLevel ? 'on' : ''}" title="${['1件を1行で', 'だれがだれに、ダメージと体力', '計算式と途中の値まで'][i]}">${name}</button>`).join('')}</span></div>`;
     box.querySelectorAll<HTMLButtonElement>('[data-log]').forEach((b) => {
       // 切り替えたら、すでに出ている記録も、その細かさで出し直す
       b.onclick = () => { this.logLevel = Number(b.dataset.log); saveLogLevel(this.logLevel); this.renderCtl(); this.renderLog(); };
@@ -955,6 +964,30 @@ export class App {
     box.querySelectorAll<HTMLButtonElement>('[data-speed]').forEach((b) => {
       b.onclick = () => { this.aiSpeed = Number(b.dataset.speed); saveSpeed(this.aiSpeed); this.renderCtl(); };
     });
+  }
+
+  /**
+   * 観戦が速いと情報欄が1秒に何十回も書き換わり、押している間にボタンが入れ替わったり、ずれたりして押せない。
+   * 情報欄で押している間（指・マウス）と、マウスをボタンに乗せている間は、書き換えを待たせる。
+   */
+  private holdOnPress(aside: HTMLElement): void {
+    let pressed = false, over = false;
+    this.held = false; this.heldPending = false;
+    const sync = (): void => {
+      const now = pressed || over;
+      if (now === this.held) return;
+      this.held = now;
+      // 離した直後の click が先に届くよう、書き換えは次の順番で
+      if (!now && this.heldPending) setTimeout(() => { if (!this.held && this.heldPending) { this.heldPending = false; this.refresh(); } }, 0);
+    };
+    aside.addEventListener('pointerdown', () => { pressed = true; sync(); }, true);
+    const up = (): void => { if (pressed) { pressed = false; sync(); } };
+    window.addEventListener('pointerup', up, true);
+    window.addEventListener('pointercancel', up, true);
+    // 乗せている間に待たせるのは、相手やおまかせが動いている間だけ。押したら（click）すぐ書き換えてよい
+    aside.addEventListener('pointerover', (e) => { over = e.pointerType === 'mouse' && !this.isHumanTurn() && !!(e.target as Element).closest?.('button, summary, select, label'); sync(); });
+    aside.addEventListener('click', () => { over = false; sync(); }, true);
+    aside.addEventListener('pointerleave', () => { over = false; sync(); });
   }
 
   /** 観戦（両方おまかせ）と手動を切り替える。戦闘の途中でも切り替えられる */
@@ -1402,6 +1435,8 @@ export class App {
       done: !this.deploying && st.winner === null ? new Set(st.units.filter((x) => x.alive && x.side === st.turn && this.unitDone(x)).map((x) => x.id)) : undefined,
     };
     view.draw();
+    // ボタンを押している・ボタンに乗せている間は、情報欄を書き換えない（離したあとに書き換える）
+    if (this.held) { this.heldPending = true; return; }
     const fcBox = this.root.querySelector<HTMLElement>('#forecast');
     if (!panel && fcBox) {
       fcBox.innerHTML = fc.text;
