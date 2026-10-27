@@ -139,15 +139,20 @@ export class App {
   /** 読み込んだ ima-rpg のセーブと、選んでいる仕える国・王にするか（P62） */
   private ima: ImaFile | null = null;
   private imaOpts: { faction: number; king: boolean } = { faction: 0, king: false };
-  /** おまかせの方針の欄を開いているか（P50） */
-  private planOpen = false;
+  /** 戦闘画面の「設定」（音・曲・記録・おまかせの方針）を開いているか */
+  private ctlOpen = false;
   /** 情報欄で押している・ボタンに乗せている間は書き換えを待たせる（holdOnPress） */
   private held = false;
   private heldPending = false;
   /** おまかせが動いている間に、最後に情報欄を書き換えた時刻 */
   private panelAt = 0;
-  /** 畳んだ技・軍略の欄を開いているか（ほかの技・軍略、使えない技・軍略） */
-  private artsFold = { more: false, off: false };
+  /** 情報欄の畳んだ欄（data-fold）を開いているか。書き直しても開いたままにする（ほかの技・軍略、能力の変化、説明など） */
+  private folds: Record<string, boolean> = {};
+  private fold(key: string): string { return this.folds[key] ? 'open' : ''; }
+  /** 畳んだ欄の開け閉めを覚えておく（書き直しても、開いたまま） */
+  private wireFolds(): void {
+    this.root.querySelectorAll<HTMLDetailsElement>('#panel details[data-fold]').forEach((d) => { d.ontoggle = () => { this.folds[d.dataset.fold!] = d.open; }; });
+  }
   /** 記録の細かさ（0 簡易・1 通常・2 詳細）。速さとは別に選ぶ。記録の元データは1つで、表示だけが変わる */
   private logLevel = loadLogLevel();
   private logView = new BattleLogView();
@@ -706,8 +711,9 @@ export class App {
     const panel = this.root.querySelector<HTMLElement>('#panel');
     if (!el || !panel) return;
     const r = el.getBoundingClientRect(), p = panel.getBoundingClientRect(), t = this.root.querySelector('table.expect')?.getBoundingClientRect();
-    const bottom = Math.max(r.bottom, t?.bottom ?? 0), foot = this.root.querySelector('#panel .foot')?.getBoundingClientRect().height ?? 0;
-    if (bottom > p.bottom - foot) panel.scrollTop += Math.min(bottom - (p.bottom - foot) + 8, r.top - p.top - 8);
+    // 番を終えるボタンの並びは欄の上に貼り付いているので、その下に収まるように送る
+    const bottom = Math.max(r.bottom, t?.bottom ?? 0), head = this.root.querySelector('#panel .foot')?.getBoundingClientRect().height ?? 0;
+    if (bottom > p.bottom) panel.scrollTop += Math.min(bottom - p.bottom + 8, r.top - p.top - head - 8);
   }
 
   /** 流している演出が終わる時刻（決着の窓は、駒の動きが止まってから出す） */
@@ -934,14 +940,19 @@ export class App {
     const box = this.root.querySelector<HTMLElement>('#ctl');
     if (!box) return;
     if (!this.st || this.st.winner !== null) { box.innerHTML = ''; return; }
-    // おまかせの方針は、速さ・音の並び（狭い画面では横に送る1行）とは別の行に置く（同じ行だと、横持ちで観戦のボタンが外へ押し出される）
+    // いつも出すのは観戦と速さだけ（1行に収まる）。音・曲・記録の細かさ・おまかせの方針は「設定」を押すと下に開く
+    const plan = this.st.autoPlan?.some(Boolean);
     box.innerHTML = `
-      ${this.st.autoPlan?.some(Boolean) ? `<details class="planfold" ${this.planOpen ? 'open' : ''}><summary data-tip="味方をおまかせで動かすときの動き方。押すと開いて切り替えられます">おまかせの方針：<b>${esc(planLabel(getPlan()))}</b></summary>${planPickerHtml(getPlan())}</details>` : ''}
       <div class="speed"><button id="watch">${this.watching ? '手動にする' : '観戦にする'}</button>
-      <span class="dim">速さ</span>${AI_DELAY.map((_d, i) => `<button data-speed="${i}" class="${i === this.aiSpeed ? 'on' : ''}">${i + 1}</button>`).join('')}
-      <span class="vol"><span class="dim">音</span>${VOLUME_NAME.map((name, i) => `<button data-vol="${i}" class="${i === volume() ? 'on' : ''}">${name}</button>`).join('')}</span>
-      <span class="vol"><span class="dim">曲</span>${BGM_LEVEL_NAME.map((name, i) => `<button data-bgm="${i}" class="${i === bgmLevel() ? 'on' : ''}">${name}</button>`).join('')}</span>
-      <span class="lvl"><span class="dim">記録</span>${LOG_LEVEL_NAME.map((name, i) => `<button data-log="${i}" class="${i === this.logLevel ? 'on' : ''}" title="${['1件を1行で', 'だれがだれに、ダメージと体力', '計算式と途中の値まで'][i]}">${name}</button>`).join('')}</span></div>`;
+      <span class="dim">速さ</span>${AI_DELAY.map((_d, i) => `<button data-speed="${i}" title="速さ${i + 1}" class="${i === this.aiSpeed ? 'on' : ''}">${i + 1}</button>`).join('')}
+      <button id="ctlMore" class="${this.ctlOpen ? 'on' : ''}" data-tip="音・曲・記録の細かさ${plan ? '・おまかせの方針' : ''}を切り替えます（開いている間は光る）">設定</button></div>
+      ${this.ctlOpen ? `<div class="ctlbox">
+        <div class="vol"><span class="dim">音</span>${VOLUME_NAME.map((name, i) => `<button data-vol="${i}" class="${i === volume() ? 'on' : ''}">${name}</button>`).join('')}</div>
+        <div class="vol"><span class="dim">曲</span>${BGM_LEVEL_NAME.map((name, i) => `<button data-bgm="${i}" class="${i === bgmLevel() ? 'on' : ''}">${name}</button>`).join('')}</div>
+        <div class="lvl"><span class="dim">記録</span>${LOG_LEVEL_NAME.map((name, i) => `<button data-log="${i}" class="${i === this.logLevel ? 'on' : ''}" title="${['1件を1行で', 'だれがだれに、ダメージと体力', '計算式と途中の値まで'][i]}">${name}</button>`).join('')}</div>
+        ${plan ? planPickerHtml(getPlan()) : ''}
+      </div>` : ''}`;
+    box.querySelector<HTMLButtonElement>('#ctlMore')!.onclick = () => { this.ctlOpen = !this.ctlOpen; this.renderCtl(); };
     box.querySelectorAll<HTMLButtonElement>('[data-log]').forEach((b) => {
       // 切り替えたら、すでに出ている記録も、その細かさで出し直す
       b.onclick = () => { this.logLevel = Number(b.dataset.log); saveLogLevel(this.logLevel); this.renderCtl(); this.renderLog(); };
@@ -952,9 +963,7 @@ export class App {
       b.onclick = () => { setVolume(Number(b.dataset.vol)); this.renderCtl(); play('turn'); };
     });
     box.querySelector<HTMLButtonElement>('#watch')!.onclick = () => this.setWatching(!this.watching);
-    // おまかせの方針（P50）：味方の陣営に、すぐ当てる。狭い画面で場所を取らないよう、ふだんは畳んでおく
-    const fold = box.querySelector<HTMLDetailsElement>('.planfold');
-    if (fold) fold.ontoggle = () => { this.planOpen = fold.open; };
+    // おまかせの方針（P50）：味方の陣営に、すぐ当てる
     wirePlanPicker(box, (p) => {
       const st = this.st;
       if (st?.autoPlan) st.autoPlan = st.autoPlan.map((x) => (x ? p : null)) as [AutoPlan | null, AutoPlan | null];
@@ -985,7 +994,8 @@ export class App {
     window.addEventListener('pointerup', up, true);
     window.addEventListener('pointercancel', up, true);
     // 乗せている間に待たせるのは、相手やおまかせが動いている間だけ。押したら（click）すぐ書き換えてよい
-    aside.addEventListener('pointerover', (e) => { over = e.pointerType === 'mouse' && !this.isHumanTurn() && !!(e.target as Element).closest?.('button, summary, select, label'); sync(); });
+    // 観戦・速さ・設定の並び（#ctl）は書き換えで動かないので待たせない（観戦にするを押したまま乗せていると、記録が止まって見えるため）
+    aside.addEventListener('pointerover', (e) => { over = e.pointerType === 'mouse' && !this.isHumanTurn() && !!(e.target as Element).closest?.('#panel button, #panel summary, #panel select, #panel label'); sync(); });
     aside.addEventListener('click', () => { over = false; sync(); }, true);
     aside.addEventListener('pointerleave', () => { over = false; sync(); });
   }
@@ -1132,21 +1142,28 @@ export class App {
     });
     const tactics = u.tactics.map((id) => D.byTactic[id]).filter(Boolean).map((t) => `<span class="sk tac" data-tip="${esc(tacticTip(t))}">${this.taughtMark(t.id, u)}${esc(L(t.name))}<small>気${tacticCost(u, t)}</small></span>`);
     const enemy = !this.human.has(u.side) && this.human.size > 0;
+    // 行動のボタンが出ているとき（自分の番に選んだ駒）は、技・軍略の一覧はボタンと同じなので出さない
+    const withButtons = this.selected === u.id && this.isHumanTurn() && !this.deploying;
+    // 地形・特性・性格などの説明は畳んでおき、押すと開く
+    const tm = terrainMod(st, u);
+    const more = [
+      `<div>${TERRAIN_NAME[st.map.terrain[u.pos]]}（命中・回避 ${tm >= 0 ? '+' : ''}${tm}${this.terrainNote(u)}）</div>`,
+      g?.traits.length ? `<div>特性：${g.traits.map((t) => TRAIT_NAME[t] ?? t).join('・')}</div>` : '',
+      this.personaLine(u),
+      enemy && st.winner === null ? '<div class="small">地図の薄い朱は、この敵が次の番に動ける所、さらに薄い朱は攻撃が届く所</div>' : '',
+    ].join('');
     return `<div class="card" style="border-color:${SIDE_COLOR[u.side]}">
-      <div><b>${esc(u.name)}</b> <span class="dim">${u.kind === 'general' ? kindName(u) : '兵'} Lv${u.level}${enemy ? '　<b class="foe">敵</b>' : ''}</span></div>
-      ${menLine}
-      ${bar(u.hp, u.maxHp, 'hp')}${u.maxMp ? bar(u.mp, u.maxMp, 'mp') : ''}
+      <div><b>${esc(u.name)}</b> <span class="dim">${u.kind === 'general' ? kindName(u) : '兵'} Lv${u.level}${enemy ? '　<b class="foe">敵</b>' : ''}${u.acted && u.side === st.turn ? '（行動済み）' : ''}</span></div>
+      <div class="bars">${bar(u.hp, u.maxHp, 'hp')}${u.maxMp ? bar(u.mp, u.maxMp, 'mp') : ''}</div>
       <div class="stats">攻撃${Math.round(attackPower(st, u))} 防御${Math.round(defense(st, u))} ${T.int()}${intellect(u)} ${T.agi()}${agility(u)}
-        移動${moveOf(u)} ${AFFINITY_NAME[affinityOf(u)]}${u.kind === 'general' ? ` 采配範囲${u.commandRange}` : ''}${u.acted && u.side === st.turn ? '（行動済み）' : ''}</div>
-      ${this.modsHtml(u)}
-      ${skills.length + tactics.length > ARTS_FLAT
-        ? `<details class="sklfold"><summary>技${skills.length}・軍略${tactics.length}（押すと一覧）</summary><div class="skl">${[...skills, ...tactics].join('')}</div></details>`
-        : `<div class="skl">${[...skills, ...tactics].join('')}</div>`}
-      <div class="dim">${TERRAIN_NAME[st.map.terrain[u.pos]]}（命中・回避 ${terrainMod(st, u) >= 0 ? '+' : ''}${terrainMod(st, u)}${this.terrainNote(u)}）</div>
-      ${g?.traits.length ? `<div class="dim">${g.traits.map((t) => TRAIT_NAME[t] ?? t).join('・')}</div>` : ''}
-      ${this.personaLine(u)}
+        移動${moveOf(u)} ${AFFINITY_NAME[affinityOf(u)]}${u.kind === 'general' ? ` 采配範囲${u.commandRange}` : ''}</div>
       ${statuses.length ? `<div class="status">${statuses.join(' ')}</div>` : ''}
-      ${enemy && st.winner === null ? '<div class="dim small">地図の薄い朱は、この敵が次の番に動ける所、さらに薄い朱は攻撃が届く所</div>' : ''}
+      ${menLine}
+      ${withButtons ? '' : skills.length + tactics.length > ARTS_FLAT
+        ? `<details class="sklfold" data-fold="skl" ${this.fold('skl')}><summary>技${skills.length}・軍略${tactics.length}（押すと一覧）</summary><div class="skl">${[...skills, ...tactics].join('')}</div></details>`
+        : `<div class="skl">${[...skills, ...tactics].join('')}</div>`}
+      ${this.modsHtml(u)}
+      <details class="more" data-fold="more-info" ${this.fold('more-info')}><summary>地形・特性・性格</summary>${more}</details>
     </div>`;
   }
 
@@ -1163,7 +1180,7 @@ export class App {
     });
     const fx = (u.traitFx ?? []).map((f) => `<li><span class="mk">${esc(STAT[f.stat] ?? f.stat)}</span>${f.from !== undefined ? ` ${f.from} → <b class="${(f.to ?? 0) >= f.from ? 'up' : 'down'}">${f.to}</b>` : ''}：${f.why ? esc(f.why) : `特性（${f.traits.map((t) => esc(TRAIT_NAME[t] ?? t)).join('・') || '率いる将'}）`} <b>${esc(f.value)}</b><span class="dim">（戦いの終わりまで）</span></li>`);
     if (!rows.length && !fx.length) return '';
-    return `<details class="mods" open><summary>能力の変化（${rows.length + fx.length}）</summary><ul>${rows.join('')}${fx.join('')}</ul></details>`;
+    return `<details class="mods" data-fold="mods" ${this.fold('mods')}><summary>能力の変化（${rows.length + fx.length}）</summary><ul>${rows.join('')}${fx.join('')}</ul></details>`;
   }
 
   /** 駒に乗せたとき（何も選んでいないとき）の短い説明（P49） */
@@ -1190,9 +1207,9 @@ export class App {
     const plan = st.autoPlan?.[u.side];
     const STANCE = { advance: '前進', engage: '交戦', hold: '守備', retreat: '退却' } as const;
     const stance = st.winner === null && leader?.alive ? ` ／ 構え：${STANCE[stanceOf(st, u)]}` : '';
-    if (plan) return `<div class="dim">おまかせの方針：${planLabel(plan)}${stance}<br><span class="small">（味方のおまかせは、性格ではなく方針で動く）</span></div>`;
+    if (plan) return `<div>おまかせの方針：${planLabel(plan)}${stance}<br><span class="small">（味方のおまかせは、性格ではなく方針で動く）</span></div>`;
     if (!leader?.persona) return '';
-    return `<div class="dim">性格：${personalityLabel(leader.persona)}${u.kind === 'troop' ? '（率いる武将）' : ''}${stance}</div>`;
+    return `<div>性格：${personalityLabel(leader.persona)}${u.kind === 'troop' ? '（率いる武将）' : ''}${stance}</div>`;
   }
 
   /** 季節と天気、その効果 */
@@ -1218,7 +1235,11 @@ export class App {
     const hd = st.hold;
     const keep = hd ? [`${seatName(st.map.terrain[hd.cell])}：攻め手が${hd.need}巡押さえ続けるか、時間切れのとき押さえていれば攻め手の勝ち（いま${hd.count}／${hd.need}${holder(st) ? `・${esc(holder(st)!.name)}が押さえている` : ''}）`] : [];
     const lines = [...fx, ...cut, ...keep];
-    return `<div class="sky ${lit ? 'flash' : ''} ${sky.night ? 'night' : ''}" id="sky" style="${url ? `--sky-bg:url('${url}')` : ''}">${when}天気：<b>${label}</b>${lines.length ? `<small>${lines.join('<br>')}</small>` : ''}</div>`;
+    // ふだんは1行（季節・天気・天守の数）。効き目の説明は押すと開く
+    const cls = `sky ${lit ? 'flash' : ''} ${sky.night ? 'night' : ''}`, style = url ? `--sky-bg:url('${url}')` : '';
+    const head = `${when}天気：<b>${label}</b>${hd ? `<span class="skyhold">${seatName(st.map.terrain[hd.cell])} ${hd.count}／${hd.need}</span>` : ''}${cut.length ? '<span class="skycut">飛び地</span>' : ''}`;
+    if (!lines.length) return `<div class="${cls}" id="sky" style="${style}">${head}</div>`;
+    return `<details class="${cls}" id="sky" style="${style}" data-fold="sky" ${this.fold('sky')}><summary>${head}</summary><small>${lines.join('<br>')}</small></details>`;
   }
 
   /** いまいる地形の、命中・回避のほかの効果 */
@@ -1387,7 +1408,8 @@ export class App {
   private modeInfo(): string {
     const st = this.st!, u = this.sel();
     if (!u || this.mode.type === 'idle') return '';
-    const pre = (t: string): string => `<div class="minfo">${esc(t)}</div>`;
+    // 技・軍略の長い説明は畳んでおき、押すと開く（見込みの表は開いたまま）
+    const pre = (t: string): string => `<details class="minfo" data-fold="minfo" ${this.fold('minfo')}><summary>説明（押すと開く）</summary>${esc(t)}</details>`;
     if (this.mode.type === 'breach') {
       const rows = breachTargets(st, u).map((c) => { const s = st.structures![c], d = breachParts(st, u, c).base; return `<tr><td>${TERRAIN_NAME[s.kind]}</td><td>${d}</td><td>${s.hp}／${s.max}</td><td>${d >= s.hp ? '壊れる' : `あと${Math.ceil(s.hp / d)}回`}</td></tr>`; });
       return `<table class="expect"><tr><th>造り</th><th>ダメージ</th><th>耐久</th><th>見込み</th></tr>${rows.join('')}</table>` + pre('通常攻撃で、門・砦の門・柵を打って壊します。ダメージ＝威力 × 攻撃 ÷ 造りの防御（石火矢・大筒の系統は2倍、火の攻撃は1.5倍）。門と砦の門は、壊すまで攻め手は通れません。');
@@ -1450,12 +1472,13 @@ export class App {
     let actions = '';
     if (this.deploying) {
       this.root.querySelector('#panel')!.innerHTML = `<div class="turn" style="background:${SIDE_COLOR[[...this.human][0] ?? 0]}">配置 <small>始める前に、並びを直せます</small></div>
+        <div class="foot"><button id="deployDone" class="primary">配置完了（戦闘開始）</button></div>
         ${this.skyLine()}
-        <div class="card">自分の駒を押してから、青いマス（自分の配置場所）を押すと動きます。自分の駒がいるマスなら入れ替わります。並べ終えたら「配置完了」を押すと、戦いが始まります。</div>
-        ${shown ? this.unitCard(shown) : ''}
-        <div class="foot"><button id="deployDone" class="primary">配置完了（戦闘開始）</button></div>`;
+        <details class="howto" data-fold="howto-deploy" ${this.fold('howto-deploy')}><summary>自分の駒 → 青いマスで並べ替え（押すと説明）</summary>自分の駒を押してから、青いマス（自分の配置場所）を押すと動きます。自分の駒がいるマスなら入れ替わります。並べ終えたら「配置完了」を押すと、戦いが始まります。</details>
+        ${shown ? this.unitCard(shown) : ''}`;
       const dd = this.root.querySelector<HTMLButtonElement>('#deployDone');
       if (dd) dd.onclick = () => this.startFighting();
+      this.wireFolds();
       this.renderLog();
       return;
     }
@@ -1478,52 +1501,52 @@ export class App {
           return { on: this.mode.type === 'tactic' && this.mode.id === id, why, html: btn('tactic', id, this.tacticLabel(t, u), why) };
         }),
       ];
-      if (arts.length <= ARTS_FLAT) actions += `<div class="arts">${arts.map((a) => a.html).join('')}</div>`;
-      else {
-        const ok = arts.filter((a) => !a.why), off = arts.filter((a) => a.why);
-        // 選んでいる技・軍略は、畳んだ中にあっても上に出す
-        const first = ok.slice(0, ARTS_SHOW);
-        for (const a of ok.slice(ARTS_SHOW)) if (a.on) first.push(a);
-        const more = ok.filter((a) => !first.includes(a));
-        actions += `<div class="arts">${first.map((a) => a.html).join('')}</div>`;
-        if (more.length) actions += `<details class="arts-more" data-fold="more" ${this.artsFold.more ? 'open' : ''}><summary>ほかの技・軍略（${more.length}）</summary><div class="arts">${more.map((a) => a.html).join('')}</div></details>`;
-        if (off.length) actions += `<details class="arts-more off" data-fold="off" ${this.artsFold.off ? 'open' : ''}><summary>${notAct ? `${esc(notAct)}：技・軍略（${off.length}）` : `今は使えない技・軍略（${off.length}）`}</summary><div class="arts">${off.map((a) => a.html).join('')}</div></details>`;
-      }
+      // 使えるものだけを並べ、今は使えないものはいつも畳んでおく（押すと理由つきで開く）
+      const ok = arts.filter((a) => !a.why), off = arts.filter((a) => a.why);
+      // 多いときは使えるものを先に数個だけ。選んでいる技・軍略は、畳んだ中にあっても上に出す
+      const first = arts.length <= ARTS_FLAT ? ok : ok.slice(0, ARTS_SHOW);
+      for (const a of ok) if (a.on && !first.includes(a)) first.push(a);
+      const more = ok.filter((a) => !first.includes(a));
+      if (first.length) actions += `<div class="arts">${first.map((a) => a.html).join('')}</div>`;
+      if (more.length) actions += `<details class="arts-more" data-fold="more" ${this.fold('more')}><summary>ほかの技・軍略（${more.length}）</summary><div class="arts">${more.map((a) => a.html).join('')}</div></details>`;
+      if (off.length) actions += `<details class="arts-more off" data-fold="off" ${this.fold('off')}><summary>${notAct ? `${esc(notAct)}：技・軍略（${off.length}）` : `今は使えない技・軍略（${off.length}）`}</summary><div class="arts">${off.map((a) => a.html).join('')}</div></details>`;
       const br = act ? breachTargets(st, u) : [];
       if (br.length) actions += `<button data-breach="1" class="${this.mode.type === 'breach' ? 'on' : ''}" data-tip="届く所の門・砦の門・柵を通常攻撃で打って壊します。門と砦の門は、壊すまで攻め手は通れません。石火矢・大筒の系統は2倍、火の攻撃は1.5倍の力で壊します。壊れた門は道に、柵は平地になります。">壊す（門・柵） <small>${br.length}か所</small></button>`;
-      // 部隊ごとの退却：初期配置のマスにいる武将だけ
-      // 一部だけおまかせ（P44）
-      actions += `<button id="autoUnit" data-tip="この駒を、コンピューターの考え方で動かします（自分の番の初めに自動で動く）">この駒をおまかせ</button>`;
-      if (u.kind === 'general') actions += `<button id="autoGen" data-tip="この将と配下の兵を、すべてコンピューターの考え方で動かします">この将の配下をすべておまかせ</button>`;
-      if (canWithdraw(st, u)) actions += `<button id="withdraw" data-tip="この武将と配下の兵が、戦場から必ず退きます。兵は失わず、深手にもなりません。武将は翌月いっぱい休養になります（守りの出陣だけできる）。自分の側の武将がみな退くと、この戦いは負けです">退却（この部隊）</button>`;
+      // よく使う待機・取り消しを先に、おまかせ・退却はその後ろに
       // 装填の要る駒は、待機で矢・弾を込める（ボタンにも書く）
       const reloads = needsReload(u) && !has(u, 'loaded');
       actions += `<button id="wait" ${act ? '' : 'disabled'} class="${act && this.flashActions ? 'flash' : ''}" ${reloads ? 'data-tip="待機すると矢・弾を込めて「装填済み」になり、次の番から装填の要る技を撃てます"' : ''}>${reloads ? '待機（装填する）' : '待機'}${act ? '' : `<small class="why">${esc(notAct)}</small>`}</button>`;
       actions += `<button id="cancel">${this.mode.type !== 'idle' ? (this.mode.type === 'breach' ? '壊すのをやめる' : '技・軍略をやめる') : '選択を解く'}</button>`;
       if (this.undo && this.undo.unit === u.id && !u.acted) actions += `<button id="undo">移動を取り消す</button>`;
+      // 一部だけおまかせ（P44）と部隊ごとの退却（初期配置のマスにいる武将だけ）は、たまに使うので畳んでおく
+      let etc = `<button id="autoUnit" data-tip="この駒を、コンピューターの考え方で動かします（自分の番の初めに自動で動く）">この駒をおまかせ</button>`;
+      if (u.kind === 'general') etc += `<button id="autoGen" data-tip="この将と配下の兵を、すべてコンピューターの考え方で動かします">この将の配下をすべておまかせ</button>`;
+      const wd = canWithdraw(st, u);
+      if (wd) etc += `<button id="withdraw" data-tip="この武将と配下の兵が、戦場から必ず退きます。兵は失わず、深手にもなりません。武将は翌月いっぱい休養になります（守りの出陣だけできる）。自分の側の武将がみな退くと、この戦いは負けです">退却（この部隊）</button>`;
+      actions += `<details class="arts-more etc" data-fold="etc" ${this.fold('etc')}><summary>おまかせ${wd ? '・退却' : ''}</summary><div class="arts">${etc}</div></details>`;
     }
     const cell = `<div id="cellinfo">${this.hoverCellHtml()}</div>`;
     // 指で操作するとき：駒を選ばずにマスを押したら、地形の説明を欄のいちばん上に出す（下だと送らないと見えない）
     const cellTop = this.coarse && !shown && this.hoverCell >= 0;
+    // 並び：番 → 番を終えるなどのボタン → 行動のボタン → 見込み → 天気（1行）→ 駒の情報 → マスの説明。押すものほど上に
     this.root.querySelector('#panel')!.innerHTML = `
       <div class="turn" style="background:${SIDE_COLOR[st.turn]}">${esc(st.sideNames[st.turn])}の番 <small>${st.round}／${st.maxRounds}巡</small></div>
-      ${cellTop ? cell : ''}
-      ${this.skyLine()}
-      ${shown ? this.unitCard(shown) : cellTop ? '' : '<div class="card dim">ユニットをクリックすると情報が出ます。<br>自軍のユニットを選び、青いマスで移動、技・軍略を選んで赤いマスで対象を決めます。<br>取り消しは「選択を解く」か、右クリック・Esc。<br>指で操作するときは、対象のマスを1度押すと見込みが出て、もう1度押すと実行します。</div>'}
-      <div id="forecast">${fc.text}${this.coarse && fc.text && this.mode.type !== 'idle' ? '<br><span class="dim">同じマスをもう1度押すと実行</span>' : ''}</div>
-      <div class="actions">${actions}</div>
-      ${this.modeInfo()}
-      ${cellTop ? '' : cell}
       <div class="foot">
         ${human && this.autoUnits.size ? `<button id="autoOff" data-tip="おまかせにした駒をやめて、全員を手動に戻します">おまかせを外す（全員手動・${this.autoUnits.size}隊）</button>` : ''}
         ${human ? '<button id="end" class="primary" data-tip="まだ動いていない自分の駒をすべて待機にして、自分の番を終えます">巡を終える（全員待機）</button>' : st.winner === null ? '<span class="dim">相手が行動中…</span>' : ''}
         ${st.winner !== null ? '' : this.allowQuit ? `<button id="quit">${esc(this.battleBack.label)}</button>` : `<button id="auto">おまかせで決着</button>${this.human.size === 1 ? '<button id="retreat" data-tip="この戦いから退きます。負けになり、重い罰があります（押すと説明が出ます）">退く</button>' : ''}`}
-      </div>`;
+      </div>
+      ${actions ? `<div class="actions">${actions}</div>` : ''}
+      <div id="forecast">${fc.text}${this.coarse && fc.text && this.mode.type !== 'idle' ? '<br><span class="dim">同じマスをもう1度押すと実行</span>' : ''}</div>
+      ${this.modeInfo()}
+      ${this.skyLine()}
+      ${cellTop ? cell : ''}
+      ${shown ? this.unitCard(shown) : cellTop ? '' : `<details class="howto" data-fold="howto" ${this.fold('howto')}><summary>駒を押すと情報と行動が出ます（押すと操作の説明）</summary>自軍のユニットを選び、青いマスで移動、技・軍略を選んで赤いマスで対象を決めます。<br>取り消しは「選択を解く」か、右クリック・Esc。<br>指で操作するときは、対象のマスを1度押すと見込みが出て、もう1度押すと実行します。</details>`}
+      ${cellTop ? '' : cell}`;
     this.root.querySelectorAll<HTMLButtonElement>('[data-skill]').forEach((b) => { b.onclick = () => { this.mode = { type: 'skill', id: b.dataset.skill! }; this.autoTarget(); this.showInfo(); }; });
     this.root.querySelectorAll<HTMLButtonElement>('[data-tactic]').forEach((b) => { b.onclick = () => { this.mode = { type: 'tactic', id: b.dataset.tactic! }; this.autoTarget(); this.showInfo(); }; });
     this.root.querySelectorAll<HTMLButtonElement>('[data-breach]').forEach((b) => { b.onclick = () => { this.mode = { type: 'breach', id: '' }; this.autoTarget(); this.showInfo(); }; });
-    // 畳んだ技・軍略の欄：開け閉めを覚えておく（書き直しても、開いたまま）
-    this.root.querySelectorAll<HTMLDetailsElement>('details[data-fold]').forEach((d) => { d.ontoggle = () => { this.artsFold[d.dataset.fold as 'more' | 'off'] = d.open; }; });
+    this.wireFolds();
     const on = (id: string, fn: () => void) => { const b = this.root.querySelector<HTMLButtonElement>(id); if (b) b.onclick = fn; };
     on('#cancel', () => this.cancel());
     on('#wait', () => { this.act({ type: 'wait', unit: u!.id }); this.refresh(); });

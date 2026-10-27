@@ -35,6 +35,7 @@ await page.click('#watch');
 await page.waitForTimeout(2500);
 await page.click('#watch');
 await page.waitForTimeout(300);
+if (!(await page.$('[data-log]'))) await page.click('#ctlMore');
 for (const [i, name] of [[0, 'simple'], [1, 'normal'], [2, 'detail']]) {
   await page.click(`[data-log="${i}"]`);
   await page.waitForTimeout(150);

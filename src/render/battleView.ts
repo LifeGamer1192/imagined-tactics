@@ -117,6 +117,8 @@ export class BattleView {
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.cam = new Camera(canvas);
+    // 戦場はできるだけ大きく（周りの余白は細く）
+    this.cam.tight = true;
     this.cam.onChange = () => this.draw();
     // 絵が読み込まれたら、地形の層を作り直して描き直す
     this.unsub = onArtLoaded(() => { this.baseDirty = true; if (this.canvas.isConnected) this.draw(); else this.unsub(); });

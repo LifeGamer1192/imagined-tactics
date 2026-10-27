@@ -32,6 +32,9 @@ await page.click('[data-speed="4"]');
 ok('速さ5を選べる', (await page.getAttribute('[data-speed="4"]', 'class')).includes('on'));
 await page.click('[data-speed="3"]');
 ok('天気が出ている', /天気：(晴れ|雨|霧|雪)/.test(await page.textContent('#sky')), await page.textContent('#sky'));
+// 音・曲・記録は「設定」を押すと出る（開いたままになる）
+await page.click('#ctlMore');
+ok('設定を押すと音・曲・記録のボタンが出る', !!(await page.$('[data-vol]')) && !!(await page.$('[data-log]')));
 await page.click('[data-vol="2"]');
 ok('音量を選べて、ブラウザに覚える', (await page.getAttribute('[data-vol="2"]', 'class')).includes('on') && (await page.evaluate(() => localStorage.getItem('hexsim.volume'))) === '2');
 const a = await log();

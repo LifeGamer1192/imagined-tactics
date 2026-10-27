@@ -179,6 +179,8 @@ async function run(tag, ctxOpts) {
     });
     if (wd) {
       ok(`[${tag}] 初期配置のマスにいる武将には「退却（この部隊）」が出る`, !!(await page.$('#withdraw')));
+      // 「おまかせ・退却」は畳んであるので開いてから押す
+      await page.evaluate(() => { const d = document.querySelector('details.etc'); if (d) d.open = true; });
       await press('#withdraw');
       await page.waitForSelector('.confirm');
       ok(`[${tag}] 退却の窓に、兵を失わず翌月休養と出る`, /兵は失わず/.test(await page.textContent('.confirm')) && /休養/.test(await page.textContent('.confirm')));
@@ -196,6 +198,7 @@ async function run(tag, ctxOpts) {
     });
     if (au !== null) {
       ok(`[${tag}] 自分の駒には「この駒をおまかせ」が出る`, !!(await page.$('#autoUnit')));
+      await page.evaluate(() => { const d = document.querySelector('details.etc'); if (d) d.open = true; });
       await press('#autoUnit');
       await page.waitForFunction((id) => { const a = window.__app, u = a.st.units[id]; return a.autoUnits.has(id) && (u.acted || u.moved || !u.alive); }, au, { timeout: 8000 }).catch(() => {});
       const st1 = await page.evaluate((id) => { const a = window.__app, u = a.st.units[id]; return { auto: a.autoUnits.has(id), went: u.acted || u.moved || !u.alive, mark: a.view.hl.auto?.has(id) ?? false }; }, au);

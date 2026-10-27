@@ -65,6 +65,7 @@ await act('配置完了', () => page.click('#deployDone'));
 await page.waitForSelector('#end');
 const [cx, cy] = await center('.battle canvas');
 await act('戦場をクリック', () => page.mouse.click(cx - 300, cy));
+await act('設定を開く', () => page.click('#ctlMore'));
 await act('記録を詳細にする', () => page.click('[data-log]:last-of-type'));
 await act('速さを5にする', () => page.click('[data-speed="4"]'));
 await act('巡を終える（全員待機）', () => page.click('#end'), { settle: 300 });

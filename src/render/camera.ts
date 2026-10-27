@@ -30,8 +30,11 @@ export class Camera {
   }
 
   get minZoom(): number {
-    return Math.min(Math.max(200, this.vw - this.insetRight) / this.worldW, this.vh / this.worldH) * 0.9;
+    return Math.min(Math.max(200, this.vw - this.insetRight) / this.worldW, this.vh / this.worldH) * (this.tight ? 0.95 : 0.9);
   }
+
+  /** fit with a thin margin instead of the roomy one */
+  tight = false;
 
   get maxZoom(): number {
     return this.minZoom * 8;
@@ -70,7 +73,10 @@ export class Camera {
 
   fit(): void {
     const availW = Math.max(200, this.vw - this.insetRight);
-    this.zoom = Math.max(this.minZoom, Math.min(availW / this.worldW, (this.vh - (this.vh > 600 ? 80 : 20)) / this.worldH) * 0.97);
+    // tight: keep only a thin margin so the board is as large as possible (battle map)
+    this.zoom = this.tight
+      ? Math.max(this.minZoom, Math.min((availW - 8) / this.worldW, (this.vh - 8) / this.worldH))
+      : Math.max(this.minZoom, Math.min(availW / this.worldW, (this.vh - (this.vh > 600 ? 80 : 20)) / this.worldH) * 0.97);
     this.x = this.worldW / 2 - availW / 2 / this.zoom;
     this.y = this.worldH / 2 - this.vh / 2 / this.zoom;
     this.onChange();
