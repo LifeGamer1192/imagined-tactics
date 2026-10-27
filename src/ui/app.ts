@@ -89,6 +89,8 @@ function bindDifficulty(root: HTMLElement, sel: HTMLSelectElement, local: boolea
 type Control = 'attack' | 'defend' | 'both' | 'watch';
 /** おまかせの陣営が1手ごとに空ける間（ミリ秒）。速さ1〜5 */
 const AI_DELAY = [900, 500, 260, 110, 0];
+/** 情報欄を押して離したあと、おまかせの手を止めておく時間（ミリ秒）。スマホが押しを確かめ終えるまで */
+const PRESS_QUIET = 350;
 /** 技・軍略のボタン：この数までは全部並べる。超えたら、使えるものをこの数だけ出し、残りは畳む */
 const ARTS_FLAT = 8, ARTS_SHOW = 6;
 /** おまかせの陣営の演出の長さの倍率。速さ5では演出をしない（待たない） */
@@ -144,6 +146,17 @@ export class App {
   /** 情報欄で押している・ボタンに乗せている間は書き換えを待たせる（holdOnPress） */
   private held = false;
   private heldPending = false;
+  /**
+   * 情報欄（観戦・速さのボタンも）を押している間と、離してから PRESS_QUIET ミリ秒は、おまかせの手を進めない。
+   * 速い観戦では書き換えが絶えず、指で押した直後に画面が変わると、ブラウザ（とくにスマホ）が押しを捨てることがある。
+   * 手を進める仕事の最中に押すと、押しが届くのもその仕事が終わるまで待たされる
+   */
+  private pressing = false;
+  private pressEnd = 0;
+  private pressWait(): number {
+    if (this.pressing) return 100;
+    return Math.max(0, this.pressEnd + PRESS_QUIET - performance.now());
+  }
   /** おまかせが動いている間に、最後に情報欄を書き換えた時刻 */
   private panelAt = 0;
   /** 情報欄の畳んだ欄（data-fold）を開いているか。書き直しても開いたままにする（ほかの技・軍略、能力の変化、説明など） */
@@ -906,6 +919,9 @@ export class App {
     if (st.winner !== null) return;
     const step = () => {
       if (!this.st || this.st !== st || st.winner !== null) return;
+      // 情報欄を押している間と離した直後は、手を進めない（押しているところへ書き換えが重なると、押しが効かないことがある）
+      const wait = this.pressWait();
+      if (wait > 0) { this.aiTimer = window.setTimeout(step, wait); return; }
       const t0 = performance.now();
       let dur = 0;
       for (;;) {
@@ -982,6 +998,7 @@ export class App {
   private holdOnPress(aside: HTMLElement): void {
     let pressed = false, over = false;
     this.held = false; this.heldPending = false;
+    this.pressing = false; this.pressEnd = 0;
     const sync = (): void => {
       const now = pressed || over;
       if (now === this.held) return;
@@ -989,8 +1006,8 @@ export class App {
       // 離した直後の click が先に届くよう、書き換えは次の順番で
       if (!now && this.heldPending) setTimeout(() => { if (!this.held && this.heldPending) { this.heldPending = false; this.refresh(); } }, 0);
     };
-    aside.addEventListener('pointerdown', () => { pressed = true; sync(); }, true);
-    const up = (): void => { if (pressed) { pressed = false; sync(); } };
+    aside.addEventListener('pointerdown', () => { pressed = true; this.pressing = true; sync(); }, true);
+    const up = (): void => { if (pressed) { pressed = false; this.pressing = false; this.pressEnd = performance.now(); sync(); } };
     window.addEventListener('pointerup', up, true);
     window.addEventListener('pointercancel', up, true);
     // 乗せている間に待たせるのは、相手やおまかせが動いている間だけ。押したら（click）すぐ書き換えてよい

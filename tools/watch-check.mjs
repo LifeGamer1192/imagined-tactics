@@ -43,6 +43,33 @@ await page.click('#watch');
 await page.waitForTimeout(6000);
 const b = await log();
 ok('観戦にすると自軍も勝手に動く', b > a && !(await page.$('#end')), `記録 ${a} → ${b}`);
+// 情報欄を押している間は、おまかせの手が進まない（押しているところへ書き換えが重なって、押しが効かなくならないように）
+{
+  const lb = await page.locator('#log').boundingBox();
+  await page.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(200);
+  const n0 = await page.evaluate(() => window.__app.st.log.length);
+  await page.waitForTimeout(800);
+  const n1 = await page.evaluate(() => window.__app.st.log.length);
+  await page.mouse.up();
+  await page.waitForTimeout(1200);
+  const n2 = await page.evaluate(() => window.__app.st.log.length);
+  ok('情報欄を押している間は手が進まず、離すと進む', n1 === n0 && (n2 > n1 || await page.evaluate(() => window.__app.st.winner !== null)), `${n0} → ${n1} → ${n2}`);
+}
+// 速く動いている間に、速さのボタンを続けて押しても、すべて効く（押す位置は座標で。押すたびに確かめる）
+{
+  let miss = 0;
+  for (let i = 0; i < 6; i++) {
+    if (await page.evaluate(() => window.__app.st.winner !== null)) break;
+    const t = i % 2 ? 3 : 2;
+    const b = await page.locator(`[data-speed="${t}"]`).boundingBox();
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+    if (await page.evaluate(() => window.__app.aiSpeed) !== t) miss++;
+    await page.waitForTimeout(250);
+  }
+  ok('速い観戦中に速さのボタンを続けて押しても、すべて効く', miss === 0, `効かなかった ${miss} 回`);
+}
 // 速く動いている間でも、音量のボタンを押せる
 await page.click('[data-vol="0"]');
 ok('観戦中も音量を切り替えられる', (await page.getAttribute('[data-vol="0"]', 'class')).includes('on') && (await page.getAttribute('[data-speed="3"]', 'class')).includes('on'));
