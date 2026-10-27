@@ -84,7 +84,7 @@ body .result.reel { z-index: 40; width: min(620px, 94vw); overflow-y: auto; }
 @media (max-width: 600px) { .reel-body { flex-direction: column; align-items: center; } .reel-map { width: 96px; } }
 body .result.low .banner { height: clamp(60px, 10vh, 110px); }
     /* 天気の欄：天気の帯の絵を敷く。開戦のときと天気が変わったときは、しばらく金の縁で光らせる */
-    body .sky { position: relative; background: linear-gradient(90deg, rgba(24,21,18,0.92) 0%, rgba(24,21,18,0.72) 55%, rgba(24,21,18,0.35) 100%), var(--sky-bg, none) center / cover, var(--card); min-height: 44px; transition: box-shadow 0.4s, border-color 0.4s; }
+    body .sky { position: relative; background: linear-gradient(90deg, rgba(24,21,18,0.92) 0%, rgba(24,21,18,0.72) 55%, rgba(24,21,18,0.35) 100%), var(--sky-bg, none) center / cover, var(--card); min-height: 0; transition: box-shadow 0.4s, border-color 0.4s; }
     body .sky.night { background: linear-gradient(90deg, rgba(14,16,30,0.94) 0%, rgba(14,16,30,0.78) 55%, rgba(14,16,30,0.5) 100%), var(--sky-bg, none) center / cover, var(--card); }
     body .sky.flash { border-left-color: #ffd36b; box-shadow: 0 0 0 2px rgba(255,211,107,0.85), 0 0 18px rgba(255,200,90,0.55); animation: sky-in 0.5s ease-out; }
     body .sky.flash b { color: #ffe39a; font-size: 15px; }
@@ -250,7 +250,7 @@ option.oni { color: #c0392b; font-weight: bold; }
     .tmenu .gives { display: flex; flex-wrap: wrap; gap: 4px; flex-basis: 100%; max-height: 150px; overflow: auto; overscroll-behavior: contain; }
     .over { text-align: center; font: 700 18px var(--mincho); }
     .over .banner { margin-bottom: 6px; }
-    .turn { box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 8px rgba(0,0,0,0.35); padding-top: 8px; padding-bottom: 8px; }
+    .turn { box-shadow: 0 0 0 1px rgba(255,255,255,0.08) inset, 0 2px 8px rgba(0,0,0,0.35); padding-top: 5px; padding-bottom: 5px; }
     button { background-image: linear-gradient(rgba(255,255,255,0.06), rgba(0,0,0,0.12)); }
     button.primary { background-image: linear-gradient(#d4673f, #a9442b); box-shadow: 0 0 0 1px rgba(255,220,180,0.15) inset; }
     /* 記録（メッセージ）の欄：枠で囲み、上に「記録」の見出しを付けて、地の絵と見分けられるようにする */
@@ -308,7 +308,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .battle { display: grid; grid-template-columns: 1fr 340px; height: 100%; position: relative; }
     .battle canvas { width: 100%; height: 100%; display: block; touch-action: none; }
     .battle aside { display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); min-height: 0; }
-    #panel { padding: 10px; display: flex; flex-direction: column; gap: 8px; max-height: 76%; overflow: auto; }
+    #panel { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; max-height: 80%; overflow: auto; }
 /* 欄の中の札は縮めない（縮むと文字が下の札に重なる）。入りきらないときは欄の中を送る */
 #panel > * { flex-shrink: 0; }
     .gens2 { display: flex; flex-direction: column; }
@@ -319,7 +319,10 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .rec select, .rec button { padding: 2px 6px; font-size: 12px; }
     .turn { padding: 6px 10px; border-radius: 3px; font: 700 15px var(--mincho); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
     .turn small { color: #fff; opacity: 0.85; font-weight: normal; }
-    .card { border-left: 4px solid var(--gold); background: var(--card); border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+    .card { border-left: 4px solid var(--gold); background: var(--card); border-radius: 4px; padding: 6px 10px; display: flex; flex-direction: column; gap: 4px; }
+    /* 体力と気力の棒は横に並べる */
+    .card .bars { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .card .bars .bar:only-child { grid-column: 1 / -1; }
     .bar { position: relative; height: 16px; background: #14120f; border-radius: 3px; overflow: hidden; }
     .bar i { position: absolute; inset: 0 auto 0 0; }
     .bar.hp i { background: #5a8f4e; } .bar.mp i { background: #3d6494; }
@@ -342,6 +345,14 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .card .foe { color: #ff9a8a; }
     .card .mods { font-size: 12.5px; border: 1px solid rgba(201,162,39,0.3); border-radius: 4px; padding: 2px 6px; background: rgba(255,255,255,0.03); }
     .card .mods summary { cursor: pointer; color: #e9c98a; }
+    /* 押すと開く説明（地形・特性・性格、操作のしかた、技の説明） */
+    .card details.more { font-size: 12.5px; color: var(--dim); border: 1px solid rgba(201,162,39,0.3); border-radius: 4px; padding: 2px 6px; background: rgba(255,255,255,0.03); line-height: 1.5; }
+    .card details.more summary, details.howto summary, details.minfo summary, details.sky summary { cursor: pointer; color: #e9c98a; }
+    details.howto { font-size: 12.5px; line-height: 1.6; color: var(--dim); background: var(--card); border-left: 3px solid var(--gold); border-radius: 3px; padding: 4px 8px; }
+    details.minfo summary { white-space: normal; }
+    details.sky { max-height: none; }
+    .sky .skyhold, .sky .skycut { margin-left: 10px; font-size: 12px; color: #e9c98a; }
+    .sky .skycut { color: #f0a8d8; }
     .card .mods ul { margin: 2px 0; padding-left: 14px; }
     .card .mods li { line-height: 1.5; }
     .card .mods .mk { color: #e9c98a; }
@@ -429,14 +440,18 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .planfold { width: 100%; font-size: 13px; }
     .planfold summary { cursor: pointer; padding: 2px 0; }
     .planfold .plan > .dim:first-child { display: none; }
-    .actions { display: flex; flex-direction: column; gap: 4px; }
-    .actions button { text-align: left; }
-    .actions .arts { display: flex; flex-direction: column; gap: 4px; }
+    /* 行動のボタンは2列に並べる（縦に長くならないように） */
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .actions button { text-align: left; padding: 5px 8px; min-width: 0; }
+    .actions .arts, .actions .arts-more { grid-column: 1 / -1; }
+    .actions .arts { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+    .actions .arts button > small:not(.why) { font-size: 11px; }
     .actions .arts-more { border: 1px solid rgba(201,162,39,0.3); border-radius: 4px; padding: 2px 6px; }
     .actions .arts-more summary { cursor: pointer; font-size: 13px; color: #e9c98a; padding: 3px 0; }
     .actions .arts-more .arts { margin: 4px 0; max-height: 260px; overflow-y: auto; }
     .actions .arts-more.off summary { color: #b8ab90; }
-    #forecast { min-height: 2.5em; font-size: 14px; color: #e9c98a; }
+    #forecast { font-size: 14px; color: #e9c98a; }
+    #forecast:empty { display: none; }
     .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: left; margin: 10px 0; }
     .sides .side { border-left: 4px solid; background: var(--card); border-radius: 3px; padding: 8px 10px; min-width: 200px; font-size: 13px; }
     .sides h3 { margin: 0 0 4px; font-size: 15px; font-family: var(--mincho); }
@@ -465,9 +480,20 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .speed:empty { display: none; }
     #ctl:empty { display: none; }
     /* 観戦・速さ・音の並びは情報欄の上に置く（情報欄の高さが変わっても動かず、速い観戦でも押しやすい） */
-    #ctl { padding-top: 8px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
-    #ctl > .planfold { display: block; box-sizing: border-box; padding: 0 10px 4px; }
-    .speed #watch { margin-right: auto; }
+    #ctl { padding-top: 6px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+    /* 観戦・速さ・設定は1行に収める */
+    .speed { padding-bottom: 6px; gap: 3px; flex-wrap: nowrap; }
+    .speed #watch { margin-right: 3px; padding: 4px 8px; }
+    .speed [data-speed] { min-width: 27px; }
+    .speed > * { flex-shrink: 0; white-space: nowrap; }
+    .ctlbox { max-height: 45vh; overflow: auto; }
+    .speed #ctlMore { margin-left: auto; padding: 4px 8px; }
+    /* 「設定」を押すと開く：音・曲・記録の細かさ・おまかせの方針 */
+    .ctlbox { display: flex; flex-direction: column; gap: 4px; padding: 0 10px 8px; font-size: 13px; }
+    .ctlbox .vol, .ctlbox .lvl { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .ctlbox .vol .dim, .ctlbox .lvl .dim { min-width: 2.5em; }
+    .ctlbox [data-vol], .ctlbox [data-bgm] { min-width: 34px; padding: 4px 0; text-align: center; }
+    .ctlbox [data-log] { padding: 4px 8px; }
     .speed [data-speed] { min-width: 30px; padding: 4px 0; text-align: center; }
     /* 音量（切・小・大）。速さのボタンの並びの右に置く。狭いときは次の行に回る */
     .speed .vol { display: inline-flex; gap: 4px; align-items: center; margin-left: 6px; }
@@ -479,6 +505,8 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .foot .dim { font-size: 12px; min-width: 0; }
     .foot { flex-wrap: wrap; }
     .foot { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+    /* 「巡を終える」などの並びは情報欄の上の方に置き、欄を送っても上に残す */
+    #panel .foot { position: sticky; top: -8px; z-index: 2; background: var(--panel); padding: 2px 0; }
     #log { flex: 1; overflow: auto; border-top: 1px solid var(--line); padding: 8px 10px; font-size: 12.5px; color: #cfc6b3; }
     #log .sep { color: var(--gold); margin-top: 4px; font-family: var(--mincho); }
     /* 戦闘の記録の細かさ（簡易・通常・詳細）のボタン。速さ・音の並びの下の行に置く */
@@ -506,7 +534,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     @media (max-width: 760px) {
       /* 狭い画面：上に地図、下に情報。情報欄は1列で、字とボタンを少し詰める */
       body { font-size: 13px; }
-      .battle { grid-template-columns: 1fr; grid-template-rows: 46% 54%; }
+      .battle { grid-template-columns: 1fr; grid-template-rows: 50% 50%; }
       .battle aside { border-left: 0; border-top: 1px solid var(--line); }
       #panel { max-height: none; flex: 1 1 auto; min-height: 0; padding: 8px; gap: 6px; }
       #log { flex: 0 0 22%; padding: 6px 8px; font-size: 12px; }
@@ -515,10 +543,6 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
       .battle aside[data-lv="2"] #log { flex-basis: 40%; }
       .foot { flex-wrap: wrap; gap: 6px; }
       .foot button { padding: 5px 9px; }
-      .actions { flex-direction: row; flex-wrap: wrap; }
-      .actions button { flex: 1 1 46%; }
-      .actions .arts, .actions .arts-more { flex: 1 1 100%; }
-      .actions .arts { flex-direction: row; flex-wrap: wrap; }
       .speed { padding: 0 8px 6px; }
       .card { padding: 6px 8px; }
       .setup { padding: 8px; }
@@ -568,7 +592,8 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
       button, select, .btn { min-height: 38px; padding: 7px 12px; }
       .chip { min-height: 34px; padding: 4px 9px; margin: 2px 3px 2px 0; font-size: 13.5px; }
       .tmenu button, .sel button, .ups button, .dip button, .rec select, .rec button { min-height: 36px; padding: 5px 10px; font-size: 13px; }
-      .speed [data-speed], .speed [data-vol] { min-width: 38px; }
+      .speed [data-speed], .ctlbox [data-vol], .ctlbox [data-bgm] { min-width: 36px; padding-left: 0; padding-right: 0; }
+      .speed #watch, .speed #ctlMore { padding-left: 8px; padding-right: 8px; }
       .pen { min-width: 36px; font-size: 15px; }
       input[type="checkbox"] { width: 22px; height: 22px; }
       select, input[type="text"] { font-size: 16px; }
@@ -583,14 +608,14 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
       .battle aside { border-top: 0; border-left: 1px solid var(--line); }
       #panel { max-height: none; flex: 1 1 auto; min-height: 0; padding: 6px; }
       #log { flex: 0 0 18%; }
+      /* 横持ちは欄が狭いので「速さ」の字を省いて、観戦・速さ・設定を1行に収める */
+      .speed > .dim { display: none; }
       .result { left: 50%; max-height: 92vh; padding: 10px 14px; }
       .center { padding: 3vh 14px; }
     }
     /* 狭い画面・低い画面：速さ・音・記録のボタンは1行にまとめ、横になぞって送る（情報欄を広く残すため） */
     @media (max-width: 760px), (max-height: 520px) {
       .battle aside { min-width: 0; overflow: hidden; }
-      /* 「巡を終える」などの並びは、情報欄を送っても下に残す */
-      #panel .foot { position: sticky; bottom: -8px; background: var(--panel); padding: 6px 0; z-index: 1; }
       #ctl { flex: 0 0 auto; min-width: 0; }
       .speed { min-width: 0; max-width: 100%; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior: contain; padding: 4px 8px; flex: 0 0 auto; scrollbar-width: none; }
       .speed > *, .speed .vol > *, .speed .lvl > * { flex: 0 0 auto; }
@@ -607,7 +632,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-CQQeuzEP.js"></script>
+  <script type="module" crossorigin src="./assets/index-GZyN5LwS.js"></script>
 </head>
 <body>
   <div id="app"></div>
