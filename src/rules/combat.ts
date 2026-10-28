@@ -108,7 +108,7 @@ export interface StatParts {
   value: number;
   /** もとの値（攻撃なら武力、防御なら防御）と、それに掛ける数 */
   base: number; mult: number;
-  /** 状態変化で足し引きされるぶん */
+  /** 状態変化（強化・弱化）の％。足し合わせて掛ける（0.8.0） */
   adds: [StatusId, number][];
   /** 采配範囲の外にいるときの倍率（中なら 1） */
   out: number;
@@ -121,7 +121,7 @@ export interface StatParts {
 export function atkParts(st: BattleState, u: BUnit): StatParts {
   const S = D.status;
   const adds: [StatusId, number][] = [];
-  for (const id of ['atkNext', 'atkUp', 'weaken', 'atkDown'] as const) if (has(u, id)) adds.push([id, S[id].atk]);
+  for (const id of ['atkNext', 'atkUp', 'weaken', 'atkDown'] as const) if (has(u, id)) adds.push([id, S[id].atkPct]);
   return { value: attackPower(st, u), base: u.str, mult: D.combat.atkPerStr, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, supply: supplyMultOf(st, u), fixed: false };
 }
 
@@ -130,7 +130,7 @@ export function defParts(st: BattleState, u: BUnit): StatParts {
   const value = defense(st, u);
   if (has(u, 'confuse')) return { value, base: S.confuse.def, mult: 1, adds: [], out: 1, supply: 1, fixed: true };
   const adds: [StatusId, number][] = [];
-  for (const id of ['defUp', 'weaken'] as const) if (has(u, id)) adds.push([id, S[id].def]);
+  for (const id of ['defUp', 'weaken'] as const) if (has(u, id)) adds.push([id, S[id].defPct]);
   return { value, base: u.def, mult: 1, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, supply: supplyMultOf(st, u), fixed: false };
 }
 

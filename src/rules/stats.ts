@@ -41,13 +41,36 @@ export function outOfCommand(st: BattleState, u: BUnit): boolean {
   return st.map.grid.distance(u.pos, l.pos) > l.commandRange;
 }
 
+// 強化・弱化は、もとの能力に対する％の増減（0.8.0。前は決まった数の足し引き）。重なったら％を足し合わせる（下は −90% まで）
+/** ％の足し合わせを掛け目にする */
+export const pctMult = (pcts: number[]): number => Math.max(0.1, 1 + pcts.reduce((a, b) => a + b, 0) / 100);
+/** 攻撃に効く強化・弱化の％ */
+export function atkPcts(u: BUnit): number[] {
+  const S = D.status, out: number[] = [];
+  if (has(u, 'atkNext')) out.push(S.atkNext.atkPct);
+  if (has(u, 'atkUp')) out.push(S.atkUp.atkPct);
+  if (has(u, 'weaken')) out.push(S.weaken.atkPct);
+  if (has(u, 'atkDown')) out.push(S.atkDown.atkPct);
+  return out;
+}
+/** 防御に効く強化・弱化の％ */
+export function defPcts(u: BUnit): number[] {
+  const S = D.status, out: number[] = [];
+  if (has(u, 'defUp')) out.push(S.defUp.defPct);
+  if (has(u, 'weaken')) out.push(S.weaken.defPct);
+  return out;
+}
+/** 機敏に効く強化・弱化の％ */
+export function agiPcts(u: BUnit): number[] {
+  const S = D.status, out: number[] = [];
+  if (has(u, 'agiUp')) out.push(S.agiUp.agiPct);
+  if (has(u, 'grounded')) out.push(S.grounded.agiPct);
+  return out;
+}
+
 export function attackPower(st: BattleState, u: BUnit): number {
   const S = D.status;
-  let v = u.str * D.combat.atkPerStr;
-  if (has(u, 'atkNext')) v += S.atkNext.atk;
-  if (has(u, 'atkUp')) v += S.atkUp.atk;
-  if (has(u, 'weaken')) v += S.weaken.atk;
-  if (has(u, 'atkDown')) v += S.atkDown.atk;
+  let v = u.str * D.combat.atkPerStr * pctMult(atkPcts(u));
   if (outOfCommand(st, u)) v *= 1 + S.outOfCommand.atkDefPct / 100;
   v *= supplyMultOf(st, u);
   return Math.max(1, v);
@@ -59,24 +82,18 @@ export function supplyMultOf(st: BattleState, u: BUnit): number { return st.supp
 export function defense(st: BattleState, u: BUnit): number {
   const S = D.status;
   if (has(u, 'confuse')) return S.confuse.def;
-  let v = u.def;
-  if (has(u, 'defUp')) v += S.defUp.def;
-  if (has(u, 'weaken')) v += S.weaken.def;
+  let v = u.def * pctMult(defPcts(u));
   if (outOfCommand(st, u)) v *= 1 + S.outOfCommand.atkDefPct / 100;
   v *= supplyMultOf(st, u);
   return Math.max(1, v);
 }
 
 export function agility(u: BUnit): number {
-  const S = D.status;
-  let v = u.agi;
-  if (has(u, 'agiUp')) v += S.agiUp.agi;
-  if (has(u, 'grounded')) v += S.grounded.agi;
-  return v;
+  return Math.round(u.agi * pctMult(agiPcts(u)));
 }
 
 export function intellect(u: BUnit): number {
-  return Math.max(1, u.int + (has(u, 'intDown') ? D.status.intDown.int : 0));
+  return Math.max(1, Math.round(u.int * pctMult(has(u, 'intDown') ? [D.status.intDown.intPct] : [])));
 }
 
 export function moveOf(u: BUnit): number {

@@ -12,11 +12,13 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 
 | 値 | 式 |
 |---|---|
-| 攻撃 | `max(1, (武力 × C.atkPerStr ＋ 状態の足し引き) × 采配外の倍率 × 陣営の掛け目)`。足し引き：次の攻撃アップ S.atkNext.atk、攻撃アップ S.atkUp.atk、攻防ダウン S.weaken.atk、攻撃ダウン S.atkDown.atk |
-| 防御 | 混乱中は `S.confuse.def` で固定。ほかは `max(1, (防御 ＋ S.defUp.def（防御アップ）＋ S.weaken.def（攻防ダウン）) × 采配外の倍率 × 陣営の掛け目)` |
-| 機敏 | `機敏 ＋ S.agiUp.agi（命中回避アップ）＋ S.grounded.agi（足止め）` |
-| 知略 | `max(1, 知略 ＋ S.intDown.int（知略ダウン）)` |
+| 攻撃 | `max(1, 武力 × C.atkPerStr × 強化・弱化の掛け目 × 采配外の倍率 × 陣営の掛け目)`。％：次の攻撃アップ S.atkNext.atkPct、攻撃アップ S.atkUp.atkPct、攻防ダウン S.weaken.atkPct、攻撃ダウン S.atkDown.atkPct |
+| 防御 | 混乱中は `S.confuse.def` で固定。ほかは `max(1, 防御 × 強化・弱化の掛け目 × 采配外の倍率 × 陣営の掛け目)`。％：防御アップ S.defUp.defPct、攻防ダウン S.weaken.defPct |
+| 機敏 | `round(機敏 × 強化・弱化の掛け目)`。％：命中回避アップ S.agiUp.agiPct、足止め S.grounded.agiPct |
+| 知略 | `max(1, round(知略 × 強化・弱化の掛け目))`。％：知略ダウン S.intDown.intPct |
 | 軍略への耐性 | `min(0.9, 特技 tacticResist の合計 ÷ 100 ＋ S.resistUp.pct ÷ 100（軍略耐性アップ） − 采配外なら S.outOfCommand.tacticDamagePct ÷ 100)`。負なら受けるダメージが増える |
+
+- 強化・弱化の掛け目（0.8.0）：`max(0.1, 1 ＋ かかっている強化・弱化の％の合計 ÷ 100)`。同じ能力に効くものが重なったら、％を足し合わせてから掛ける（例：攻撃アップ +25% と攻防ダウン −35% なら ×0.9）。前は決まった数の足し引きだった（攻撃アップ +31 など）。移動アップ（S.moveUp.move）は今までどおり足す。
 
 - 采配外の倍率：兵が、率いる武将の采配範囲（マス）の外にいるか、武将が倒れているとき `1 ＋ S.outOfCommand.atkDefPct ÷ 100`。ほかは 1。
 - 陣営の掛け目（0.3.0 で追加）：戦略で、飛び地を守る側・飛び地から攻めて出た側が `1 ＋ strategy.json の exclave.battleAtkDefPct ÷ 100`（今は 0.9）。ほかは 1。寝返った兵も、もとの陣営の掛け目のまま。戦いの状態の `supplyMult`。

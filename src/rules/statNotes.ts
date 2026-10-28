@@ -10,6 +10,8 @@ export interface StatCause { why: string; value: string; turns?: string }
 export interface StatRow { key: string; base: number; now: number; causes: StatCause[] }
 
 const sg = (v: number): string => `${v > 0 ? '+' : ''}${v}`;
+/** 強化・弱化の％（0.8.0） */
+const pc = (v: number): string => `${sg(v)}%`;
 const mul = (m: number): string => `${m >= 1 ? '+' : ''}${Math.round((m - 1) * 100)}%`;
 
 /** 状態の残り：巡の数、または「次の技まで」「戦いの終わりまで」 */
@@ -33,8 +35,8 @@ export function statRows(st: BattleState, u: BUnit, statusName: (id: StatusId) =
   // 攻撃
   {
     const causes = [
-      ...withV(stat('atkNext'), sg(S.atkNext.atk)), ...withV(stat('atkUp'), sg(S.atkUp.atk)),
-      ...withV(stat('weaken'), sg(S.weaken.atk)), ...withV(stat('atkDown'), sg(S.atkDown.atk)),
+      ...withV(stat('atkNext'), pc(S.atkNext.atkPct)), ...withV(stat('atkUp'), pc(S.atkUp.atkPct)),
+      ...withV(stat('weaken'), pc(S.weaken.atkPct)), ...withV(stat('atkDown'), pc(S.atkDown.atkPct)),
       ...(out ? [{ why: '采配範囲外', value: mul(1 + S.outOfCommand.atkDefPct / 100), turns: '将の近くへ戻るまで' }] : []),
       ...(sup !== 1 ? [{ why: '飛び地で戦う', value: mul(sup), turns: '戦いの終わりまで' }] : []),
     ];
@@ -45,15 +47,15 @@ export function statRows(st: BattleState, u: BUnit, statusName: (id: StatusId) =
     const causes = has(u, 'confuse')
       ? withV(stat('confuse'), `${S.confuse.def}に固定`)
       : [
-          ...withV(stat('defUp'), sg(S.defUp.def)), ...withV(stat('weaken'), sg(S.weaken.def)),
+          ...withV(stat('defUp'), pc(S.defUp.defPct)), ...withV(stat('weaken'), pc(S.weaken.defPct)),
           ...(out ? [{ why: '采配範囲外', value: mul(1 + S.outOfCommand.atkDefPct / 100), turns: '将の近くへ戻るまで' }] : []),
           ...(sup !== 1 ? [{ why: '飛び地で戦う', value: mul(sup), turns: '戦いの終わりまで' }] : []),
         ];
     if (causes.length) rows.push({ key: '防御', base: u.def, now: Math.round(defense(st, u)), causes });
   }
   // 知略・機敏・移動
-  { const c = withV(stat('intDown'), sg(S.intDown.int)); if (c.length) rows.push({ key: '知略', base: u.int, now: intellect(u), causes: c }); }
-  { const c = [...withV(stat('agiUp'), sg(S.agiUp.agi)), ...withV(stat('grounded'), sg(S.grounded.agi))]; if (c.length) rows.push({ key: '機敏', base: u.agi, now: agility(u), causes: c }); }
+  { const c = withV(stat('intDown'), pc(S.intDown.intPct)); if (c.length) rows.push({ key: '知略', base: u.int, now: intellect(u), causes: c }); }
+  { const c = [...withV(stat('agiUp'), pc(S.agiUp.agiPct)), ...withV(stat('grounded'), pc(S.grounded.agiPct))]; if (c.length) rows.push({ key: '機敏', base: u.agi, now: agility(u), causes: c }); }
   { const c = withV(stat('moveUp'), sg(S.moveUp.move)); if (c.length) rows.push({ key: '移動', base: u.move, now: moveOf(u), causes: c }); }
   // 軍略への耐性（％）
   {

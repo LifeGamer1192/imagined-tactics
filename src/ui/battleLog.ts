@@ -8,7 +8,7 @@ import { D, L, term } from '../data/db';
 import type { StatusId } from '../data/types';
 import { TERRAIN_NAME } from '../render/battleView';
 import type { HitParts, StatParts } from '../rules/combat';
-import { FIELD, skillOf } from '../rules/stats';
+import { FIELD, pctMult, skillOf } from '../rules/stats';
 import { logText, STATUS_NAME } from './text';
 
 /** 記録の細かさ：0 簡易、1 通常、2 詳細 */
@@ -95,10 +95,9 @@ function statFormula(label: string, baseLabel: string, p: StatParts, always: boo
   const supply = p.supply ?? 1;
   if (!always && !p.adds.length && p.out === 1 && supply === 1) return '';
   let s = `${label}${num(p.value)} ＝ `;
-  const inner = `${baseLabel}${num(p.base)}${p.mult !== 1 ? ` × ${num(p.mult)}` : ''}${p.adds.map(([id, v]) => ` ${signed(v)}（${STATUS_NAME[id]}）`).join('')}`;
-  const lone = p.mult === 1 && !p.adds.length;
-  const muls = `${p.out !== 1 ? ` × 采配範囲外${num(p.out)}` : ''}${supply !== 1 ? ` × 飛び地${num(supply)}` : ''}`;
-  s += muls ? `${lone ? inner : `（${inner}）`}${muls}` : inner;
+  // 強化・弱化は％を足し合わせて掛ける（0.8.0）
+  const buffs = p.adds.length ? ` × ${num(pctMult(p.adds.map(([, v]) => v)))}（${p.adds.map(([id, v]) => `${STATUS_NAME[id]}${signed(v)}%`).join('・')}）` : '';
+  s += `${baseLabel}${num(p.base)}${p.mult !== 1 ? ` × ${num(p.mult)}` : ''}${buffs}${p.out !== 1 ? ` × 采配範囲外${num(p.out)}` : ''}${supply !== 1 ? ` × 飛び地${num(supply)}` : ''}`;
   return s;
 }
 

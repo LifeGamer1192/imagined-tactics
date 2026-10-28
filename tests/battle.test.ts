@@ -40,10 +40,12 @@ describe('combat formulas (docs/12 の計算例)', () => {
     expect(skillDamage(st, a, basic(a), d)).toBe(95);
     expect(hitChance(st, a, basic(a), d)).toBe(86);
     addStatus(st, a, 'atkNext');
-    expect(skillDamage(st, a, basic(a), d)).toBe(146);
+    // 次の攻撃アップは攻撃 +40%（0.8.0。前は +49 で 146）
+    expect(skillDamage(st, a, basic(a), d)).toBe(133);
     a.statuses = [];
     addStatus(st, d, 'defUp', 3);
-    expect(skillDamage(st, a, basic(a), d)).toBe(70);
+    // 防御アップは防御 +25%（0.8.0。前は +31 で 70）
+    expect(skillDamage(st, a, basic(a), d)).toBe(76);
   });
 
   it('焙烙衆 → 雑兵・黒鍬衆', () => {

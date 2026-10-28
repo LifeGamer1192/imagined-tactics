@@ -176,17 +176,18 @@ export interface CombatConfig {
   weather: WeatherConfig;
 }
 
+/** 強化・弱化（weaken・atkNext・defUp・atkUp・agiUp・atkDown・intDown・grounded）は、もとの能力に対する％の増減（0.8.0） */
 export interface StatusConsts {
-  weaken: { atk: number; def: number; turns: number };
-  atkNext: { atk: number };
+  weaken: { atkPct: number; defPct: number; turns: number };
+  atkNext: { atkPct: number };
   moveUp: { move: number; turns: number };
   resistUp: { pct: number; turns: number };
-  defUp: { def: number; turns: number };
-  atkUp: { atk: number; turns: number };
-  agiUp: { agi: number; turns: number };
-  atkDown: { atk: number; turns: number };
-  intDown: { int: number; turns: number };
-  grounded: { agi: number; turns: number };
+  defUp: { defPct: number; turns: number };
+  atkUp: { atkPct: number; turns: number };
+  agiUp: { agiPct: number; turns: number };
+  atkDown: { atkPct: number; turns: number };
+  intDown: { intPct: number; turns: number };
+  grounded: { agiPct: number; turns: number };
   regen: { pct: number; turns: number };
   poison: { pct: number };
   daze: { turns: [number, number] };
