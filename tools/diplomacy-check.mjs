@@ -1,10 +1,9 @@
 // 外交の操作を、実際の画面でボタンを押して確かめる。開発サーバー（5183）が要る。
 // 相手の領を選ぶところと、心証などの前提をそろえるところだけ開発用の入口（window.__campaign）を使い、操作はすべて画面のボタンで行う。
 // 使い方：node tools/diplomacy-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
 const errors = [];

@@ -1,10 +1,9 @@
 // 公開版どうしの受け渡しの確認：hist-sim の「この状態で hex で遊ぶ」を押して、hex-sim がモードを選ぶ画面まで進み、戦闘と戦略を始められるかを見る。
 // 使い方：node tools/handoff-check.mjs [画面を撮る先のフォルダ]
 //   HIST_URL（既定：公開版の hist-sim）、シナリオや世界の指定は URL の引数で渡す
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const HIST = process.env.HIST_URL ?? 'https://lifegamer1192.github.io/imagined-chronicles/';
 const HEX = 'https://lifegamer1192.github.io/imagined-tactics/';
 const out = process.argv[2];

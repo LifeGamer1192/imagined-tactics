@@ -2,10 +2,9 @@
 // 織田家と武田家の合戦の出来事を今月に足して月を進め、知らせとカード → 戦う（確かめる窓）→ 戦場 → 観戦で決着 → 戦略マップへ戻る → 結果の記録、
 // もう1つの合戦は「見送る」。
 // 使い方：node tools/histbattle-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium, devices } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium, devices } = playwright;
 const out = process.argv[2];
 const browser = await chromium.launch();
 let ng = 0;

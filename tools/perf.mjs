@@ -1,9 +1,8 @@
 // 画面の重さを測る（開発サーバー 5183 が要る。開発用の入口を使う）。速くする作業の前後で比べるための道具。
 // 使い方：node tools/perf.mjs [見本の名前=sengoku_fid5_1575]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const sample = process.argv[2] ?? 'sengoku_fid5_1575';
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });

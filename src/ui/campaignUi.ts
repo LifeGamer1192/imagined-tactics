@@ -1635,6 +1635,9 @@ export class CampaignScreen {
       ${me ? `<div class="dim small">特色：${traitsOf(me).map((t) => `${t.name}（${t.text}）`).join('、')}${this.itemsText()}</div>` : ''}
       ${this.offersHtml()}${over}${body}`;
     const root = this.host.root;
+    // 欄を送って項目を見せるとき（scrollIntoView）、上に貼りつくボタンの列の下に隠れないように
+    const panel = root.querySelector<HTMLElement>('#panel')!, foot = panel.querySelector<HTMLElement>('.foot');
+    if (foot) panel.style.scrollPaddingTop = `${foot.offsetHeight}px`;
     root.querySelectorAll<HTMLInputElement>('[data-pick]').forEach((cb) => {
       cb.onchange = () => { if (cb.checked) this.picked.add(cb.dataset.pick!); else this.picked.delete(cb.dataset.pick!); this.refresh(); };
     });

@@ -1,11 +1,10 @@
 // 見た目の確認用に、戦闘と戦略マップの画面を撮る。開発サーバー（5183）を動かしてから実行する。
 // 使い方：node tools/shot.mjs [出力先のフォルダ]
-import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const url = process.env.HEX_URL ?? 'http://localhost:5183/';
 const out = process.argv[2] ?? 'shots';
 mkdirSync(out, { recursive: true });

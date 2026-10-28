@@ -1,10 +1,9 @@
 // 公開前の通し確認：見本のセーブすべてで、観戦の1戦と、戦略の観戦24か月を回し、エラーと重さを見る。
 // 開発サーバー（5183）か、HEX_URL で指定した場所（ビルド版）に対して使う。ビルド版では開発用の入口が無いので、画面の操作だけで進める。
 // 使い方：node tools/soak-check.mjs
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const url = process.env.HEX_URL ?? 'http://localhost:5183/';
 const SAMPLES = ['sengoku_fid5_1575', 'shunju_fid5_259bc', 'sangoku_fid5_212', 'rome_fid3_212bc', 'invented_archipelago_y30'];
 const browser = await chromium.launch();

@@ -73,7 +73,7 @@ hist-sim 側の「この状態で hex で遊ぶ」ボタンは未実装。
 
 ## 公開前の確認
 
-開発サーバー（`npm run dev`、http://localhost:5183/）を動かしてから実行する。Playwright は兄弟フォルダ hist-sim のものを使う。
+開発サーバー（`npm run dev`、http://localhost:5183/）を動かしてから実行する。Playwright は兄弟フォルダ hist-sim にあればそれを借り、無ければこのリポジトリか全体に入れたものを使う（`tools/pw.mjs`）。
 
 | 確認 | コマンド |
 |---|---|

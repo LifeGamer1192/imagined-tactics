@@ -1,10 +1,9 @@
 // スマホの画面で、指で兵をつまんで運べるかを確かめる。開発サーバー（5183）が要る。
 // 指の動きは、ブラウザに本物のタッチとして送る（マウスの動きでは、指のときだけ起きる不具合が見えない）。
 // 使い方：node tools/touch-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium, devices } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium, devices } = playwright;
 const browser = await chromium.launch();
 const context = await browser.newContext({ ...devices['Pixel 7'] });
 const page = await context.newPage();

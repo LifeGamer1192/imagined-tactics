@@ -3,10 +3,9 @@
 // 時間のかかる処理は、その間「◎◎中…」（.busy）が出ていればよい。
 // 開発サーバー（5183）か、HEX_URL の場所に対して使う。開発用の入口が無くても動く（画面の操作だけ）。
 // 使い方：node tools/respond-check.mjs [見本の名前=sengoku_fid5_1575]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const url = process.env.HEX_URL ?? 'http://localhost:5183/';
 const sample = process.argv[2] ?? 'sengoku_fid5_1575';
 const LIMIT = 200;

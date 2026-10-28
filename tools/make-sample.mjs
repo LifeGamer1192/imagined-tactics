@@ -4,10 +4,9 @@
 // 使い方：node tools/make-sample.mjs <シナリオ> <史実度> <止める年月> <出力ファイル> [種]
 //   止める年月：1575:1（1575年1月）、259bc:1（前259年1月）。月を省くと1月
 // 例：node tools/make-sample.mjs sengoku 5 1575:1 art-src/saves/sengoku_fid5_1575.histsim HEXSK
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const [scn, fid, until, out, seed = 'HEXSIM'] = process.argv.slice(2);
 if (!scn || !fid || !until || !out) { console.error('使い方：node tools/make-sample.mjs <シナリオ> <史実度> <止める年月> <出力> [種]'); process.exit(1); }
 if (!/^\d+(bc)?(:\d{1,2})?$/i.test(until)) { console.error('止める年月の書き方が違います（例：1575:1、259bc:1）：', until); process.exit(1); }

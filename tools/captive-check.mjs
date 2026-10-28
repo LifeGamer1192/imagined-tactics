@@ -2,10 +2,9 @@
 // 当主の窓（登用・保留が無い）→ 解き放つ、ふつうの捕虜 → 保留 → 「捕虜」ボタン → 一覧 → 決める → 処断（確かめる窓でやめる→もう一度）、
 // 登用、自分の将が捕まる → 一覧の身代金で取り戻す。
 // 使い方：node tools/captive-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium, devices } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium, devices } = playwright;
 const out = process.argv[2];
 const browser = await chromium.launch();
 let ng = 0;

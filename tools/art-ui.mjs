@@ -4,12 +4,11 @@
 //   node tools/art-ui.mjs alpha <元の画像> <出力.webp> [幅=1200]            … 1枚。絵のある所だけに切り詰める
 //   node tools/art-ui.mjs grid <元の画像> <列> <行> <出力フォルダ> <名前,…> [幅=240] [高さ=320]
 //                                                                          … 等分したマスごとに切り出し、下ぞろえで置く
-import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const [mode, src, ...rest] = process.argv.slice(2);
 const mime = /\.png$/i.test(src) ? 'image/png' : 'image/jpeg';
 const dataUrl = `data:${mime};base64,${readFileSync(src).toString('base64')}`;

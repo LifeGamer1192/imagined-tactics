@@ -1,10 +1,9 @@
 // ビルドした版（npm run build → npx vite preview）が動くかの確認。開発用の裏口（__app）を使わず、画面だけで確かめる。
 // 使い方：npx vite preview --port 5184 を動かしてから  node tools/preview-check.mjs
-import { createRequire } from 'node:module';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const url = process.env.HEX_URL ?? 'http://localhost:5184/';
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });

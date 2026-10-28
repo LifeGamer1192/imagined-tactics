@@ -1,12 +1,11 @@
 // 攻撃のエフェクトと、記録の3段階（簡易・通常・詳細）を撮る。開発サーバー（5183）を動かしてから実行する。
 // 使い方：node tools/fx-shot.mjs [出力先のフォルダ]
 // エフェクトは、時計を止めて、決めた時刻のコマを描かせて撮る（何度撮っても同じコマになる）。1つの技が横1列、時刻が左から右。
-import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const url = process.env.HEX_URL ?? 'http://localhost:5183/';
 const out = process.argv[2] ?? 'shots';
 mkdirSync(out, { recursive: true });

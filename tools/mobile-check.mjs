@@ -2,10 +2,9 @@
 // 機種ごとに：題の画面 → 編成 → 戦い（選ぶ・動かす・技の見込み・実行・取り消し・つまんで寄せる・2本指で拡大）→ 戦略の画面。
 // 指の動きは、ブラウザに本物のタッチとして送る。
 // 使い方：node tools/mobile-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium, devices } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium, devices } = playwright;
 const URL = process.env.HEX_URL ?? 'http://localhost:5183/';
 const DEV = !process.env.HEX_URL;
 const LIST = [

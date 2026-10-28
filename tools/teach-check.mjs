@@ -2,10 +2,9 @@
 // 窓を開く・押せない技は選べない・技を選ぶ・相手を替える（兵にすると4か月）・やめる・Esc・教え始める・直伝中の表示と説明・
 // 同じ領では2つ目を始められない・月を進めて覚える・列伝の欄・枠がいっぱいのとき忘れる・戦いでの「借」の印と押せること。
 // 使い方：node tools/teach-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium, devices } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium, devices } = playwright;
 const out = process.argv[2];
 const URL = process.env.HEX_URL ?? 'http://localhost:5183/';
 const browser = await chromium.launch();

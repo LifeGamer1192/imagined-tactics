@@ -1,12 +1,11 @@
 // ブラウザでの動作確認。実際の画面を操作して、項目ごとに OK / NG を出す。
 // Playwright は兄弟フォルダの hist-sim に入っているものを使う。
 // 使い方：開発サーバー（npm run dev）を動かしてから  node tools/smoke.mjs [画面の保存先=shots]
-import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const out = process.argv[2] ?? 'shots';
 mkdirSync(out, { recursive: true });
 const url = process.env.HEX_URL ?? 'http://localhost:5183/';

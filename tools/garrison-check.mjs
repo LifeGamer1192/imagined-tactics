@@ -1,10 +1,9 @@
 // 守備兵との戦いと、兵の入れ替えを、実際の画面で確かめる。開発サーバー（5183）が要る。
 // 相手の武将を下げて守る武将のいない領を作るところだけ、開発用の入口（window.__campaign）を使う。
 // 使い方：node tools/garrison-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const browser = await chromium.launch();
 // 兵を運ぶ先の武将が見える高さにしておく（実際の画面では、運んでいる間に欄の端へ寄せると欄が送られる）
 const page = await browser.newPage({ viewport: { width: 1280, height: 1500 } });

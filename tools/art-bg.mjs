@@ -1,11 +1,10 @@
 // 背景画を、幅を決めた webp にして置く。
 // 使い方：node tools/art-bg.mjs <元の画像> <出力先（.webp）> [幅=1600]
-import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const [src, out, wArg] = process.argv.slice(2);
 if (!src || !out) { console.error('使い方：node tools/art-bg.mjs <元の画像> <出力先> [幅]'); process.exit(1); }
 const width = Number(wArg ?? 1600);

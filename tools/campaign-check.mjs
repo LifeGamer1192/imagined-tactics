@@ -1,8 +1,7 @@
 // 戦略画面の新しい操作（諸国巡り・外交・昇進）を、実際にボタンを押して確かめる。開発サーバー（5183）が要る。
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const browser = await chromium.launch();
 const errors = [];
 const ok = (name, v, extra = '') => console.log(v ? 'OK ' : 'NG ', name, extra);

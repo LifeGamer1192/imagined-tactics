@@ -1,10 +1,9 @@
 // 兆し（P74）のカードの操作を、PC は本物のクリック、スマホは本物のタップで確かめる。開発サーバー（5183）が要る。
 // 自分の家の将が2か月後に暗殺される出来事を足して月を進め、兆しの知らせとカードが出ること、備える（確かめる窓→兵糧が減る）、史実のまま（やめる→もう一度）を見る。
 // 使い方：node tools/omen-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium, devices } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium, devices } = playwright;
 const out = process.argv[2];
 const browser = await chromium.launch();
 let ng = 0;

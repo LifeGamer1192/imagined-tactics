@@ -1,12 +1,11 @@
 // 遊び方の案内（src/ui/help.ts）の確認。開発サーバー（5183）を動かしてから実行する。
 // PC幅（1280×800）とスマホ幅（390×780）で、開く・タブ・閉じる（Esc、外側のクリック）を確かめ、画面を撮る。
 // 使い方：node tools/help-check.mjs [画面の保存先=shots/help]
-import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const url = process.env.HEX_URL ?? 'http://localhost:5183/';
 const out = process.argv[2] ?? 'shots/help';
 mkdirSync(out, { recursive: true });

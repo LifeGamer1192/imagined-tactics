@@ -1,10 +1,9 @@
 // 史実の目標（P76）の表示を、PC は本物のクリック、スマホは本物のタップで確かめる。開発サーバー（5183）が要る。
 // 来月に「織田家が武田家へ攻め込む」史実の戦を足して月を進め、知らせとカードが出ること、武田家の領を取ってもう1か月進めると果たしたことになるのを見る。
 // 使い方：node tools/goal-check.mjs [画面を撮る先のフォルダ]
-import { createRequire } from 'node:module';
 import path from 'node:path';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium, devices } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium, devices } = playwright;
 const out = process.argv[2];
 const browser = await chromium.launch();
 let ng = 0;

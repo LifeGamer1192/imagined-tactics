@@ -4,12 +4,11 @@
 // 使い方：node tools/art-cut.mjs <シートの画像> <N> <出力先のフォルダ> <名前,名前,…（左上から右へ。- は飛ばす）> [大きさ=192]
 //   最後に tile を付けると、地形のタイル用（白へ寄せない・余白なし）。例：… a,b,c 256 tile
 // 例：node tools/art-cut.mjs sheet.jpg 3 public/art/unit/jp u01a,u01b,u01c,u02a,u02b,u03a,u03b,-,-
-import { createRequire } from 'node:module';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const [src, nArg, outDir, namesArg, sizeArg, modeArg] = process.argv.slice(2);
 // tile：マスに敷く絵（四角いっぱいに塗ってある絵）。白へ寄せず、余白を付けず、中央の正方形を切り出す
 const tile = modeArg === 'tile';

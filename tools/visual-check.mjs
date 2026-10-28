@@ -1,10 +1,9 @@
 // 絵や表示を変えた箇所を、ひととおり画面に出して撮る（目で確かめるため）。あわせて、出るべきものが出ているかを確かめる。
 // 開発サーバー（5183）が要る。使い方：node tools/visual-check.mjs <画面を撮る先のフォルダ>
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { mkdirSync } from 'node:fs';
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium, devices } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium, devices } = playwright;
 const out = process.argv[2];
 if (!out) { console.error('撮る先のフォルダを指定してください'); process.exit(1); }
 mkdirSync(out, { recursive: true });

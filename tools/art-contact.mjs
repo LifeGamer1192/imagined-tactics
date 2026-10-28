@@ -1,11 +1,10 @@
 // 切り分けた兵の駒の絵を、番号つきの一覧の画像にする（絵の取り違えを目で確かめる用）。
 // 使い方：node tools/art-contact.mjs <jp|cn> <出力する png>
-import { createRequire } from 'node:module';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const [variant, out] = process.argv.slice(2);
 const dir = `public/art/unit/${variant}`;
 const units = JSON.parse(readFileSync('data/system/units.json', 'utf8'));

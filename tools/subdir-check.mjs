@@ -3,12 +3,11 @@
 // 「タイトル → サンプル → 戦闘開始 → 戦略 → 月を進める」まで進める。終わるとサーバーも止まる。
 // 使い方：npm run build のあと  node tools/subdir-check.mjs [画面の保存先]
 import { createServer } from 'node:http';
-import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-const require = createRequire(path.resolve('../hist-sim/package.json'));
-const { chromium } = require('playwright');
+import playwright from './pw.mjs';
+const { chromium } = playwright;
 const PREFIX = '/games/hex-sim/';
 const PORT = Number(process.env.PORT ?? 5185);
 const dist = path.resolve('dist');
