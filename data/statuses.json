@@ -1,11 +1,11 @@
 {
  "weaken": {
-  "atk": -49,
-  "def": -31,
+  "atkPct": -35,
+  "defPct": -25,
   "turns": 3
  },
  "atkNext": {
-  "atk": 49
+  "atkPct": 40
  },
  "moveUp": {
   "move": 2,
@@ -16,27 +16,27 @@
   "turns": 3
  },
  "defUp": {
-  "def": 31,
+  "defPct": 25,
   "turns": 3
  },
  "atkUp": {
-  "atk": 31,
+  "atkPct": 25,
   "turns": 2
  },
  "agiUp": {
-  "agi": 21,
+  "agiPct": 35,
   "turns": 3
  },
  "atkDown": {
-  "atk": -49,
+  "atkPct": -35,
   "turns": 3
  },
  "intDown": {
-  "int": -49,
+  "intPct": -40,
   "turns": 3
  },
  "grounded": {
-  "agi": -21,
+  "agiPct": -35,
   "turns": 3
  },
  "regen": {
