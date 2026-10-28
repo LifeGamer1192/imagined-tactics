@@ -202,8 +202,9 @@ export function tacticTip(t: TacticDef): string {
   if (t.kind === 'cure') out.push('毒・眩暈・気絶・混乱・軍略封じ・寝返りなどの悪い状態を治す');
   if (t.kind === 'dispel') out.push('かかっている強化（攻撃・防御・機敏・移動の上昇、次の一撃、用心など）と弱化を消す');
   if (t.kind === 'mpRestore' && t.amount) out.push(`味方の気力を${t.amount}回復する`);
-  if (t.atk) out.push(`攻撃${t.atk > 0 ? '+' : ''}${t.atk}%`);
-  if (t.def) out.push(`防御${t.def > 0 ? '+' : ''}${t.def}%`);
+  // 状態の付く軍略は、効き目を状態の説明に書いてある（弱化に「攻撃+49%」と逆の向きで出ていたので出さない）
+  if (t.atk && !t.status) out.push(`攻撃${t.atk > 0 ? '+' : ''}${t.atk}%`);
+  if (t.def && !t.status) out.push(`防御${t.def > 0 ? '+' : ''}${t.def}%`);
   if (t.friendlyFire) out.push('味方も巻き込む');
   return out.join('\n');
 }

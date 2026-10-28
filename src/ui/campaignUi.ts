@@ -25,7 +25,7 @@ import {
   acceptOffer, allianceProblem, awayAt, breakAlliance, callProblem, callToArms, declineOffer, playerEnemies, proposeAlliance, proposeTruce, lowerProblem, lowerRefund, lowerToTroop, questProblem, raiseCost, raiseProblem, raiseToGeneral, renameGeneral, renameTroop, startQuest, troopUpgrades, truceProblem, upgradeTroop, woundedAt,
 } from '../strategy/events';
 import { generalPromotions, promoteGeneral } from '../rules/growth';
-import { changeTable, changeText, generalChange, troopChange, type ChangeRow } from './classChange';
+import { changeTable, changeText, generalArtsHtml, generalChange, troopArtsHtml, troopChange, type ChangeRow } from './classChange';
 import { MAX_GENERALS } from '../battle/setup';
 import { snapshot, type HexSave } from '../persist/save';
 import { openSaveMenu, writeSlot } from './saveMenu';
@@ -462,7 +462,7 @@ export class CampaignScreen {
   }
 
   /** 役職・兵種を進めたときの祝いの窓（P52）：紙吹雪、大きな「昇格！」、前と後の能力の比べ表 */
-  private celebrateChange(title: string, sub: string, rows: ChangeRow[], img: string | null): void {
+  private celebrateChange(title: string, sub: string, rows: ChangeRow[], img: string | null, arts = ''): void {
     const leaf = Array.from({ length: 34 }, (_v, i) => `<span class="leaf" style="left:${(i * 29) % 100}%;animation-delay:${((i * 0.19) % 2.2).toFixed(2)}s;animation-duration:${(2.4 + (i % 5) * 0.35).toFixed(1)}s"></span>`).join('');
     const box = document.createElement('div');
     box.className = 'result victory-box cc-box';
@@ -472,7 +472,7 @@ export class CampaignScreen {
       <h2 class="wrap">${esc(title)}</h2>
       <p class="vsub">${esc(sub)}</p>
       <p class="cbtns"><button class="primary" data-a="ok">見事！</button></p>
-      ${changeTable(rows)}`;
+      ${changeTable(rows)}${arts}`;
     this.frame().appendChild(box);
     play('win');
     box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };
@@ -1675,14 +1675,16 @@ export class CampaignScreen {
         const g = gs.generals[b.dataset.promoAsk!], to = b.dataset.to!;
         if (!g) return;
         const from = L(D.byClass[g.classId].name), next = L(D.byClass[to].name), rows = generalChange(g, to);
+        // 新しく覚える技・軍略の説明と気力のバー（P85）。祝いの窓では「覚えた」と言い換える
+        const arts = generalArtsHtml(g, to), learnt = generalArtsHtml(g, to, '新しく覚えた技・軍略');
         const ok = await confirmBox(this.frame(), {
           title: `${esc(g.name.ja)}を ${esc(next)} に昇進させる`, banner: sceneUrl('setup', gs.variant),
-          body: `<p><b>${esc(from)}</b> → <b>${esc(next)}</b></p><p class="warn">⚠ 昇進すると、元の役職には戻れません。</p>${changeTable(rows)}<p class="small">${esc(classTip(to)).replace(/\n/g, '<br>')}</p>`,
+          body: `<p><b>${esc(from)}</b> → <b>${esc(next)}</b></p><p class="warn">⚠ 昇進すると、元の役職には戻れません。</p>${changeTable(rows)}${arts}<p class="small">${esc(classTip(to)).replace(/\n/g, '<br>')}</p>`,
           ok: '昇進させる', cancel: 'やめる', btnTop: true,
         });
         if (!ok || !promoteGeneral(g, to)) return;
         this.refresh();
-        this.celebrateChange(`${g.name.ja}、${next}に昇進！`, `${from} → ${next}`, rows, null);
+        this.celebrateChange(`${g.name.ja}、${next}に昇進！`, `${from} → ${next}`, rows, null, learnt);
       };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-up-ask]').forEach((b) => {
@@ -1690,16 +1692,17 @@ export class CampaignScreen {
         const g = gs.generals[b.dataset.upAsk!], i = Number(b.dataset.i), to = b.dataset.to!, t = g?.troops[i];
         if (!g || !t) return;
         const from = L(D.byUnit[t.unitId].name), next = L(D.byUnit[to].name), rows = troopChange(t, to), name = t.name ?? from;
+        const arts = troopArtsHtml(t, to), learnt = troopArtsHtml(t, to, '新しく覚えた技・軍略');
         const rule = D.byUnit[t.unitId].promote.find((p) => p.to === to);
         const useItem = rule?.item ? `昇進の品「${esc(D.items[rule.item]?.jp ?? rule.item)}」を1つ使います。` : rule?.lv && t.level < rule.lv ? '昇進の品を1つ使います（レベルが足りないため）。' : '';
         const ok = await confirmBox(this.frame(), {
           title: `${esc(name)}を ${esc(next)} に進める`, banner: sceneUrl('setup', gs.variant),
-          body: `<p>${this.icon(t.unitId)}<b>${esc(from)}</b> → ${this.icon(to)}<b>${esc(next)}</b>（${esc(g.name.ja)}の兵・Lv${t.level}）</p><p class="warn">⚠ 進めると、元の兵種には戻れません。${useItem}</p>${changeTable(rows)}<p class="small">${esc(unitTip(to)).replace(/\n/g, '<br>')}</p>`,
+          body: `<p>${this.icon(t.unitId)}<b>${esc(from)}</b> → ${this.icon(to)}<b>${esc(next)}</b>（${esc(g.name.ja)}の兵・Lv${t.level}）</p><p class="warn">⚠ 進めると、元の兵種には戻れません。${useItem}</p>${changeTable(rows)}${arts}<p class="small">${esc(unitTip(to)).replace(/\n/g, '<br>')}</p>`,
           ok: '進める', cancel: 'やめる', btnTop: true,
         });
         if (!ok || !upgradeTroop(c, g.id, i, to)) return;
         this.refresh();
-        this.celebrateChange(`${name}、${next}に昇格！`, `${from} → ${next}（${g.name.ja}の兵）`, rows, artUrl(`unit/${gs.variant}/${to}`) ?? null);
+        this.celebrateChange(`${name}、${next}に昇格！`, `${from} → ${next}（${g.name.ja}の兵）`, rows, artUrl(`unit/${gs.variant}/${to}`) ?? null, learnt);
       };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-quest]').forEach((b) => {
