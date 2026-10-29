@@ -149,4 +149,6 @@ export interface GameStart {
   truces: { a: number; b: number; until: number }[];
   /** 変換で起きたこと（既定値で埋めた、条件まで引き上げた、など） */
   log: string[];
+  /** 領の収入を世界ごとにそろえた倍率（P96。古いセーブには無い＝1）。戦場の道や田の数は、そろえる前の収入で決める */
+  incomeScale?: number;
 }

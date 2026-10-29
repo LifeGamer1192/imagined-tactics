@@ -92,7 +92,7 @@
       "cn": { "u04a": { "fromYear": -450 }, "u07a": { "fromYear": -307 }, "u13c": { "untilYear": -300 } }
     }
   },
-  "supply": { "treasuryScale": 1.0, "perPop": 0.002, "recruitCostMult": 3 },
+  "supply": { "treasuryScale": 1.0, "perPop": 0.002, "refPop": 12500, "incomeMult": 2.5, "recruitCostMult": 3 },
   "variantByScenario": { "sengoku": "jp", "shunju": "cn", "sangoku": "cn", "sokan": "cn" },
   "artByScenario": { "rome": "west" }
 }

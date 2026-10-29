@@ -178,9 +178,9 @@ export function newCampaign(gs: GameStart, world: HWorld, player: number, diffic
   // 難しさ（非常に難しい・鬼。P64）：相手の勢力の武将は、始めのレベルが上がる
   const lvUp = player ? S.difficulty[difficulty].aiGeneralLevel ?? 0 : 0;
   if (lvUp) for (const g of Object.values(gs.generals)) if (g.faction && g.faction !== player) addLevels(g, lvUp);
-  // 開始時の兵糧も、蔵に入るぶんまで（hist-sim の国庫が大きい勢力は、上限の何倍にもなるため）
+  // 始めの蓄え（P96）：月収の何か月ぶん。自分の家は難しさで決まり、相手の勢力はいつも同じ。hist-sim の国庫は使わない
   refreshIncome(c);
-  for (const f of Object.values(gs.factions)) f.supply = Math.min(f.supply, supplyCap(f));
+  for (const f of Object.values(gs.factions)) f.supply = startSupply(f, f.id === player ? S.difficulty[difficulty].startMonths : S.supply.aiStartMonths);
   initScout(c);
   return c;
 }
@@ -424,10 +424,13 @@ export function planAttack(c: Campaign, faction: number, from: number, to: numbe
   return { attacker: faction, defender: target.owner, prov: to, from, atk, def };
 }
 
+/** 戦場の形に使う収入：世界ごとにそろえる前の値に戻す（P96。そろえても戦場の道や田は変わらない） */
+export const lookIncome = (gs: GameStart, income: number): number => income / (gs.incomeScale ?? 1);
+
 /** 領の今のようす（戦場の形を決める）。持ち主の本拠なら城になる */
 export function provinceLook(c: Campaign, prov: number): ProvinceLook {
   const p = c.gs.provinces[prov], f = c.gs.factions[p.owner];
-  return { capital: !!f && f.capital === prov, fort: p.fort, buildings: p.buildings, pop: p.pop, income: p.income, unrest: p.unrest, coastal: p.coastal, river: p.river };
+  return { capital: !!f && f.capital === prov, fort: p.fort, buildings: p.buildings, pop: p.pop, income: lookIncome(c.gs, p.income), unrest: p.unrest, coastal: p.coastal, river: p.river };
 }
 
 /** その領で今戦うときの戦場。領のようすが変われば（普請、本拠が移る、など）、戦場も変わる。from：攻めてくる領（戦場の向き） */
@@ -702,6 +705,11 @@ function capture(c: Campaign, pb: PendingBattle): void {
     const near = neighborsOf(c, pb.prov).find((n) => gs.provinces[n].owner === loser.id);
     g.prov = near ?? loser.capital;
   }
+}
+
+/** 始めの蓄え：月収 × months（最低 startMin、蔵の上限まで） */
+export function startSupply(f: GFaction, months: number): number {
+  return Math.min(supplyCap(f), Math.max(S.supply.startMin, Math.round(f.income * months)));
 }
 
 function refreshIncome(c: Campaign): void {

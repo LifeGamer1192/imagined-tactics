@@ -6,7 +6,7 @@ import { getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
 import { apply, canAct, canMove, canWithdraw, holder, moveCells, withdraw } from '../battle/engine';
 import { mapFromProvince, seatName } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
-import { newCampaign, note, S, traitsOf, type Difficulty } from '../strategy/campaign';
+import { lookIncome, newCampaign, note, S, traitsOf, type Difficulty } from '../strategy/campaign';
 import { DIFFICULTIES } from '../strategy/config';
 import { startChronicle } from '../strategy/chronicle';
 import { CampaignScreen } from './campaignUi';
@@ -627,7 +627,7 @@ export class App {
     const def = gs.factions[this.setup.defender], atk = gs.factions[this.setup.attacker];
     const prov = gs.provinces[def.capital];
     // 攻め手の本拠から攻めてくる向きで、戦場の左右が決まる
-    const map = mapFromProvince(w, def.capital, prov ? { capital: true, fort: prov.fort, buildings: prov.buildings, pop: prov.pop, income: prov.income, unrest: prov.unrest, coastal: prov.coastal, river: prov.river, from: atk.capital } : { capital: true, from: atk.capital });
+    const map = mapFromProvince(w, def.capital, prov ? { capital: true, fort: prov.fort, buildings: prov.buildings, pop: prov.pop, income: lookIncome(gs, prov.income), unrest: prov.unrest, coastal: prov.coastal, river: prov.river, from: atk.capital } : { capital: true, from: atk.capital });
     const st = createBattle(gs, map, this.setup.picks, `ui:${Date.now()}`, [atk.name.ja, def.name.ja]);
     // 相手の強さ：自分が片方だけを動かすとき、相手の陣営の思考の賢さを変える
     if (this.setup.control === 'attack' || this.setup.control === 'defend') setAiLevel(st, this.setup.control === 'attack' ? 1 : 0, this.localLevel);

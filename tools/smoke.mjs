@@ -319,6 +319,15 @@ await page.waitForSelector('.result [data-a="play"]');
   await page.waitForSelector('.result button');
   check('戦闘の結果が戦略に戻る', (await page.textContent('.result')).includes('の勝ち'));
   await page.click('.result button');
+  // 捕虜を取ったときは、どうするかの窓が出る（ここでは解き放つ）
+  for (let i = 0; i < 10; i++) {
+    await page.waitForSelector('#next, .result.ask.captive', { timeout: 30000 });
+    const rel = await page.$('.result.ask.captive [data-a="release"]');
+    if (!rel) break;
+    await rel.click();
+    const ok = await page.waitForSelector('.confirm [data-a="ok"]', { timeout: 3000 }).catch(() => null);
+    if (ok) await ok.click();
+  }
   await page.waitForSelector('#next');
 } else check('侵攻の確認（隣に守りのいる領が無いので省略）', true, atk);
 
@@ -336,6 +345,8 @@ check('月を進められる', date0 !== date1, `${date0.trim().slice(0, 12)} �
 // ============================================================ 6. セーブと読み込み
 const snap = () => page.evaluate(() => { const c = window.__campaign.c; return JSON.stringify([c.gs.tick, c.months, c.gs.provinces.map((p) => p.owner), c.gs.factions[c.player]?.supply, Object.values(c.gs.generals).map((g) => [g.id, g.level, g.troops.length, g.prov])]); });
 await page.waitForTimeout(400);
+// 今月の知らせ（昇進できる、など）の窓が出ていたら閉じる
+for (const b of await page.$$('.result.ask.confirm button')) await b.click().catch(() => {});
 await page.click('#saves');
 await page.waitForSelector('.savemenu');
 await shot(page, '11_save_menu');

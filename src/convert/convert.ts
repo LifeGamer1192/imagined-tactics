@@ -36,7 +36,8 @@ interface Cfg {
     levelFromTech: { base: number; techOrigin: number; techScale: number; prestigeDiv: number; max: number };
     unlock: Record<Variant, Record<string, { fromYear?: number; untilYear?: number }>>;
   };
-  supply: { treasuryScale: number; perPop: number };
+  /** perPop：人口1あたりの収入（戦場の町の大きさにも使う）。refPop・incomeMult：収入の正規化（P96） */
+  supply: { treasuryScale: number; perPop: number; refPop: number; incomeMult: number };
   variantByScenario: Record<string, Variant>;
   /** 絵の版を名前の版と変える世界（ローマは西洋版。P87） */
   artByScenario?: Record<string, ArtSet>;
@@ -53,6 +54,16 @@ const MOUNTAIN_BIOMES = new Set([14]);
 const FOREST_BIOMES = new Set([4, 5, 7, 8, 9]);
 
 /** 版（日本版・中国版）：シナリオから決める。決められないときは引数の既定値 */
+/**
+ * 人口1あたりの収入（P96）。perPop × incomeMult × refPop ÷（舞台の内の1領の平均人口）。
+ * 人口の多い世界（春秋）も少ない世界（三国志）も、1領あたりの収入がだいたいそろう
+ */
+export function incomePerPop(provinces: { pop: number; out?: boolean }[]): number {
+  const inside = provinces.filter((p) => !p.out);
+  const avg = inside.reduce((s, p) => s + p.pop, 0) / Math.max(1, inside.length);
+  return avg > 0 ? CFG.supply.perPop * CFG.supply.incomeMult * CFG.supply.refPop / avg : CFG.supply.perPop;
+}
+
 export function variantOf(save: HSave, fallback: Variant = 'jp'): Variant {
   const id = save.world.scenario?.id;
   return (id && CFG.variantByScenario[id]) || fallback;
@@ -278,7 +289,8 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
     owner: w.ps.owner[p.id] ?? 0, controller: w.ps.controller[p.id] ?? 0,
     nb: [...p.nb], sea: [...(w.seaLinks[p.id] ?? [])],
     pop: w.ps.pop[p.id] ?? 0,
-    income: (w.ps.pop[p.id] ?? 0) * (w.ps.prosperity[p.id] ?? 0.5) * (1 - (w.ps.devastation[p.id] ?? 0)) * CFG.supply.perPop,
+    // 係数は、舞台の外の領を除いたあとで世界ごとにそろえる（下の「収入の正規化」）
+    income: (w.ps.pop[p.id] ?? 0) * (w.ps.prosperity[p.id] ?? 0.5) * (1 - (w.ps.devastation[p.id] ?? 0)),
     fort: w.ps.fort[p.id] ?? 0, buildings: buildingsOf(w.ps.buildings[p.id] ?? 0),
     biome: p.biome, elevation: p.elevation, river: !!p.river, coastal: !!p.coastal,
     unrest: w.ps.unrest[p.id] ?? 0, cx: p.cx, cy: p.cy,
@@ -303,6 +315,9 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
       p.nb = p.nb.filter((j) => !provinces[j].out); p.sea = p.sea.filter((j) => !provinces[j].out);
     }
   }
+  // 収入の正規化（P96）：世界ごとに人口の桁がちがうので、1領の平均人口が refPop の世界と同じ収入になるよう係数をそろえる
+  const perPop = incomePerPop(provinces), incomeScale = perPop / CFG.supply.perPop;
+  for (const p of provinces) p.income *= perPop;
 
   // ---- 勢力
   const factions: Record<number, GFaction> = {};
@@ -348,6 +363,7 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
     factions[n.id] = {
       id: n.id, name: n.label ?? n.root, color: n.color, government: n.government, economy: n.economy,
       capital: n.capital, overlord: aliveIds.has(n.overlord) ? n.overlord : 0,
+      // 始めの蓄えは戦略パートの始めに月収から決める（P96）。ここでは国庫を仮に入れておく
       supply: Math.round(n.treasury * CFG.supply.treasuryScale),
       income: Math.round(own.reduce((s, p) => s + p.income, 0)),
       lordId: '', tech: n.tech, prestige: n.prestige, stability: n.stability, reforms: n.reforms ?? [],
@@ -486,7 +502,7 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
     alliances: Object.keys(w.alliances).map(pair).filter(bothAlive),
     truces: Object.entries(w.truces).map(([k, v]) => ({ a: pair(k)[0], b: pair(k)[1], until: v.until }))
       .filter((t) => t.until > tick && aliveIds.has(t.a) && aliveIds.has(t.b)),
-    log,
+    log, incomeScale,
   };
 }
 
