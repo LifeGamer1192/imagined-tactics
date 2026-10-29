@@ -42,6 +42,9 @@ const TEXT: Record<string, string> = {
   'collide': '{unit}が押されて{other}にぶつかった（{dmg}）',
   'unhorse': '{unit}が落馬した（{turns}巡のあいだ下馬）',
   'bombard': '{unit}の{skill}が落ちた',
+  'boon': '天佑発動：{unit}の「{name}」',
+  'boonEnd': '{unit}の天佑「{name}」が消えた',
+  'boonHit': '→ {target}に天佑の一手',
   'blast': '{target}に{dmg}（{pct}%）',
 };
 

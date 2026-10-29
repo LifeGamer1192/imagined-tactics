@@ -92,6 +92,35 @@ body .result.low .banner { height: clamp(60px, 10vh, 110px); }
     /* 開戦：地図の真ん中に、墨の筆の帯と大きな文字を一瞬だけ */
     .splash { position: absolute; z-index: 20; left: calc((100% - 340px) / 2); top: 42%; transform: translate(-50%, -50%); width: min(560px, 80vw); height: 150px; display: flex; align-items: center; justify-content: center; pointer-events: none; background: var(--brush-ink) center / 100% 100% no-repeat; animation: splash 1.6s ease-out forwards; }
     .splash span { font: 800 64px var(--mincho); color: #fff6e8; letter-spacing: 0.3em; text-shadow: 0 2px 10px rgba(0,0,0,0.8); padding-left: 0.3em; }
+    /* 天佑の札（P102）：暗くした戦場の上に、金の光の筋と札。札は弾むように出て、題字は判を押すように */
+    .boon-cut { position: absolute; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 45%, rgba(60,40,10,0.55), rgba(0,0,0,0.78)); animation: bc-fade 0.35s ease-out; overflow: hidden; padding: 12px; }
+    .boon-cut .bc-rays { position: absolute; left: 50%; top: 45%; width: 220vmax; height: 220vmax; transform: translate(-50%, -50%); background: repeating-conic-gradient(from 0deg, rgba(255,210,110,0.20) 0deg 6deg, rgba(255,210,110,0) 6deg 18deg); animation: bc-spin 18s linear infinite; pointer-events: none; }
+    .boon-cut.foe .bc-rays { background: repeating-conic-gradient(from 0deg, rgba(230,90,60,0.20) 0deg 6deg, rgba(230,90,60,0) 6deg 18deg); }
+    .boon-cut .bc-card { position: relative; width: min(560px, 100%); max-height: 100%; overflow: auto; background: linear-gradient(#2b241b, #1c1813); border: 2px solid #d9b44a; border-radius: 10px; padding: 14px 18px; box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 40px rgba(255,200,90,0.55); animation: bc-pop 0.55s cubic-bezier(.2,1.5,.4,1); color: var(--ink); }
+    .boon-cut.foe .bc-card { border-color: #e0785a; box-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 0 40px rgba(230,100,70,0.55); }
+    .boon-cut .bc-top { font: 700 15px var(--mincho); color: #ffd774; letter-spacing: 0.5em; text-align: center; }
+    .boon-cut .bc-top small { letter-spacing: 0; margin-left: 8px; color: #b9ae98; }
+    .boon-cut .bc-name { font: 700 40px var(--mincho); text-align: center; color: #fff1c4; text-shadow: 0 0 14px rgba(255,200,80,0.9), 0 3px 0 #6b3d10; margin: 4px 0 8px; animation: bc-stamp 0.5s 0.15s cubic-bezier(.2,1.6,.4,1) both; }
+    .boon-cut.foe .bc-name { color: #ffd9c8; text-shadow: 0 0 14px rgba(240,110,70,0.9), 0 3px 0 #5a1d10; }
+    .boon-cut .bc-who { display: flex; gap: 10px; align-items: center; justify-content: center; margin-bottom: 6px; }
+    .boon-cut .bc-who img { width: 64px; height: 64px; object-fit: cover; border-radius: 50%; border: 2px solid #d9b44a; background: #f4efe2; }
+    .boon-cut .bc-who b { font: 700 20px var(--mincho); display: block; }
+    .boon-cut .bc-who span { font-size: 12.5px; color: #b9ae98; }
+    .boon-cut .bc-story { font-size: 13px; color: #d8cdb6; text-align: center; font-style: italic; margin-bottom: 8px; }
+    .boon-cut .bc-sec { font-size: 12px; color: #d9b44a; margin-top: 6px; border-bottom: 1px solid rgba(217,180,74,0.35); }
+    .boon-cut ul { margin: 4px 0 2px 1.2em; padding: 0; font-size: 13.5px; }
+    .boon-cut ul.bc-ok { list-style: none; margin-left: 0.2em; }
+    .boon-cut ul.bc-ok li::before { content: '✔ '; color: #9fd08a; }
+    .boon-cut .bc-result { margin-top: 8px; padding: 6px 10px; background: rgba(160,40,20,0.35); border-left: 3px solid #e0785a; font-weight: bold; }
+    .boon-cut .bc-foot { text-align: center; margin-top: 10px; }
+    @keyframes bc-fade { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes bc-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+    @keyframes bc-pop { 0% { opacity: 0; transform: scale(1.6) rotate(-2deg); } 60% { opacity: 1; transform: scale(0.97); } 100% { transform: scale(1); } }
+    @keyframes bc-stamp { 0% { opacity: 0; transform: scale(2.4); filter: blur(4px); } 100% { opacity: 1; transform: scale(1); filter: none; } }
+    @media (max-width: 600px) { .boon-cut .bc-name { font-size: 30px; } .boon-cut .bc-who img { width: 48px; height: 48px; } }
+    .skyboon { margin-left: 6px; padding: 0 6px; border-radius: 3px; font-size: 11.5px; font-weight: bold; color: #2a1c08; background: linear-gradient(#ffe39a, #d9a53a); box-shadow: 0 0 6px rgba(255,200,90,0.7); }
+    .skyboon.atk { background: linear-gradient(#ffc7b4, #d9764e); }
+    .tag.hero { background: linear-gradient(#ffe39a, #d9a53a); color: #2a1c08; font-weight: bold; cursor: help; }
     @keyframes splash { 0% { opacity: 0; transform: translate(-50%, -50%) scaleX(0.3); } 18% { opacity: 1; transform: translate(-50%, -50%) scaleX(1.04); } 30% { transform: translate(-50%, -50%) scaleX(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -52%); } }
     .compass { position: absolute; z-index: 5; left: 10px; top: 10px; width: 54px; height: 54px; border-radius: 50%; background: rgba(36,30,22,0.78); border: 1px solid #8a7347; box-shadow: 0 2px 6px rgba(0,0,0,0.5); cursor: help; }
 .compass .needle { position: absolute; inset: 0; display: block; transition: transform 0.3s; }

@@ -219,11 +219,14 @@ function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: nu
       v += w.leaderKill * worth * chance * (dmg >= t.hp ? 1 : 0.25 * d / t.hp);
     }
   } else if (roleOf(t) === 'support' || roleOf(t) === 'caster') v *= w.supportTarget;
+  // 発動中の天佑の持ち主（P102）：倒せば天佑が消えるので、狙う値打ちが高い
+  if (t.side !== u.side && st.boons?.some((b) => b.uid === t.id)) v *= AI.boonTarget;
   // 天守を押さえている攻め手を叩く（P88）：押さえられた巡が勝ちに近いほど重く。倒せば天守が空く
   const h = st.hold;
   if (h && u.side === 1 && t.side === 0 && t.pos === h.cell) {
     const urgent = clamp((h.count + 1) / h.need, 0, 1);
-    v += AI.castle.retakeHit * (1 + AI.castle.retakeUrgent * urgent) * chance * (dmg >= t.hp ? 2 : d / t.hp);
+    // 負けが迫るほど、少し削るだけの攻めも値打ちを下げない（体力の多い将が居座っても、待たずに叩く。P102）
+    v += AI.castle.retakeHit * (1 + AI.castle.retakeUrgent * urgent) * chance * (dmg >= t.hp ? 2 : Math.max(d / t.hp, 0.25 * urgent));
   }
   // 主君のそばにいる敵を優先して叩く
   if (leader && leader.alive && leader.id !== u.id && st.map.grid.distance(t.pos, leader.pos) <= 1) v += w.guardLeader * chance;

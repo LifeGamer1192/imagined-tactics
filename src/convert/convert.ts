@@ -12,6 +12,7 @@ import type { ClassDef, Passive, StatBlock, UnitDef, Variant } from '../data/typ
 import { armShares } from '../bridge/arms';
 import { applyStartLevels, fillLowerClasses } from '../rules/growth';
 import type { GFaction, GGeneral, GProvince, GRole, GTroop, GameStart, GrowthRank } from './model';
+import { assignHero, assignHeroes } from './heroes';
 
 type TraitRule = { str?: number; int?: number; agi?: number; command?: number; commandRange?: number; passive?: string; expPct?: number; healPct?: number; critPct?: number; loyalty?: number };
 type Weights = Record<string, number>;
@@ -536,7 +537,7 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
   // ---- 外交
   const pair = (k: string): [number, number] => k.split('-').map(Number) as [number, number];
   const bothAlive = ([a, b]: [number, number]) => aliveIds.has(a) && aliveIds.has(b);
-  return {
+  const gs: GameStart = {
     seed: w.seed, scenario: w.scenario?.id ?? null, variant, worldName: w.name,
     year, month: monthOf(tick), tick,
     factions, generals, provinces,
@@ -547,6 +548,9 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
       .filter((t) => t.until > tick && aliveIds.has(t.a) && aliveIds.has(t.b)),
     log, incomeScale,
   };
+  // 名将（P102）：天佑・特別技・特別軍略
+  assignHeroes(gs);
+  return gs;
 }
 
 /**
@@ -576,6 +580,7 @@ export function newcomer(gs: GameStart, rec: HPersonRec, faction: number, prov: 
   applyStartLevels(g);
   fillLowerClasses(g);
   gs.generals[id] = g;
+  assignHero(gs, g);
   return g;
 }
 

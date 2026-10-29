@@ -62,6 +62,14 @@ export interface BUnit {
   traitFx?: { stat: string; from?: number; to?: number; value: string; traits: string[]; /** 特性でないときの原因（「難しさ（鬼）」など） */ why?: string }[];
   /** 武将の性格（敵の思考で使う。兵は率いる武将の性格で動く） */
   persona?: Personality;
+  /** 名将の天佑（P102。武将の駒だけ。heroes.json の id） */
+  hero?: string;
+  /** 武将の縁（P102。天佑の条件「縁のある将が敵にいる」に使う） */
+  ties?: { with: string; kind: string }[];
+  /** 当主か（P102。天佑の条件「敵に当主がいる」に使う） */
+  isLord?: boolean;
+  /** 効いている天佑の掛け目（P102。両軍の天佑を合わせたもの。refreshBoons で付け直す） */
+  bmod?: { atkPct: number; defPct: number; move: number; hit: number; evade: number; from: string[] };
   statuses: BStatus[];
   /** この番、移動に使った移動力（再移動の残りの計算用） */
   moveSpent: number;
@@ -190,6 +198,10 @@ export interface BattleState {
   retreat?: Side;
   /** 戦闘の難しさ：自分と戦う相手の陣営（side）の、思考の賢さ（やさしい・ふつう・むずかしい）。数値は変えない */
   aiLevel?: { side: Side; level: 'easy' | 'normal' | 'hard' | 'veryHard' | 'oni' };
+  /** 発動した天佑（P102）：持ち主の駒・天佑・持ち主の陣営・満たした条件の文。持ち主が戦場にいるあいだ効く */
+  boons?: { uid: number; id: string; side: Side; met: string[] }[];
+  /** 天佑の札を見せたか（P102。画面で1回だけ見せる） */
+  boonShown?: boolean;
   /** 味方のおまかせの方針（P50）：陣営ごと。ある陣営は、武将の性格の代わりにこれで動く */
   autoPlan?: [AutoPlan | null, AutoPlan | null];
 }

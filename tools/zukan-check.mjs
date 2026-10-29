@@ -23,7 +23,7 @@ for (const [tag, opts] of [['pc', { viewport: { width: 1366, height: 800 } }], [
   await press('[data-zukan]');
   await page.waitForSelector('.zukan:not([hidden]) .zk-units');
   const units = await page.$$eval('.zukan .zk-units tr', (r) => r.length);
-  ok(`[${tag}] タブが8つ`, (await page.$$eval('[data-ztab]', (b) => b.length)) === 9);
+  ok(`[${tag}] タブが10（名将を足した。P102）`, (await page.$$eval('[data-ztab]', (b) => b.length)) === 10);
   ok(`[${tag}] 兵種の対応表：50種と見出し`, units >= 50 + 18, `${units}行`);
   ok(`[${tag}] 兵種の対応表に3つの版の名前（雑兵・徒卒・民兵）`, /雑兵[\s\S]*徒卒[\s\S]*民兵/.test(await page.textContent('.zukan .help-body')));
   ok(`[${tag}] 窓が横にはみ出さない`, await fits());

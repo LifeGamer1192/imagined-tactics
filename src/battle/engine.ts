@@ -8,6 +8,7 @@ import {
   needsReload, skillCost, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts, aimChance, blastCells, isEnemy,
 } from '../rules/combat';
 import { killExp } from '../rules/growth';
+import { boonsLost } from './boons';
 import { reach, unitAt } from '../rules/move';
 import {
   basicSkill, disabled, has, immune, moveOf, passive, removeStatus, skillOf, statusOf, terrainAt, isCavalry,
@@ -16,6 +17,8 @@ import type { Action, BUnit, BattleState, Side, StrikeDetail, TacticDetail } fro
 
 const other = (s: Side): Side => (s === 0 ? 1 : 0);
 function log(st: BattleState, key: string, vars: Record<string, string | number> = {}): void { st.log.push({ key, vars }); }
+/** 記録に足す（天佑など、ほかの所から） */
+export const logEntry = log;
 
 
 
@@ -86,6 +89,8 @@ function defeat(st: BattleState, victim: BUnit, killer: BUnit | null): void {
   log(st, 'defeat', killer && killer.alive ? { unit: victim.name, uid: victim.id, by: killer.id, exp } : { unit: victim.name, uid: victim.id });
   if (killer && killer.alive) killer.expGained += exp;
   if (killer && victim.kind === 'general' && killer.side !== victim.side) victim.killedBy = killer.generalId;
+  // 天佑の持ち主が倒れたら、その天佑は消える（P102）
+  if (victim.kind === 'general') boonsLost(st, [victim.id]);
   if (victim.kind === 'general') {
     // 率いていた兵は戦場を離れる。寝返り中・収容された敗残兵は失われる
     for (const t of st.units) {
@@ -124,6 +129,7 @@ export function canWithdraw(st: BattleState, u: BUnit): boolean {
 export function withdraw(st: BattleState, u: BUnit): void {
   const who = st.units.filter((x) => x.alive && (x.id === u.id || (x.leader === u.id && x.side === u.home && x.home === u.home)));
   for (const x of who) { x.alive = false; x.retreated = true; (st.withdrawn ??= []).push(x.id); }
+  boonsLost(st, [u.id]);
   log(st, 'withdraw', { unit: u.name, uid: u.id, n: who.length - 1 });
 }
 

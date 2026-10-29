@@ -6,6 +6,8 @@ import { AI, AXES, type Axis, type Personality } from '../ai/personality';
 import { D, L } from '../data/db';
 import type { Passive, SkillDef, StatusId, TacticDef, UnitDef, UnitKind } from '../data/types';
 import { AILMENTS, DISPELLABLE } from '../battle/engine';
+import { boonEffects, condText } from '../battle/boons';
+import { BOONS } from '../convert/heroes';
 import { FIELD, KIND_NAME } from '../rules/stats';
 import { S } from '../strategy/config';
 import { classMod } from '../rules/growth';
@@ -89,6 +91,23 @@ export function kindText(kind: UnitKind | undefined): string {
   const strong = Object.entries(K[kind] ?? {}).map(([k, v]) => `${name[k as UnitKind]}に強い（+${v}%）`);
   const weak = (Object.entries(K) as [UnitKind, Partial<Record<UnitKind, number>>][]).filter(([, m]) => m[kind]).map(([k, m]) => `${name[k]}に弱い（相手が+${m[kind]}%）`);
   return [`分類：${name[kind]}`, ...strong, ...weak].join('・');
+}
+
+/** 名将の説明（P102）：天佑（条件・効き目）・特別技・特別軍略。名将でなければ空 */
+export function heroTip(h: { boon?: string; skill?: string; tactic?: string } | undefined): string {
+  if (!h) return '';
+  const out: string[] = [];
+  const b = h.boon ? BOONS[h.boon] : undefined;
+  if (b) out.push(`【天佑「${L(b.name)}」】`, b.story, `発動の条件（みな満たすと、戦いの始めに発動）：${b.cond.map(condText).join('、かつ')}`, ...boonEffects(b), 'その将が戦場にいるあいだ効く（討たれるか退くと消える）');
+  if (h.skill && D.bySkill[h.skill]) out.push('', `【特別技】${skillTip(D.bySkill[h.skill])}`);
+  if (h.tactic && D.byTactic[h.tactic]) out.push('', `【特別軍略】${tacticTip(D.byTactic[h.tactic])}`);
+  return out.join('\n');
+}
+/** 名将の札の名前（★天佑の名前。天佑が無ければ特別技か特別軍略） */
+export function heroLabel(h: { boon?: string; skill?: string; tactic?: string } | undefined): string {
+  if (!h) return '';
+  if (h.boon && BOONS[h.boon]) return `★${L(BOONS[h.boon].name)}`;
+  return '★名将';
 }
 
 /** 特性の説明（人柄・能力への効き目・戦い方・深手の長さ） */

@@ -10,6 +10,7 @@ import statusesJson from '../../data/system/statuses.json';
 import combatJson from '../../data/system/combat.json';
 import termsJson from '../../data/system/terms.json';
 import westJson from '../../data/system/west.json';
+import heroesJson from '../../data/system/heroes.json';
 import type {
   ClassDef, CombatConfig, ExpData, Loc, SkillDef, StatusConsts, TacticDef, TerrainData, UnitDef, Variant,
 } from './types';
@@ -39,6 +40,16 @@ export const D = {
   items: (termsJson as { items: Record<string, Loc> }).items,
 };
 
+/**
+ * 名将の特別技・特別軍略（P102。heroes.json。hex-sim だけ）：技・軍略の一覧（D.skills・D.tactics）には入れず、
+ * id で引けるようにだけする（図鑑の技・軍略の表や、兵種の技には出ない。名将のタブに出る）
+ */
+const H = heroesJson as unknown as { skills: (SkillDef & { west?: string })[]; tactics: (TacticDef & { west?: string })[] };
+export const heroSkills = H.skills as SkillDef[];
+export const heroTactics = H.tactics as TacticDef[];
+for (const s of heroSkills) D.bySkill[s.id] = s;
+for (const t of heroTactics) D.byTactic[t.id] = t;
+
 let variant: Variant = 'jp';
 export function setVariant(v: Variant): void { variant = v; }
 export function getVariant(): Variant { return variant; }
@@ -57,6 +68,7 @@ const westNames = new Map<Loc, string>([
   ...Object.entries(W.skills ?? {}).filter(([id]) => D.bySkill[id]).map(([id, n]): [Loc, string] => [D.bySkill[id].name, n]),
   ...Object.entries(W.tactics ?? {}).filter(([id]) => D.byTactic[id]).map(([id, n]): [Loc, string] => [D.byTactic[id].name, n]),
   ...Object.entries(W.classes ?? {}).filter(([id]) => D.byClass[id]).map(([id, n]): [Loc, string] => [D.byClass[id].name, n]),
+  ...[...H.skills, ...H.tactics].filter((x) => x.west).map((x): [Loc, string] => [x.name, x.west!]),
 ]);
 /** 兵種の西洋の名前（対応表などで使う） */
 export function westName(unitId: string): string | undefined { return D.byUnit[unitId] ? westNames.get(D.byUnit[unitId].name) : undefined; }

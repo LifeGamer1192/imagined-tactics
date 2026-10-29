@@ -45,6 +45,9 @@ import { AFFINITY_NAME, kindName, STATUS_NAME, T, TRAIT_NAME } from './text';
 import { BattleLogView, loadLogLevel, LOG_LEVEL_NAME, saveLogLevel } from './battleLog';
 import { SEASON_NAME, seasonOf, skyEffects, skyLabel } from '../battle/weather';
 import { before, cues, notePath } from './battleFx';
+import { BOONS } from '../convert/heroes';
+import { boonEffects, condText } from '../battle/boons';
+import { faceFor } from '../art/faces';
 import { initSound, play, setVolume, volume, VOLUME_NAME } from './sound';
 import { BGM_LEVEL_NAME, bgm, bgmLevel, initBgm, jingle, setBgmLevel } from './bgm';
 
@@ -679,8 +682,71 @@ export class App {
     // 自分で動かす陣営があれば、始める前に配置を少し直せる（観戦のときは、すぐ始める）
     this.deploying = human.size > 0 && st.round === 1 && st.winner === null && !st.log.some((l) => l.key === 'act');
     this.refresh();
-    if (this.deploying) return;
-    this.startFighting();
+    const go = (): void => { if (!this.deploying) this.startFighting(); };
+    // 天佑が発動していれば、まず大きな札で見せてから（P102。見せ終わるまでは、だれも動かない）
+    if (st.boons?.length && !st.boonShown) { this.showBoons(go); return; }
+    go();
+  }
+
+  /**
+   * 天佑の札（P102）：発動した天佑を1つずつ、大きく見せる（持ち主の顔と名前・満たした条件・効き目・始めの一手の結果）。
+   * 見せ終わったら、始めの一手の演出（矢の雨など）を戦場に出してから then を呼ぶ
+   */
+  private showBoons(then: () => void): void {
+    const st = this.st!, frame = this.root.querySelector<HTMLElement>('.battle');
+    st.boonShown = true;
+    const list = [...(st.boons ?? [])];
+    if (!frame || !list.length) { then(); return; }
+    let timer = 0;
+    const show = (i: number): void => {
+      frame.querySelector('.boon-cut')?.remove();
+      clearTimeout(timer);
+      if (i >= list.length) { this.playBoonOpening(); then(); return; }
+      const b = list[i], d = BOONS[b.id], u = st.units[b.uid], g = this.gs?.generals[u.generalId];
+      const face = g && this.gs?.scenario ? faceFor(this.gs.scenario, g.recordName ?? g.name.ja) : null;
+      const hits = st.log.filter((e) => e.key === 'boonHit' && e.vars.uid === b.uid);
+      const dmg = hits.reduce((s2, e) => s2 + (typeof e.vars.dmg === 'number' ? e.vars.dmg : 0), 0);
+      const dazed = hits.filter((e) => e.vars.status && e.vars.ok === 1).length, healed = hits.reduce((s2, e) => s2 + (typeof e.vars.heal === 'number' ? e.vars.heal : 0), 0);
+      const result = d.opening ? (d.opening.kind === 'damage' ? `敵の駒${hits.length}体に、合わせて${dmg}のダメージ` : d.opening.kind === 'daze' ? `敵の駒${hits.length}体のうち${dazed}体が怯んだ` : `味方の駒${hits.length}体が、合わせて${healed}回復`) : '';
+      const mine = this.human.has(b.side) ? '味方' : this.human.size ? '敵' : '';
+      const el = document.createElement('div');
+      el.className = `boon-cut ${mine === '敵' ? 'foe' : ''}`;
+      el.innerHTML = `<div class="bc-rays"></div><div class="bc-card">
+        <div class="bc-top">天佑発動${list.length > 1 ? `<small>${i + 1}／${list.length}</small>` : ''}</div>
+        <div class="bc-name">${esc(L(d.name))}</div>
+        <div class="bc-who">${face ? `<img src="${import.meta.env.BASE_URL ?? './'}${face}" alt="">` : ''}<div><b>${esc(u.name)}</b><span>${mine ? `${mine}・` : ''}${esc(st.sideNames[b.side])}（${b.side === 0 ? '攻め手' : '守り手'}）</span></div></div>
+        <div class="bc-story">${esc(d.story)}</div>
+        <div class="bc-sec">満たした条件</div><ul class="bc-ok">${b.met.map((m) => `<li>${esc(m)}</li>`).join('')}</ul>
+        <div class="bc-sec">効き目（${esc(u.name)}が戦場にいるあいだ。討たれるか退くと消える）</div><ul>${boonEffects(d).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+        ${result ? `<div class="bc-result">始めの一手：${esc(result)}</div>` : ''}
+        <div class="bc-foot"><button class="primary" data-a="next">${i + 1 < list.length ? '次へ' : '戦いへ'}</button></div>
+      </div>`;
+      frame.appendChild(el);
+      play('crit'); window.setTimeout(() => play('buff'), 280);
+      el.querySelector<HTMLButtonElement>('[data-a="next"]')!.onclick = () => show(i + 1);
+      // 見ているだけ（観戦）のときは、少し待って先へ
+      if (!this.human.size) timer = window.setTimeout(() => show(i + 1), 6000);
+    };
+    show(0);
+  }
+
+  /** 天佑の始めの一手を、戦場に演出する（天佑の記録を、当たる前の体力から再生する） */
+  private playBoonOpening(): void {
+    const st = this.st!, view = this.view;
+    const first = st.log.findIndex((e) => e.key === 'boon');
+    if (!view || first < 0) return;
+    const b = before(st);
+    b.logLen = first;
+    const seen = new Set<number>();
+    for (const e of st.log) {
+      if (e.key !== 'boonHit' || typeof e.vars.hp0 !== 'number' || typeof e.vars.tid !== 'number' || seen.has(e.vars.tid)) continue;
+      seen.add(e.vars.tid);
+      if (b.units[e.vars.tid]) b.units[e.vars.tid].hp = e.vars.hp0;
+    }
+    const c = cues(st, b, 1, performance.now());
+    view.play(c.fx);
+    this.fxEnd = Math.max(this.fxEnd, performance.now() + c.dur);
+    for (const x of c.sounds) play(x.id, x.at);
   }
 
   /** 配置を終えて戦いを始める：開戦の帯を出し、おまかせの陣営の番なら動かす */
@@ -1144,6 +1210,18 @@ export class App {
     }
     const sm = supplyMultOf(st, u);
     if (sm !== 1) statuses.push(`<span class="st bad">▼飛び地（攻撃・防御${Math.round((sm - 1) * 100)}%）</span>`);
+    // 天佑の効き目（P102）：両軍の天佑を合わせたもの
+    const bm = u.bmod;
+    if (bm) {
+      const parts = [bm.atkPct ? `攻撃${bm.atkPct > 0 ? '+' : ''}${bm.atkPct}%` : '', bm.defPct ? `防御${bm.defPct > 0 ? '+' : ''}${bm.defPct}%` : '', bm.move ? `移動${bm.move > 0 ? '+' : ''}${bm.move}` : '', bm.hit ? `命中${bm.hit > 0 ? '+' : ''}${bm.hit}` : '', bm.evade ? `回避${bm.evade > 0 ? '+' : ''}${bm.evade}` : ''].filter(Boolean);
+      const good = bm.atkPct + bm.defPct + bm.move * 10 + bm.hit + bm.evade >= 0;
+      statuses.push(`<span class="st ${good ? 'good' : 'bad'}" data-tip="${esc(`天佑：${bm.from.join('、')}`)}">${good ? '▲' : '▼'}天佑（${parts.join('・')}）</span>`);
+    }
+    // 名将：持っている天佑（P102）
+    if (u.hero && BOONS[u.hero]) {
+      const d = BOONS[u.hero], on = st.boons?.some((b) => b.uid === u.id);
+      statuses.push(`<span class="st ${on ? 'good' : ''}" data-tip="${esc(`天佑「${L(d.name)}」${on ? '（発動中）' : '（発動していない）'}\n${d.story}\n条件：${d.cond.map(condText).join('、かつ')}\n${boonEffects(d).join('\n')}`)}">★天佑「${esc(L(d.name))}」${on ? '発動中' : '未発動'}</span>`);
+    }
     const g = u.kind === 'general' ? this.gs!.generals[u.generalId] : null;
     const leaderId = u.kind === 'general' ? u.id : u.leader;
     const leader = st.units[leaderId];
@@ -1254,10 +1332,13 @@ export class App {
     // 天守の取り合い
     const hd = st.hold;
     const keep = hd ? [`${seatName(st.map.terrain[hd.cell])}：攻め手が${hd.need}巡押さえ続けるか、時間切れのとき押さえていれば攻め手の勝ち（いま${hd.count}／${hd.need}${holder(st) ? `・${esc(holder(st)!.name)}が押さえている` : ''}）`] : [];
-    const lines = [...fx, ...cut, ...keep];
+    // 天佑（P102）：持ち主が戦場にいて効いているもの
+    const boons = (st.boons ?? []).filter((b) => st.units[b.uid]?.alive);
+    const boonLines = boons.map((b) => `天佑「${esc(L(BOONS[b.id].name))}」（${esc(st.units[b.uid].name)}・${esc(st.sideNames[b.side])}）：${esc(boonEffects(BOONS[b.id]).filter((x) => !x.startsWith('始めの一手')).join('、'))}`);
+    const lines = [...fx, ...cut, ...keep, ...boonLines];
     // ふだんは1行（季節・天気・天守の数）。効き目の説明は押すと開く
     const cls = `sky ${lit ? 'flash' : ''} ${sky.night ? 'night' : ''}`, style = url ? `--sky-bg:url('${url}')` : '';
-    const head = `${when}天気：<b>${label}</b>${hd ? `<span class="skyhold">${seatName(st.map.terrain[hd.cell])} ${hd.count}／${hd.need}</span>` : ''}${cut.length ? '<span class="skycut">飛び地</span>' : ''}`;
+    const head = `${when}天気：<b>${label}</b>${hd ? `<span class="skyhold">${seatName(st.map.terrain[hd.cell])} ${hd.count}／${hd.need}</span>` : ''}${cut.length ? '<span class="skycut">飛び地</span>' : ''}${boons.map((b) => `<span class="skyboon ${b.side === 0 ? 'atk' : 'def'}">天佑 ${esc(L(BOONS[b.id].name))}</span>`).join('')}`;
     if (!lines.length) return `<div class="${cls}" id="sky" style="${style}">${head}</div>`;
     return `<details class="${cls}" id="sky" style="${style}" data-fold="sky" ${this.fold('sky')}><summary>${head}</summary><small>${lines.join('<br>')}</small></details>`;
   }

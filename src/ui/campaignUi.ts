@@ -39,7 +39,7 @@ import { play } from './sound';
 import { confirmBox } from './confirm';
 import { captiveOf, executeCaptive, myCaptives, myCaptured, ransomCaptive, ransomCost, recruitCaptive, recruitChance, releaseCaptive } from '../strategy/captive';
 import { artMp, artName, forgetArt, learnerName, learnersOf, lessonLearner, lessonMonths, maxMpOf, slotsLeft, slotsOfLearner, startLesson, teachableArts, teacherProblem, teachProblem } from '../strategy/teach';
-import { classTip, commandTip, personalityTip, strengthRank, strengthTip, traitTip, unitTip } from './describe';
+import { classTip, commandTip, heroLabel, heroTip, personalityTip, strengthRank, strengthTip, traitTip, unitTip } from './describe';
 import { initTips } from './tip';
 import { personalityLabel, personalityOf, planLabel, PLAN_LABEL, PLAN_TIP } from '../ai/personality';
 import { bindPlan, getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
@@ -1142,7 +1142,7 @@ export class CampaignScreen {
     }
     const pers = personalityOf(g.traits, g.ab), plabel = personalityLabel(pers);
     const fig = this.figure(g);
-    return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}${g.imarpg ? ` <span class="tag ima" title="ima-rpg から来た人">${{ hero: '主人公', companion: '仲間', rival: 'ライバル' }[g.imarpg]}</span>` : ''}
+    return `<div class="gen" ${own ? `data-gen="${g.id}"` : ''}>${check}${fig}<span><b class="wrap gname" data-profile="${g.id}" title="押すと、能力と列伝を読めます">${esc(g.name.ja)}</b>${own ? `<button class="pen" data-rename="${g.id}" title="名前を変える">✎</button>` : ''}${g.isLord ? ' <span class="tag">当主</span>' : ''}${g.imarpg ? ` <span class="tag ima" title="ima-rpg から来た人">${{ hero: '主人公', companion: '仲間', rival: 'ライバル' }[g.imarpg]}</span>` : ''}${g.hero ? ` <span class="tag hero" data-tip="${esc(heroTip(g.hero))}">${esc(heroLabel(g.hero))}</span>` : ''}
       <span class="trait" data-tip="${esc(classTip(g.classId))}">${L(cls.name)}</span>${own ? generalPromotions(g).filter((p) => p.ok).map((p) => `<button class="upbtn" data-promo-ask="${g.id}" data-to="${p.to.id}" data-tip="${esc(`${L(cls.name)} → ${L(p.to.name)} に昇進すると：\n${changeText(generalChange(g, p.to.id))}\n\n押すと、確かめる窓が出ます（昇進したら戻れません）`)}">▲${esc(L(p.to.name))}</button>`).join('') : ''} Lv${g.level}<span class="dim"><span class="trait" data-tip="${esc(strengthTip(strengthOf(g), this.allStrength()))}">強さ${Math.round(strengthOf(g))}（${strengthRank(strengthOf(g), this.allStrength()).word}）</span>${moved ? ' ・行動済' : ''}${own && (c.trainedThisMonth ?? []).includes(g.id) ? ' ・今月は訓練' : own && c.training?.[g.id] === 'always' ? ' ・ずっと訓練' : ''}${own && c.offices?.chancellor === g.id ? ' ・相国' : ''}${own && isResting(c, g.id) ? ' ・休養中（退却。守りには出られる）' : ''}${own && (c.scoutMissions ?? []).some((m) => m.gid === g.id) ? ' ・偵察中' : ''}${this.lessonText(g)}
       ${g.traits.length ? ` ・${g.traits.map((t) => `<span class="trait" data-tip="${esc(traitTip(t))}">${TRAIT_NAME[t] ?? t}</span>`).join('・')}` : ''}
       ・<span class="trait" data-tip="${esc(personalityTip(pers, plabel))}">性格：${plabel}</span></span><br>

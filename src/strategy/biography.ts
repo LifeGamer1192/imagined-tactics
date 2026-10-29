@@ -1,6 +1,8 @@
 // 将の列伝：hist-sim の人物の記録（生まれ・家・親子・在位・役職・縁）、すでに起きた史実の出来事、シナリオの解説記事、
 // この国モードの記録から、その人物にかかわるものを集める。これから起きる史実の出来事は出さない（先が分かってしまうため）。
 
+import { BOONS } from '../convert/heroes';
+import { D, L } from '../data/db';
 import { yearOf, type HWorld, type NotableRole, type TieKind } from '../bridge/histsim';
 import type { GGeneral } from '../convert/model';
 import type { Campaign } from './campaign';
@@ -50,6 +52,8 @@ export function biography(c: Campaign, g: GGeneral): Biography {
   else if (g.role === 'heir') facts.push(`${gs.factions[g.faction]?.name.ja ?? ''}の跡継ぎ。`);
   else if (g.faction) facts.push(`${gs.factions[g.faction]?.name.ja ?? ''}に仕える。`);
   else facts.push('どこにも仕えていない浪人。');
+  // 名将（P102）
+  if (g.hero?.boon && BOONS[g.hero.boon]) facts.push(`名将：天佑「${L(BOONS[g.hero.boon].name)}」を持つ（${BOONS[g.hero.boon].story}）${g.hero.skill && D.bySkill[g.hero.skill] ? `特別技「${L(D.bySkill[g.hero.skill].name)}」。` : ''}${g.hero.tactic && D.byTactic[g.hero.tactic] ? `特別軍略「${L(D.byTactic[g.hero.tactic].name)}」。` : ''}`);
   if (rec?.role) facts.push(`${ROLE_NAME[rec.role]}として名を知られる（名声${rec.fame}）。`);
   if (g.office?.ja) facts.push(`役職：${g.office.ja}。`);
 

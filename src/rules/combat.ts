@@ -52,7 +52,8 @@ export function hitParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit): 
   let r = C.hitBase + p.agiA - p.agiT + skill.hit + p.terA - p.terT;
   if (mark === 'tri') { p.tri = C.triPenalty; r -= C.triPenalty; }
   // 山岳の兵が平地に立つと、回避が下がる（0.13.0）
-  p.passHit = passivePct(a, 'hit'); p.passEvade = passivePct(t, 'evade') - lowlandEvade(st, t);
+  // 天佑の命中・回避（P102）
+  p.passHit = passivePct(a, 'hit') + (a.bmod?.hit ?? 0); p.passEvade = passivePct(t, 'evade') - lowlandEvade(st, t) + (t.bmod?.evade ?? 0);
   r += p.passHit - p.passEvade;
   const sit = situationHit(st, a, skill, t);
   r += sit;
@@ -101,6 +102,9 @@ export function unitFx(st: BattleState, a: BUnit, t: BUnit, isCounter: boolean):
   const rally = Math.max(0, ...friends(a, () => true).flatMap((x) => passive(x, 'rally').map((r) => r.pct)));
   if (rally) out.push(['鼓舞', 1 + rally / 100]);
   for (const f of passive(t, 'formation')) if (friends(t, (x) => unitKind(x) === 'pike').length) out.push(['隊列', 1 / (1 + f.pct / 100)]);
+  // 天佑（P102）：攻める側の攻撃、受ける側の防御
+  if (a.bmod?.atkPct) out.push([`天佑の攻撃（${a.bmod.from.join('・')}）`, Math.max(0.1, 1 + a.bmod.atkPct / 100)]);
+  if (t.bmod?.defPct) out.push([`天佑の防御（${t.bmod.from.join('・')}）`, 1 / Math.max(0.1, 1 + t.bmod.defPct / 100)]);
   return out;
 }
 

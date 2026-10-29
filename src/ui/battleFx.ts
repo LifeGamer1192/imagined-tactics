@@ -266,6 +266,36 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
         lastImpact = end; gap(end);
         break;
       }
+      case 'boon': {
+        // 天佑の発動（P102）：持ち主のまわりに金の輪と光、名前の札
+        const p = posOf(uid);
+        if (p < 0) break;
+        const [x, y] = xy(p);
+        push({ kind: 'ring', x, y, r: HEX * 3.2, color: [200, 150, 40], t0: at(t), dur: T.ring * 1.6 * scale });
+        push({ kind: 'flash', cells: [p, ...g.neighbors(p)], color: OCHRE, t0: at(t), dur: 600 * scale });
+        chip(p, `天佑：${String(e.vars.name)}`, OCHRE, t);
+        sound('buff', t);
+        lastImpact = t + 300; t += 420;
+        break;
+      }
+      case 'boonHit': {
+        // 始めの一手：空から矢・石・弾・火が降る（声なら輪）。少しずつずらして当てる
+        if (tid < 0) break;
+        const cell = posOf(tid), [tx, ty] = xy(cell), style = String(e.vars.fx);
+        const when = t + 260 + (seed % 5) * 40;
+        if (style === 'shout') push({ kind: 'ring', x: tx, y: ty, r: HEX * 0.9, color: [24, 22, 20], t0: at(t), dur: T.ring * 0.6 * scale });
+        else push({ kind: 'proj', from: [tx - HEX * 0.6, ty - HEX * 2.4], to: [tx, ty], style: (['arrow', 'stone', 'bullet', 'fire'].includes(style) ? style : 'arrow') as Extract<Fx, { kind: 'proj' }>['style'], seed: ++seed, t0: at(t), dur: 260 * scale });
+        if (e.vars.status) { if (num(e.vars.ok) === 1) chip(cell, '怯み', PURPLE, when); }
+        else if (e.vars.heal !== undefined) { hurt(tid, -num(e.vars.heal), when); note(cell, `+${num(e.vars.heal)}`, VERDIGRIS, false, when); }
+        else { hurt(tid, num(e.vars.dmg), when); push({ kind: 'shake', unit: tid, amp: 5, t0: at(when), dur: T.shake * scale }); note(cell, String(num(e.vars.dmg)), VERMILION, false, when, '天佑'); }
+        lastImpact = Math.max(lastImpact, when);
+        break;
+      }
+      case 'boonEnd': {
+        const p = posOf(uid);
+        if (p >= 0) chip(p, `天佑「${String(e.vars.name)}」が消えた`, GREY, lastImpact + 120);
+        break;
+      }
       case 'bombard': {
         // 狙って石を落とす（0.12.0）：石が弧を描いて落ちたマスへ。落ちたマスと隣を光らせ、土煙。ずれたら狙ったマスに「ずれた」
         const a = posOf(uid), land = num(e.vars.land), aim = num(e.vars.cell);

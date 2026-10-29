@@ -3,7 +3,9 @@
 
 import { artUrl } from '../art/art';
 import { busy } from './busy';
-import { D, westName, westOf } from '../data/db';
+import { D, heroSkills, heroTactics, westName, westOf } from '../data/db';
+import { BOONS, HEROES } from '../convert/heroes';
+import { boonEffects, condText } from '../battle/boons';
 import type { ClassDef, Loc, SkillDef, StatusId, TacticDef, UnitDef } from '../data/types';
 import { AILMENTS, DISPELLABLE } from '../battle/engine';
 import { BAD_STATUS, GOOD_STATUS } from '../render/battleView';
@@ -13,8 +15,8 @@ import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticEffects, tacticTip, tr
 import { fieldTable, terrainTable } from './help';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
 
-type Tab = 'units' | 'classes' | 'tree' | 'skills' | 'tactics' | 'statuses' | 'terrain' | 'traits' | 'levels';
-const TABS: [Tab, string][] = [['units', '兵種'], ['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['statuses', '状態'], ['terrain', '地形・天気'], ['traits', '特性'], ['levels', 'レベル']];
+type Tab = 'units' | 'classes' | 'tree' | 'skills' | 'tactics' | 'statuses' | 'terrain' | 'traits' | 'heroes' | 'levels';
+const TABS: [Tab, string][] = [['units', '兵種'], ['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['statuses', '状態'], ['terrain', '地形・天気'], ['traits', '特性'], ['heroes', '名将'], ['levels', 'レベル']];
 type Ver = 'jp' | 'cn' | 'west';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
@@ -271,6 +273,24 @@ function traitsPage(): string {
       <td class="zk-left">${esc(part(ls, '領の仕事：')) || '—'}</td><td class="zk-left">${esc(part(ls, '戦い方：').replace(/（敵の武将.*$/, '')) || '—'}</td></tr>`; }).join('')}</table></div>`;
 }
 
+// ------------------------------------------------------------ 名将（P102）
+
+const SCENARIO_NAME: Record<string, string> = { sengoku: '日本の戦国', sangoku: '三国志', shunju: '春秋', rome: 'ローマ' };
+function heroesPage(): string {
+  const P = HEROES.people, A = HEROES.auto;
+  const ids = Object.keys(BOONS).filter((id) => hit(BOONS[id].name.jp, BOONS[id].name.cn, BOONS[id].story, ...P.filter((p) => p.boon === id).map((p) => p.name)));
+  const holders = (id: string): string => P.filter((p) => p.boon === id).map((p) => `${esc(p.name)}<span class="dim small">（${esc(SCENARIO_NAME[p.scenario] ?? p.scenario)}）</span>`).join('、');
+  const auto = (id: string): string => [...A.byTie.filter(([, b]) => b === id).map(([k]) => `縁「${k === 'rival' ? '宿敵' : k === 'avenge' ? '仇' : k}」`), ...A.byTrait.filter(([, b]) => b === id).map(([t]) => `特性「${TRAIT_NAME[t] ?? t}」`), ...(A.default === id ? ['ほかの名将'] : [])].join('・');
+  const arts = [...heroSkills.map((x) => ({ x, kind: '技', tip: skillTip(x) })), ...heroTactics.map((x) => ({ x, kind: '軍略', tip: tacticTip(x) }))];
+  const who = (id: string): string => P.filter((p) => p.skill === id || p.tactic === id).map((p) => `${esc(p.name)}<span class="dim small">（${esc(SCENARIO_NAME[p.scenario] ?? p.scenario)}）</span>`).join('、');
+  return `<p class="small">特定の将だけが、兵種・役職のものに加えて持つ力。<b>天佑</b>は、戦いの始めに条件をみな満たすと発動し、その将が戦場にいるあいだ両軍に効く（討たれるか退くと消える）。始めの一手は、必中の全体攻撃（体力は1残す）など。<b>特別技・特別軍略</b>は、その将だけが使える。</p>
+    <p class="small">名簿の将のほか、名声が全体の上位${Math.round(A.topPct * 100)}%（かつ名声${A.minFame}以上）の将は、縁や特性で天佑を持つ（特別技・特別軍略は名簿の将だけ）。</p>
+    ${ids.length ? `<h3>天佑</h3><div class="scroll"><table><tr><th>名前</th><th>発動の条件（みな満たす）</th><th>効き目</th><th>持ち主（名簿）</th><th>自動で持つ将</th></tr>
+    ${ids.map((id) => { const b = BOONS[id]; return `<tr><td class="zk-left"><b>${esc(nm(b.name))}</b><br><span class="dim small">${esc(b.story)}</span></td><td class="zk-left">${b.cond.map((c) => esc(condText(c))).join('<br>')}</td><td class="zk-left zk-fx">${boonEffects(b).map(esc).join('<br>')}</td><td class="zk-left">${holders(id) || '—'}</td><td class="zk-left">${auto(id) || '—'}</td></tr>`; }).join('')}</table></div>` : '<p>当てはまる天佑がありません。</p>'}
+    <h3>特別技・特別軍略</h3><div class="scroll"><table><tr><th>名前</th><th>種類</th><th>持ち主</th><th>中身</th></tr>
+    ${arts.filter(({ x }) => hit(x.name.jp, x.name.cn)).map(({ x, kind, tip }) => `<tr><td class="zk-left" data-tip="${esc(tip)}"><b>${esc(nm(x.name))}</b></td><td>${kind}</td><td class="zk-left">${who(x.id) || '—'}</td><td class="zk-left small">${esc(tip.split('\n').slice(1).join('・'))}</td></tr>`).join('')}</table></div>`;
+}
+
 // ------------------------------------------------------------ レベル表
 
 function levelsPage(): string {
@@ -293,7 +313,7 @@ function levelsPage(): string {
     <div class="scroll"><table class="zk-levels"><tr><th>Lv</th><th>倍率</th><th data-tip="${esc(classTip(c.id))}">${esc(nm(c.name))}：次まで</th><th>累計</th><th data-tip="${esc(unitTip(u.id))}">${esc(nm(u.name))}：次まで</th><th>累計</th></tr>${rows.join('')}</table></div>`;
 }
 
-const PAGES: Record<Tab, () => string> = { units: unitsPage, classes: classesPage, tree: treePage, skills: skillsPage, tactics: tacticsPage, statuses: statusesPage, terrain: terrainPage, traits: traitsPage, levels: levelsPage };
+const PAGES: Record<Tab, () => string> = { units: unitsPage, classes: classesPage, tree: treePage, skills: skillsPage, tactics: tacticsPage, statuses: statusesPage, terrain: terrainPage, traits: traitsPage, heroes: heroesPage, levels: levelsPage };
 
 // ------------------------------------------------------------ 表示
 

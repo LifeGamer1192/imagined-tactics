@@ -211,6 +211,18 @@ function plain(st: BattleState, e: BattleLogEntry, detail: boolean): string {
       const line = `${who(st, n(v.tid))}は毒で <b class="dmg">${v.dmg}</b>${tail}`;
       return detail && hp >= 0 ? `${line}${fm(`毒 ${v.dmg} ＝ ${term('hp')}の上限${v.max} × ${v.pct}%`)}` : line;
     }
+    // 天佑（P102）
+    case 'boon': {
+      const b = st.boons?.find((x) => x.uid === n(v.uid) && x.id === v.boon);
+      const line = `<b class="crit">天佑発動</b>：${who(st, n(v.uid))}の「${esc(String(v.name))}」`;
+      return b && detail ? `${line}${fm(`条件：${b.met.map(esc).join('・')}`)}` : line;
+    }
+    case 'boonHit': {
+      if (v.status) return n(v.ok) ? `→ ${who(st, n(v.tid))}は怯んだ` : '';
+      if (v.heal !== undefined) return `→ ${who(st, n(v.tid))}が <b class="heal">+${v.heal}</b> 回復`;
+      return `→ ${who(st, n(v.tid))}に <b class="dmg">${v.dmg}</b>（${term('hp')} ${v.hp0}→${v.hp1}）`;
+    }
+    case 'boonEnd': return `${who(st, n(v.uid))}の天佑「${esc(String(v.name))}」が消えた`;
     // 狙って石を落とす（0.12.0）
     case 'bombard': {
       const ok = n(v.ok) === 1;

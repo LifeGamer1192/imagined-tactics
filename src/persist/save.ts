@@ -5,6 +5,7 @@
 import type { HWorld } from '../bridge/histsim';
 import type { GameStart, GGeneral, GTroop } from '../convert/model';
 import { D } from '../data/db';
+import { assignHeroes } from '../convert/heroes';
 import { RNG } from '../core/rng';
 import type { Campaign, CampaignLog } from '../strategy/campaign';
 import { fillLowerClasses } from '../rules/growth';
@@ -126,6 +127,8 @@ export function restore(s: HexSave): Campaign {
   // 偵察度の無い古いセーブは、隣の領から始める
   if (!c.scout) initScout(c);
   pruneSkills(c);
+  // 名将（P102）：まだ割り当てていない古いセーブにも、読み込みのときに付ける
+  assignHeroes(c.gs);
   return c;
 }
 

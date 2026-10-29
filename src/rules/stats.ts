@@ -115,7 +115,7 @@ export function intellect(u: BUnit): number {
 }
 
 export function moveOf(u: BUnit): number {
-  return u.move + (has(u, 'moveUp') ? D.status.moveUp.move : 0);
+  return Math.max(1, u.move + (has(u, 'moveUp') ? D.status.moveUp.move : 0) + (u.bmod?.move ?? 0));
 }
 
 /** 軍略への耐性（0〜1。負なら受けるダメージが増える） */

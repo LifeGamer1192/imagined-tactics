@@ -27,6 +27,8 @@ export interface AiConfig {
   plan: { generalTarget: number; leaderKill: number; weakTarget: number; weakKill: number; otherWeak: number; nearAim: number; cunningTactics: number; directTactics: number };
   /** keep・ring・retake・retakeUrgent・retakeHit は守り手の天守の守り（P88） */
   castle: { hold: number; approach: number; guard: number; guardRange: number; breach: number; breachKill: number; breachClosed: number; keep: number; ring: number; retake: number; retakeUrgent: number; retakeHit: number; /** 天守の上の攻め手を叩くとき、勝ちが迫るほど反撃を気にしない割合（0.11.0） */ retakeCounterCut: number };
+  /** 発動中の天佑の持ち主を狙う倍率（P102。倒せば天佑が消える） */
+  boonTarget: number;
 }
 export type AiLevel = 'easy' | 'normal' | 'hard' | 'veryHard' | 'oni';
 /**

@@ -12,6 +12,7 @@ import { applyTraitMods, traitMods, withoutOldTraitPassives } from '../rules/tra
 import { BM, type BattleMap } from './map';
 import type { BUnit, BattleState, Side } from './types';
 import { skyFor, type Sky } from './weather';
+import { activateBoons } from './boons';
 
 export const MAX_GENERALS = 3;
 /** 戦闘の長さの上限（巡）。過ぎたら守り手の勝ち */
@@ -40,9 +41,11 @@ export function generalUnit(g: GGeneral, id: number, side: Side): BUnit {
     // 兵から取り立てた武将（P59）：もとの兵種の得意地形のまま。技は、引き継いだ技を通常攻撃の前に置く（弓の兵は弓で反撃する）
     move: c.move, affinity: g.unit && D.byUnit[g.unit] ? D.byUnit[g.unit].affinity : c.affinity, commandRange: g.commandRange,
     // 特性の特技・回復・会心は、戦場で特性から付ける（P56。前の版で変換のときに付けたものは外す）
-    passives: withoutOldTraitPassives(g.passives, g.traits), skills: known([...new Set([...(g.skills ?? []), ...taughtOf(g.taught, 'skill'), `atk:${c.id}`])]), tactics: [...new Set([...c.tactics, ...g.learned, ...taughtOf(g.taught, 'tactic')])],
+    passives: withoutOldTraitPassives(g.passives, g.traits), skills: known([...new Set([...(g.hero?.skill ? [g.hero.skill] : []), ...(g.skills ?? []), ...taughtOf(g.taught, 'skill'), `atk:${c.id}`])]), tactics: [...new Set([...c.tactics, ...g.learned, ...taughtOf(g.taught, 'tactic'), ...(g.hero?.tactic && D.byTactic[g.hero.tactic] ? [g.hero.tactic] : [])])],
     ...taughtFields(g.taught),
     critPct: 0, healPct: 0, persona: personalityOf(g.traits, g.ab),
+    // 名将（P102）：天佑と、天佑の条件に使う縁・当主か
+    ...(g.hero?.boon ? { hero: g.hero.boon } : {}), ties: (g.ties ?? []).map((t) => ({ with: t.with, kind: t.kind })), isLord: g.isLord,
   };
 }
 
@@ -138,6 +141,8 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
     });
   }
   guardKeep(st);
+  // 天佑（P102）：条件を満たした名将の天佑が発動する
+  activateBoons(st);
   return st;
 }
 

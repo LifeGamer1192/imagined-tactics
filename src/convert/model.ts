@@ -68,6 +68,8 @@ export interface GGeneral {
   promoSeen?: string[];
   /** 捕虜のときに解き放ってくれた家（恩。のちにその家からの登用の見込みが上がる。P72） */
   debts?: number[];
+  /** 名将（P102）：天佑・特別技・特別軍略（heroes.json の id）。持たない将は無し */
+  hero?: { boon?: string; skill?: string; tactic?: string };
   /** 今の能力値（役職の補正を足す前） */
   stats: StatBlock;
   command: number;
@@ -151,4 +153,6 @@ export interface GameStart {
   log: string[];
   /** 領の収入を世界ごとにそろえた倍率（P96。古いセーブには無い＝1）。戦場の道や田の数は、そろえる前の収入で決める */
   incomeScale?: number;
+  /** 名将を割り当てた版（P102。無ければまだ。読み込みのときに割り当てる） */
+  heroes?: number;
 }
