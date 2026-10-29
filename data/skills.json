@@ -45,12 +45,7 @@
    "type": "single"
   },
   "targets": "enemy",
-  "effects": [
-   {
-    "type": "lifesteal",
-    "rate": 0.21
-   }
-  ]
+  "effects": []
  },
  {
   "id": "k003",
