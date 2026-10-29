@@ -73,9 +73,9 @@ function expire(st: BattleState, u: BUnit, id: StatusId): void {
 }
 
 /** 立て直し（状態異常の回復）で消える状態 */
-const AILMENTS: StatusId[] = ['poison', 'daze', 'silence', 'defect', 'stun', 'confuse'];
+export const AILMENTS: StatusId[] = ['poison', 'daze', 'silence', 'defect', 'stun', 'confuse'];
 /** 看破で消える状態（軍略による補正） */
-const DISPELLABLE: StatusId[] = ['weaken', 'atkNext', 'moveUp', 'resistUp', 'defUp', 'atkUp', 'agiUp', 'atkDown', 'intDown', 'grounded', 'mounted', 'regen', 'ward', 'sureNext', 'extraAct'];
+export const DISPELLABLE: StatusId[] = ['weaken', 'atkNext', 'moveUp', 'resistUp', 'defUp', 'atkUp', 'agiUp', 'atkDown', 'intDown', 'grounded', 'mounted', 'regen', 'ward', 'sureNext', 'extraAct'];
 
 // ---------------------------------------------------------------- 倒れる・撤退
 
@@ -147,7 +147,7 @@ function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: bo
   const d: StrikeDetail = { type: 'strike', counter: isCounter, hit: hp, roll, landed: roll < hit, tries: [] };
   st.log.push({ key: 'strike', vars: { uid: a.id, tid: t.id, sk: skill.id }, d });
   // uid・tid は画面の演出用（だれがだれに。名前は重なることがある）
-  if (roll >= hit) { log(st, 'miss', { unit: a.name, skill: skill.name.jp, target: t.name, uid: a.id, tid: t.id }); return; }
+  if (roll >= hit) { log(st, 'miss', { unit: a.name, skill: skill.name.jp, sk: skill.id, target: t.name, uid: a.id, tid: t.id }); return; }
   const parts = damageParts(st, a, skill, t, isCounter);
   let dmg = parts.base;
   if (dmg > 0) {
@@ -168,7 +168,7 @@ function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: bo
     const raw = dmg;
     dmg = Math.max(1, Math.round(dmg));
     d.dmg = { parts, atk, def, rnd, critPct, critRoll, crit, critMult: D.combat.critMult, critBonus, shield, raw, final: dmg };
-    log(st, crit ? 'hit.crit' : 'hit', { unit: a.name, skill: skill.name.jp, target: t.name, dmg, uid: a.id, tid: t.id });
+    log(st, crit ? 'hit.crit' : 'hit', { unit: a.name, skill: skill.name.jp, sk: skill.id, target: t.name, dmg, uid: a.id, tid: t.id });
     const from = t.hp;
     damage(st, t, dmg, a);
     d.hp = [from, t.hp];
@@ -285,7 +285,7 @@ function doTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number): vo
         const raw = parts.base * rnd;
         const dmg = Math.max(1, Math.round(raw));
         d.dmg = { parts, rnd, raw, final: dmg };
-        log(st, 'tactic.hit', { tactic: tac.name.jp, target: t.name, dmg, tid: t.id });
+        log(st, 'tactic.hit', { tactic: tac.name.jp, tac: tac.id, target: t.name, dmg, tid: t.id });
         const from = t.hp;
         damage(st, t, dmg, u);
         d.hp = [from, t.hp];

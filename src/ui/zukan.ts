@@ -3,16 +3,18 @@
 
 import { artUrl } from '../art/art';
 import { busy } from './busy';
-import { D, westName } from '../data/db';
-import type { ClassDef, Loc, SkillDef, TacticDef, UnitDef } from '../data/types';
+import { D, westName, westOf } from '../data/db';
+import type { ClassDef, Loc, SkillDef, StatusId, TacticDef, UnitDef } from '../data/types';
+import { AILMENTS, DISPELLABLE } from '../battle/engine';
+import { BAD_STATUS, GOOD_STATUS } from '../render/battleView';
 import { classMod, generalExpToNext, troopExpToNext } from '../rules/growth';
-import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticTip, traitTip, unitTip, classTip } from './describe';
+import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticEffects, tacticTip, traitTip, unitTip, classTip } from './describe';
 import { fieldTable, terrainTable } from './help';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
 
-type Tab = 'units' | 'classes' | 'tree' | 'skills' | 'tactics' | 'terrain' | 'traits' | 'levels';
-const TABS: [Tab, string][] = [['units', '兵種'], ['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['terrain', '地形・天気'], ['traits', '特性'], ['levels', 'レベル']];
-type Ver = 'jp' | 'cn';
+type Tab = 'units' | 'classes' | 'tree' | 'skills' | 'tactics' | 'statuses' | 'terrain' | 'traits' | 'levels';
+const TABS: [Tab, string][] = [['units', '兵種'], ['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['statuses', '状態'], ['terrain', '地形・天気'], ['traits', '特性'], ['levels', 'レベル']];
+type Ver = 'jp' | 'cn' | 'west';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 /** 系統の呼び名（docs/20 と同じ） */
@@ -30,7 +32,7 @@ let ver: Ver = 'jp';
 let query = '';
 let pickClass = 'ashigaru', pickUnit = 'u01a';
 
-const nm = (n: Loc): string => n[ver];
+const nm = (n: Loc): string => (ver === 'west' ? westOf(n) : undefined) ?? n[ver === 'west' ? 'jp' : ver];
 const hit = (...names: string[]): boolean => !query || names.some((x) => x.includes(query));
 const pic = (set: string, id: string): string => { const u = artUrl(`unit/${set}/${id}`); return u ? `<img src="${u}" alt="" loading="lazy">` : '<span class="dim small">絵なし</span>'; };
 
@@ -41,6 +43,7 @@ const go = (t: Tab, id: string, label: string, tip = ''): string => `<a href="#$
 const skillLink = (id: string): string => { const s = D.skills.find((x) => x.id === id); return s ? go('skills', id, `${esc(nm(s.name))}${s.mp ? `<small class="zk-mp">気${s.mp}</small>` : ''}`, skillTip(s)) : esc(id); };
 const tacticLink = (id: string): string => { const t = D.byTactic[id]; return t ? go('tactics', id, `${esc(nm(t.name))}<small class="zk-mp">気${t.mp}</small>`, tacticTip(t)) : esc(id); };
 const unitLink = (id: string): string => D.byUnit[id] ? go('units', id, esc(nm(D.byUnit[id].name))) : esc(id);
+const statusLink = (id: StatusId): string => go('statuses', id, esc(STATUS_NAME[id] ?? id), statusEffect(id));
 const classLink = (id: string): string => D.byClass[id] ? go('classes', id, esc(nm(D.byClass[id].name))) : esc(id);
 
 // ------------------------------------------------------------ 兵種の対応表
@@ -77,15 +80,30 @@ function holders(id: string, kind: 'skill' | 'tactic'): string {
 function skillsPage(): string {
   const shape = (s: SkillDef): string => s.shape.type === 'around' ? `周り${s.shape.n}` : s.shape.type === 'line' ? `直線${s.shape.n}` : '1体';
   const rng = (s: SkillDef): string => s.range[0] === s.range[1] ? `${s.range[1]}` : `${s.range[0]}〜${s.range[1]}`;
-  // 効果の行：説明の小窓から、表の欄に無いもの（状態・回復・押し出しなど）だけ
-  const extra = (s: SkillDef): string => skillTip(s).split('\n').filter((l) => /当たると|回復|押し出|会心|気力を半分|装填|水の上|巻き込む/.test(l)).join('、');
+  // 効果の欄：状態は状態のページへのリンク（P94）。表の欄に無いもの（回復・押し出し・装填など）も
+  const extra = (s: SkillDef): string => {
+    const xs: string[] = [];
+    for (const e of s.effects) {
+      if (e.type === 'status') xs.push(`当たると${e.chance}%で${statusLink(e.status)}`);
+      else if (e.type === 'weakenStun') xs.push(`当たると${e.chance}%で${statusLink('weaken')}と${statusLink('stun')}`);
+      else if (e.type === 'lifesteal') xs.push(`与えたダメージの${Math.round(e.rate * 100)}%を回復`);
+      else if (e.type === 'mpHalf') xs.push(`相手の${esc(T.mp())}を半分にする`);
+      else if (e.type === 'heal') xs.push(`味方の${esc(T.hp())}を回復する`);
+      else if (e.type === 'knockback') xs.push('相手を1マス押し出す');
+      else if (e.type === 'critBonus') xs.push('会心が出やすい（会心のとき×1.25）');
+    }
+    if (s.reload) xs.push(`撃つには${statusLink('loaded')}が要る`);
+    if (s.needsWater) xs.push('水の上でしか使えない');
+    if (s.targets === 'all') xs.push('味方も巻き込む');
+    return xs.join('、');
+  };
   const list = D.skills.filter((s) => hit(s.name.jp, s.name.cn, s.id)).sort((a, b) => Number(b.basic) - Number(a.basic) || a.id.localeCompare(b.id));
   if (!list.length) return '<p>当てはまる技がありません。</p>';
   const row = (s: SkillDef): string => `<tr id="${rowId('skills', s.id)}">
     <td class="zk-left" data-tip="${esc(skillTip(s))}">${esc(nm(s.name))}</td><td>${s.basic ? '通常攻撃' : '技'}</td>
     <td>${s.noDamage ? '—' : s.power}</td><td>${s.hit ? (s.hit > 0 ? '+' : '') + s.hit : '±0'}</td><td>${s.mp || '—'}</td><td>${rng(s)}</td><td>${shape(s)}</td>
     <td>${MARK[s.vsGround] ?? s.vsGround}</td><td>${MARK[s.vsRider] ?? s.vsRider}</td><td>${s.afterMove ? '○' : '×'}</td><td>${s.counter ? '○' : '—'}</td>
-    <td class="zk-left zk-fx">${esc(extra(s)) || '—'}</td><td class="zk-left zk-who">${holders(s.id, 'skill')}</td></tr>`;
+    <td class="zk-left zk-fx">${extra(s) || '—'}</td><td class="zk-left zk-who">${holders(s.id, 'skill')}</td></tr>`;
   return `<p class="small">威力は技の強さ、命中は命中率への上乗せ、射程はマスの数。地上・騎馬は、地上の相手・騎馬の相手への効き方。「移動後」は動いたあとに使えるか、「反撃」は反撃に使うか。名前に乗せると説明が出る。武将の通常攻撃は役職ごとに決まり、ここには無い（役職の説明を参照）。</p>
     <div class="scroll"><table><tr><th>名前</th><th>種類</th><th>威力</th><th>命中</th><th>気力</th><th>射程</th><th>範囲</th><th>地上</th><th>騎馬</th><th>移動後</th><th>反撃</th><th>効果</th><th>持つ兵種</th></tr>${list.map(row).join('')}</table></div>`;
 }
@@ -94,23 +112,14 @@ function skillsPage(): string {
 
 function tacticsPage(): string {
   const where = (t: TacticDef): string => t.range === null ? (t.area ? `周り${t.area}` : '全体・自分') : t.area ? `射程${t.range}・半径${t.area}` : `射程${t.range}・1体`;
-  const effect = (t: TacticDef): string => {
-    const xs: string[] = [];
-    const st = t.status && typeof t.status === 'object' ? t.status : null;
-    if (st) xs.push(`${st.chance}%で${STATUS_NAME[st.status] ?? st.status}（${statusEffect(st.status).replace(/。$/, '')}）`);
-    else if (typeof t.status === 'string') xs.push(`${STATUS_NAME[t.status] ?? t.status}${t.kind === 'status' && !t.sure ? '（知略しだい）' : ''}（${statusEffect(t.status).replace(/。$/, '')}）`);
-    if (t.kind === 'mpRestore' && t.amount) xs.push(`気力を${t.amount}回復`);
-    if (t.kind === 'cure') xs.push('悪い状態を治す');
-    if (t.kind === 'dispel') xs.push('強化・弱化を消す');
-    if (t.friendlyFire) xs.push('味方も巻き込む');
-    return xs.join('、');
-  };
+  // 効き目は説明の小窓と同じ文（tacticEffects）。状態は状態のページへのリンク（P94）
+  const effect = (t: TacticDef): string => tacticEffects(t).map((e) => `${e.status ? statusLink(e.status) : ''}${esc(e.text)}`).join('<br>');
   const kinds = Object.keys(TACTIC_KIND);
   const list = D.tactics.filter((t) => hit(t.name.jp, t.name.cn, t.id, TACTIC_KIND[t.kind] ?? '')).sort((a, b) => kinds.indexOf(a.kind) - kinds.indexOf(b.kind) || a.mp - b.mp);
   if (!list.length) return '<p>当てはまる軍略がありません。</p>';
   const row = (t: TacticDef): string => `<tr id="${rowId('tactics', t.id)}">
     <td class="zk-left" data-tip="${esc(tacticTip(t))}">${esc(nm(t.name))}</td><td>${esc(KIND_SHORT[t.kind] ?? TACTIC_KIND[t.kind] ?? t.kind)}</td><td>${t.mp}</td><td>${t.power || '—'}</td><td>${where(t)}</td>
-    <td class="zk-left zk-fx">${esc(effect(t)) || '—'}</td><td class="zk-left zk-who">${holders(t.id, 'tactic')}</td></tr>`;
+    <td class="zk-left zk-fx">${effect(t) || '—'}</td><td class="zk-left zk-who">${holders(t.id, 'tactic')}</td></tr>`;
   return `<p class="small">気力は1回に使う気力（教わったばかりの借り物は多くかかる）。威力は知略が高いほど強い。軍略は外れない（状態が付くかだけが確率）。「将：」は、その役職の武将が使える。名前に乗せると説明が出る。</p>
     <div class="scroll"><table><tr><th>名前</th><th>種類</th><th>気力</th><th>威力</th><th>対象</th><th>効き目</th><th>使える役職・兵種</th></tr>${list.map(row).join('')}</table></div>`;
 }
@@ -153,9 +162,9 @@ function treePage(): string {
     if (seen.has(u.id)) return '';
     seen.add(u.id);
     const kids = (u.promote ?? []).filter((p) => D.byUnit[p.to]);
-    const me = `<span class="zk-node" data-tip="${esc(unitTip(u.id))}">${pic('jp', u.id)}<b>${esc(nm(u.name))}</b><span class="dim small">${TIER[u.tier]}</span></span>`;
+    const me = `<span class="zk-node" data-tip="${esc(unitTip(u.id))}">${pic(ver, u.id)}<b>${esc(nm(u.name))}</b><span class="dim small">${TIER[u.tier]}</span></span>`;
     if (!kids.length) return `<div class="zk-branch">${me}</div>`;
-    return `<div class="zk-branch">${me}<div class="zk-kids">${kids.map((p) => `<div class="zk-kid"><span class="zk-arrow">→<small>${[p.lv ? `Lv${p.lv}` : '', p.item ? `品「${esc(D.items[p.item]?.[ver] ?? p.item)}」` : ''].filter(Boolean).join('・') || ''}</small></span>${unitNode(D.byUnit[p.to], seen)}</div>`).join('')}</div></div>`;
+    return `<div class="zk-branch">${me}<div class="zk-kids">${kids.map((p) => `<div class="zk-kid"><span class="zk-arrow">→<small>${[p.lv ? `Lv${p.lv}` : '', p.item ? `品「${esc(D.items[p.item]?.[ver === 'west' ? 'jp' : ver] ?? p.item)}」` : ''].filter(Boolean).join('・') || ''}</small></span>${unitNode(D.byUnit[p.to], seen)}</div>`).join('')}</div></div>`;
   };
   const lines = [...new Set(D.units.map((u) => u.line))].sort((a, b) => a - b);
   const unitParts = lines.map((line) => {
@@ -178,6 +187,41 @@ function treePage(): string {
     if (roots.length) out.push(`<h3>${title}</h3>`, `<div class="zk-tree">${roots.map(classNode).join('')}</div>`);
   }
   return out.length > 1 ? out.join('') : `${out[0]}<p>当てはまるものがありません。</p>`;
+}
+
+// ------------------------------------------------------------ 状態（P94）
+
+function statusesPage(): string {
+  const ids = (Object.keys(STATUS_NAME) as StatusId[]).filter((id) => hit(STATUS_NAME[id], id));
+  if (!ids.length) return '<p>当てはまる状態がありません。</p>';
+  const cures = D.tactics.filter((t) => t.kind === 'cure').map((t) => tacticLink(t.id)).join('・');
+  const dispels = D.tactics.filter((t) => t.kind === 'dispel').map((t) => tacticLink(t.id)).join('・');
+  /** 解け方・治し方 */
+  const ends = (id: StatusId): string => {
+    const xs: string[] = [];
+    if (id === 'stun') xs.push('攻撃を受けると解ける');
+    if (id === 'ward') xs.push('軍略を1度受けると消える');
+    if (id === 'atkNext' || id === 'sureNext') xs.push('次に技を使うと消える');
+    if (id === 'extraAct') xs.push('その番だけ');
+    if (id === 'loaded') xs.push('撃つと外れる。待機すると込める');
+    if (id === 'mounted') xs.push(`${statusLink('grounded')}で降ろされる`);
+    if (AILMENTS.includes(id)) xs.push(`${cures}で治る`);
+    if (DISPELLABLE.includes(id)) xs.push(`${dispels}で消える`);
+    return xs.join('<br>') || '—';
+  };
+  /** その状態を付ける技・軍略 */
+  const givers = (id: StatusId): string => [
+    ...D.skills.filter((s) => s.effects.some((e) => (e.type === 'status' && e.status === id) || (e.type === 'weakenStun' && (id === 'weaken' || id === 'stun')))).map((s) => skillLink(s.id)),
+    ...D.tactics.filter((t) => (typeof t.status === 'object' ? t.status.status : t.status) === id || (id === 'routed' && t.kind === 'revive')).map((t) => tacticLink(t.id)),
+  ].join(' ') || '—';
+  /** かからない兵種（特技「無効」） */
+  const immune = (id: StatusId): string => D.units.filter((u) => u.passives.some((p) => p.type === 'immune' && p.statuses.includes(id))).map((u) => unitLink(u.id)).join('・') || '—';
+  return `<p class="small">戦いの中で駒にかかる状態。良い状態は強化、悪い状態は弱化・状態異常。続く巡は効き目の文にある（巡に幅があるものは、かかるたびに決まる）。同じ状態が付いていれば、長い方に延びる。技・軍略の名前を押すと、その表へ移る。</p>
+    <div class="scroll"><table><tr><th>名前</th><th>良し悪し</th><th>効き目</th><th>解け方・治し方</th><th>付ける技・軍略</th><th>かからない兵種</th></tr>
+    ${ids.map((id) => `<tr id="${rowId('statuses', id)}"><td class="zk-left" data-tip="${esc(statusEffect(id))}">${esc(STATUS_NAME[id])}</td>
+      <td>${GOOD_STATUS.has(id) ? '<span class="zk-good">良い</span>' : BAD_STATUS.has(id) ? '<span class="zk-bad">悪い</span>' : '—'}</td>
+      <td class="zk-left zk-fx">${esc(statusEffect(id)) || '—'}</td><td class="zk-left">${ends(id)}</td><td class="zk-left zk-arts">${givers(id)}</td><td class="zk-left">${immune(id)}</td></tr>`).join('')}
+    </table></div>`;
 }
 
 // ------------------------------------------------------------ 地形・天気（P91）
@@ -243,7 +287,7 @@ function levelsPage(): string {
     <div class="scroll"><table class="zk-levels"><tr><th>Lv</th><th>倍率</th><th data-tip="${esc(classTip(c.id))}">${esc(nm(c.name))}：次まで</th><th>累計</th><th data-tip="${esc(unitTip(u.id))}">${esc(nm(u.name))}：次まで</th><th>累計</th></tr>${rows.join('')}</table></div>`;
 }
 
-const PAGES: Record<Tab, () => string> = { units: unitsPage, classes: classesPage, tree: treePage, skills: skillsPage, tactics: tacticsPage, terrain: terrainPage, traits: traitsPage, levels: levelsPage };
+const PAGES: Record<Tab, () => string> = { units: unitsPage, classes: classesPage, tree: treePage, skills: skillsPage, tactics: tacticsPage, statuses: statusesPage, terrain: terrainPage, traits: traitsPage, levels: levelsPage };
 
 // ------------------------------------------------------------ 表示
 
@@ -295,7 +339,7 @@ export function initZukan(): void {
   back.innerHTML = `
     <div class="help" role="dialog" aria-modal="true" aria-label="図鑑">
       <header><b>図鑑</b><nav></nav><span class="spacer"></span><button type="button" class="help-close">閉じる</button>
-        <div class="zk-tools"><label>名前 <select data-zk="ver"><option value="jp">日本版</option><option value="cn">中国版</option></select></label>
+        <div class="zk-tools"><label>名前 <select data-zk="ver"><option value="jp">日本版</option><option value="cn">中国版</option><option value="west">西洋版</option></select></label>
         <input type="search" data-zk="q" placeholder="名前で探す" aria-label="名前で探す"></div></header>
       <div class="help-body"></div>
     </div>`;

@@ -44,6 +44,7 @@ const T = {
   ring: 420, ringLead: 200,       // 声や音の輪、輪が届くまで
   muzzle: 150, smoke: 620, burst: 560, flame: 640, sign: 620, // 発射の光、煙、着弾の土煙、炎、軍略のしるし
   knock: 160,                     // 押し出される動き
+  drain: 430,                     // 与えたダメージの一部を回復する技：当たってから、攻めた側の回復が出るまで（P94）
   fade: 450,                      // 倒れた駒が薄れる時間
 };
 /** 飛び道具が届くまで：[もとの長さ, 1マスごとに足す長さ] */
@@ -237,11 +238,20 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
         sound(crit ? 'crit' : 'hit', when);
         const d = cur?.d;
         if (d?.dmg?.shield?.ok) chip(posOf(tid), '盾', OCHRE, when);
-        if (d?.steal && d.steal[1] > d.steal[0]) chip(posOf(uid), `+${d.steal[1] - d.steal[0]}`, VERDIGRIS, when + 60);
         if (d?.mpHalf) chip(posOf(tid), '気力半減', PURPLE, when + 60);
         // 押し出し：当たるまでは、もとのマスにいる
         if (d?.knock) push({ kind: 'slide', unit: tid, pts: [xy(d.knock[0]), xy(d.knock[1])], t0: at(when), dur: T.knock * scale });
-        lastImpact = when; gap(when);
+        // 与えたダメージの一部を回復する技（P94）：ダメージの表示のあとに、攻めた側の回復（光・緑の数字・体力の棒・音）
+        let end = when;
+        if (d?.steal && d.steal[1] > d.steal[0]) {
+          const back = when + T.drain, gain = d.steal[1] - d.steal[0], [hx, hy] = xy(posOf(uid));
+          puff('heal', hx, hy, back, T.sign);
+          hurt(uid, -gain, back);
+          note(posOf(uid), `+${gain}`, VERDIGRIS, false, back);
+          sound('heal', back);
+          end = back;
+        }
+        lastImpact = end; gap(end);
         break;
       }
       case 'breach': {

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { artUrl } from '../src/art/art';
 import { artSetOf, convert, variantOf } from '../src/convert/convert';
-import { D, getArtSet, L, setArtSet, westName } from '../src/data/db';
+import { D, getArtSet, L, setArtSet, westName, westOf } from '../src/data/db';
 import { sceneUrl } from '../src/ui/scene';
 import { loadFixture } from './helpers';
 
@@ -29,12 +29,16 @@ describe('art set', () => {
     setArtSet('west');
     expect(L(D.byUnit.u01b.name)).toBe('重装歩兵');
     expect(L(D.byUnit.u16a.name)).toBe('三段櫂船');
-    // 兵種でない名前（技など）は変えない
-    expect(L(D.skills[0].name)).toBe(D.skills[0].name.jp);
+    // 技・軍略・役職も西洋の名前（P94）
+    expect(L(D.bySkill.k002.name)).toBe('盾列突き');
+    expect(L(D.byTactic.x25.name)).toBe('亀甲隊形');
+    expect(L(D.byClass.samurai_taisho.name)).toBe('将軍');
     setArtSet('jp');
     expect(L(D.byUnit.u01b.name)).toBe('足軽槍組');
     // すべての兵種に西洋の名前がある
     for (const u of D.units) expect(westName(u.id), u.id).toBeTruthy();
+    // すべての技・軍略・役職に西洋の名前がある
+    for (const x of [...D.skills, ...D.tactics, ...D.classes]) expect(westOf(x.name), x.id).toBeTruthy();
     setArtSet(before);
   });
 });

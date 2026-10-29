@@ -46,6 +46,9 @@ export function logText(e: BattleLogEntry): string {
   return tpl.replace(/\{(\w+)\}/g, (_m, k) => {
     const v = e.vars[k];
     if (k === 'status' && typeof v === 'string') return STATUS_NAME[v as StatusId] ?? v;
+    // 技・軍略の名前は、番号から今の版（日本版・中国版・西洋版）の名前に（記録の文字は日本版のまま残っている）
+    if (k === 'skill' && typeof e.vars.sk === 'string' && D.bySkill[e.vars.sk]) return L(D.bySkill[e.vars.sk].name);
+    if (k === 'tactic' && typeof e.vars.tac === 'string' && D.byTactic[e.vars.tac]) return L(D.byTactic[e.vars.tac].name);
     return v === undefined ? '' : String(v);
   });
 }

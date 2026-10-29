@@ -50,11 +50,19 @@ export type ArtSet = Variant | 'west';
 let artSet: ArtSet = 'jp';
 export function setArtSet(a: ArtSet): void { artSet = a; }
 export function getArtSet(): ArtSet { return artSet; }
-/** 西洋版の兵種の名前（P88。west.json）：兵種の名前の入れ物 → 西洋の名前 */
-const westNames = new Map<Loc, string>(Object.entries((westJson as { units: Record<string, string> }).units).filter(([id]) => D.byUnit[id]).map(([id, n]) => [D.byUnit[id].name, n]));
+/** 西洋版の名前（P88・P94。west.json）：兵種・技・軍略・役職の名前の入れ物 → 西洋の名前 */
+const W = westJson as unknown as Record<'units' | 'skills' | 'tactics' | 'classes', Record<string, string>>;
+const westNames = new Map<Loc, string>([
+  ...Object.entries(W.units ?? {}).filter(([id]) => D.byUnit[id]).map(([id, n]): [Loc, string] => [D.byUnit[id].name, n]),
+  ...Object.entries(W.skills ?? {}).filter(([id]) => D.bySkill[id]).map(([id, n]): [Loc, string] => [D.bySkill[id].name, n]),
+  ...Object.entries(W.tactics ?? {}).filter(([id]) => D.byTactic[id]).map(([id, n]): [Loc, string] => [D.byTactic[id].name, n]),
+  ...Object.entries(W.classes ?? {}).filter(([id]) => D.byClass[id]).map(([id, n]): [Loc, string] => [D.byClass[id].name, n]),
+]);
 /** 兵種の西洋の名前（対応表などで使う） */
 export function westName(unitId: string): string | undefined { return D.byUnit[unitId] ? westNames.get(D.byUnit[unitId].name) : undefined; }
-/** 今の版（日本版・中国版）の名前。絵が西洋版の世界（ローマなど）では、兵種は西洋の名前 */
+/** 名前の入れ物の西洋の名前（兵種・技・軍略・役職。無ければ undefined） */
+export function westOf(name: Loc): string | undefined { return westNames.get(name); }
+/** 今の版（日本版・中国版）の名前。絵が西洋版の世界（ローマなど）では、兵種・技・軍略・役職は西洋の名前 */
 export function L(name: Loc): string { return (artSet === 'west' && westNames.get(name)) || name[variant]; }
 /** 用語（体力・武力など）の今の版の名前 */
 export function term(key: string): string { return D.terms[key]?.[variant] ?? key; }

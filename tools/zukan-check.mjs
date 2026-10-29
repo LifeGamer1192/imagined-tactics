@@ -23,12 +23,12 @@ for (const [tag, opts] of [['pc', { viewport: { width: 1366, height: 800 } }], [
   await press('[data-zukan]');
   await page.waitForSelector('.zukan:not([hidden]) .zk-units');
   const units = await page.$$eval('.zukan .zk-units tr', (r) => r.length);
-  ok(`[${tag}] タブが8つ`, (await page.$$eval('[data-ztab]', (b) => b.length)) === 8);
+  ok(`[${tag}] タブが8つ`, (await page.$$eval('[data-ztab]', (b) => b.length)) === 9);
   ok(`[${tag}] 兵種の対応表：50種と見出し`, units >= 50 + 18, `${units}行`);
   ok(`[${tag}] 兵種の対応表に3つの版の名前（雑兵・徒卒・民兵）`, /雑兵[\s\S]*徒卒[\s\S]*民兵/.test(await page.textContent('.zukan .help-body')));
   ok(`[${tag}] 窓が横にはみ出さない`, await fits());
   await shot('1_units');
-  for (const [t, want, min] of [['classes', '侍大将', 30], ['skills', '通常攻撃', 10], ['tactics', '気力', 10], ['terrain', '天気', 10], ['traits', '戦場', 10], ['levels', '累計', 49]]) {
+  for (const [t, want, min] of [['classes', '侍大将', 30], ['skills', '通常攻撃', 10], ['tactics', '気力', 10], ['statuses', '解け方', 20], ['terrain', '天気', 10], ['traits', '戦場', 10], ['levels', '累計', 49]]) {
     await press(`[data-ztab="${t}"]`);
     await page.waitForFunction(() => !document.querySelector('.busy'));
     const rows = await page.$$eval('.zukan .help-body table tr', (r) => r.length);
@@ -58,6 +58,22 @@ for (const [tag, opts] of [['pc', { viewport: { width: 1366, height: 800 } }], [
   await page.waitForFunction((id) => !document.querySelector('.busy') && !!document.querySelector(`#zk-classes-${id}.zk-hit`), cl, { timeout: 5000 }).catch(() => {});
   ok(`[${tag}] 軍略の表から役職へ`, !!(await page.$(`#zk-classes-${cl}.zk-hit`)), cl);
   await shot('5_link_class');
+  // 状態（P94）：軍略の効き目に説明が入っていて、状態の名前から状態のページへ移れる
+  await press('[data-ztab="tactics"]');
+  await page.waitForFunction(() => !document.querySelector('.busy'));
+  const blank = await page.$$eval('.zukan .help-body tr', (rs) => rs.slice(1).filter((r) => r.children[5]?.textContent.trim() === '—').map((r) => r.children[0].textContent.trim()));
+  ok(`[${tag}] 軍略の効き目がどれも空でない`, blank.length === 0, blank.join(' '));
+  await page.$eval('.zukan .help-body a.zk-go[data-zgo="statuses:poison"]', (a) => a.scrollIntoView({ block: 'center' }));
+  await press('.zukan .help-body a.zk-go[data-zgo="statuses:poison"]');
+  await page.waitForFunction(() => !document.querySelector('.busy') && !!document.querySelector('#zk-statuses-poison.zk-hit'), null, { timeout: 5000 }).catch(() => {});
+  ok(`[${tag}] 軍略の状態の名前から、状態のページへ`, !!(await page.$('#zk-statuses-poison.zk-hit')));
+  await shot('6_status');
+  // 西洋版の名前（P94）
+  await page.selectOption('[data-zk="ver"]', 'west');
+  await press('[data-ztab="skills"]');
+  await page.waitForFunction(() => !document.querySelector('.busy'));
+  ok(`[${tag}] 名前を西洋版にすると、技も西洋の名前（盾列突き）`, /盾列突き/.test(await page.textContent('.zukan .help-body')));
+  await page.selectOption('[data-zk="ver"]', 'jp');
   // 昇格の系図：兵と武将の木が出る
   await press('[data-ztab="tree"]');
   await page.waitForFunction(() => !document.querySelector('.busy'));

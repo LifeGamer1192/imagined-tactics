@@ -4,7 +4,9 @@
 import cfgJson from '../../data/system/convert.json';
 import { AI, AXES, type Axis, type Personality } from '../ai/personality';
 import { D, L } from '../data/db';
-import type { Passive, SkillDef, TacticDef, UnitDef } from '../data/types';
+import type { Passive, SkillDef, StatusId, TacticDef, UnitDef } from '../data/types';
+import { AILMENTS, DISPELLABLE } from '../battle/engine';
+import { FIELD } from '../rules/stats';
 import { S } from '../strategy/config';
 import { classMod } from '../rules/growth';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
@@ -190,22 +192,66 @@ export const TACTIC_KIND: Record<string, string> = {
   status: '状態を変える', dispel: 'かかっている効果を消す', pull: '引き寄せる', revive: '倒れた味方を立て直す', displace: '位置を動かす',
 };
 
+/** 効き目の1つ。status があれば、その状態の名前を頭に付けて出す（図鑑では状態のページへのリンクにする） */
+export interface Effect { text: string; status?: StatusId }
+
+/**
+ * 軍略の効き目（P94）：何が起きるかを、種類ごとに漏れなく書く。説明の小窓と図鑑の両方で使う。
+ * 状態の付く軍略は、状態の効き目まで書く（「騎乗」だけでは分からないため）
+ */
+export function tacticEffects(t: TacticDef): Effect[] {
+  const xs: Effect[] = [];
+  const fx = (id: StatusId): string => statusEffect(id) || '';
+  const kinds = Object.entries(FIELD.tags).filter(([, ids]) => ids.includes(t.id)).map(([k]) => L(FIELD.kinds[k]));
+  switch (t.kind) {
+    case 'damage':
+      xs.push({ text: `${t.area ? `範囲（半径${t.area}マス）の${t.friendlyFire ? '敵と味方' : '敵'}すべてに` : '敵1体に'}、威力${t.power}のダメージ。使う側の${T.int()}が高いほど強く、受ける側の${T.int()}と防御が高いほど弱い。軍略は外れない` });
+      if (kinds.length) xs.push({ text: `攻撃の種類：${kinds.join('・')}（地形や天気で強まる・弱まる${FIELD.tags.fire?.includes(t.id) ? `。雨の日は×${D.combat.weather.rainFireMult}` : ''}）` });
+      if (t.purge) xs.push({ text: '収容された敗残兵は、一撃で消し去る' });
+      if (typeof t.status === 'object') xs.push({ status: t.status.status, text: `（当たると${t.status.chance}%）：${fx(t.status.status)}` });
+      break;
+    case 'heal':
+      xs.push({ text: `${t.area ? `周り${t.area}マスの味方すべて` : '味方1体'}の${T.hp()}を回復。回復量＝威力${t.power}×（0.6＋${T.int()}÷150）（${T.int()}100なら約${Math.round(t.power * (0.6 + 100 / 150))}）` });
+      break;
+    case 'cure':
+      xs.push({ text: `${t.area ? `周り${t.area}マスの味方すべて` : '味方1体'}の悪い状態（${AILMENTS.map((id) => STATUS_NAME[id]).join('・')}）を治す` });
+      break;
+    case 'mpRestore':
+      xs.push({ text: `味方1体の${T.mp()}を${t.amount ?? 0}回復する（最大の${T.mp()}まで）` });
+      break;
+    case 'dispel':
+      xs.push({ text: `かかっている強化と弱化（${DISPELLABLE.map((id) => STATUS_NAME[id]).join('・')}）をすべて消す。敵にも味方にも使える` });
+      break;
+    case 'buff': case 'debuff':
+      // 続く巡は、状態の効き目の文に入っている
+      if (typeof t.status === 'string') xs.push({ status: t.status, text: `（必ずかかる）：${fx(t.status)}` });
+      if (t.anyTarget) xs.push({ text: '敵にも味方にも使える' });
+      break;
+    case 'status':
+      if (typeof t.status === 'string') xs.push({ status: t.status, text: `（${t.sure ? '必ずかかる' : `${T.int()}の比べ合いでかかる`}${t.area ? `・周り${t.area}マスの敵すべて` : ''}）：${fx(t.status)}` });
+      break;
+    case 'pull':
+      xs.push({ text: '自分の率いる兵1隊を、戦場のどこにいても、自分の隣のマスへ呼び戻す' });
+      break;
+    case 'revive':
+      xs.push({ text: '倒れた兵（敵味方を問わない）のうち采配の重い1隊を、体力を満たして自分の隣に立て直す。立て直した兵は自分の側で戦い、戦いが終わると失われる' });
+      xs.push({ status: 'routed', text: `：${fx('routed')}` });
+      break;
+    case 'displace':
+      xs.push({ text: `${T.int()}の比べ合いに勝てば、敵1体を戦場のどこか（水の上を除く）へ飛ばす` });
+      break;
+  }
+  return xs;
+}
+/** 効き目を1行の文に */
+export const effectText = (e: Effect): string => `${e.status ? STATUS_NAME[e.status] ?? e.status : ''}${e.text}`;
+
 /** 軍略の説明 */
 export function tacticTip(t: TacticDef): string {
   const where = t.range === null ? (t.area ? `自分の周り${t.area}マス` : '戦場全体または自分') : t.area ? `射程${t.range}、半径${t.area}マスの範囲` : `1体（射程${t.range}）`;
   const out = [`【${L(t.name)}】`, `${TACTIC_KIND[t.kind] ?? t.kind}軍略。対象：${where}`, `気力を${t.mp}使う`];
-  if (t.power) out.push(`威力${t.power}（${T.int()}が高いほど強い）`);
-  // 状態の付き方：ダメージの軍略は当たったあと決まった確率で、状態の軍略は必中でなければ知略の比べ合い、強化・弱体は必ず付く
-  // 状態は、かかるとどう変わるかを必ず添える（「騎乗」だけでは分からないため）
-  if (t.status && typeof t.status === 'object') out.push(`当たると${t.status.chance}%で${STATUS_NAME[t.status.status] ?? t.status.status}：${statusEffect(t.status.status) || '（効き目は状態の表を参照）'}`);
-  else if (t.status) out.push(`${STATUS_NAME[t.status] ?? t.status}${t.kind === 'status' && !t.sure ? '（相手の知略しだいでかかる）' : '（必ずかかる）'}：${statusEffect(t.status) || '（効き目は状態の表を参照）'}`);
-  if (t.kind === 'cure') out.push('毒・眩暈・気絶・混乱・軍略封じ・寝返りなどの悪い状態を治す');
-  if (t.kind === 'dispel') out.push('かかっている強化（攻撃・防御・機敏・移動の上昇、次の一撃、用心など）と弱化を消す');
-  if (t.kind === 'mpRestore' && t.amount) out.push(`味方の気力を${t.amount}回復する`);
-  // 状態の付く軍略は、効き目を状態の説明に書いてある（弱化に「攻撃+49%」と逆の向きで出ていたので出さない）
-  if (t.atk && !t.status) out.push(`攻撃${t.atk > 0 ? '+' : ''}${t.atk}%`);
-  if (t.def && !t.status) out.push(`防御${t.def > 0 ? '+' : ''}${t.def}%`);
-  if (t.friendlyFire) out.push('味方も巻き込む');
+  // 効き目は tacticEffects（図鑑と同じ文）
+  for (const e of tacticEffects(t)) out.push(effectText(e));
   return out.join('\n');
 }
 
