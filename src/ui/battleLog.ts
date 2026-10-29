@@ -25,7 +25,7 @@ export function saveLogLevel(v: number): void { try { localStorage.setItem(KEY, 
 /** 細かい記録用に足したキー。簡易の記録には出さない */
 const EXTRA = new Set(['act', 'move', 'strike', 'tactic.on']);
 /** 行動のまとまりの中では、strike・tactic.on の行が代わりに伝えるので出さないキー */
-const COVERED = new Set(['hit', 'hit.crit', 'miss', 'shield', 'tactic', 'tactic.hit', 'heal', 'resist', 'ward']);
+const COVERED = new Set(['hit', 'hit.crit', 'miss', 'shield', 'tactic', 'tactic.hit', 'heal', 'resist', 'ward', 'collide']);
 /** 残す件数：簡易は記録の件数、通常・詳細は行動のまとまりの数 */
 const KEEP = [60, 40, 24];
 const SIDE_MARK = ['攻', '守'];
@@ -126,7 +126,7 @@ function strikeLines(st: BattleState, e: BattleLogEntry, detail: boolean): strin
     const g = d.dmg;
     if (g) {
       const p = g.parts;
-      out.push(fm(`基準 ${p.base} ＝ 威力${num(p.power)} × 攻撃${num(p.atk)} ÷ 防御${num(p.def)}${p.bane !== 1 ? ` × 特効${num(p.bane)}` : ''}${p.counter !== 1 ? ` × 反撃${num(p.counter)}` : ''}${p.fire !== 1 ? ` × 雨の日の火${num(p.fire)}` : ''}${fieldText(p)}（切り捨て）`));
+      out.push(fm(`基準 ${p.base} ＝ 威力${num(p.power)} × 攻撃${num(p.atk)} ÷ 防御${num(p.def)}${p.bane !== 1 ? ` × 特効${num(p.bane)}` : ''}${p.counter !== 1 ? ` × 反撃${num(p.counter)}` : ''}${p.fire !== 1 ? ` × 雨の日の火${num(p.fire)}` : ''}${fieldText(p)}${p.wall && p.wall !== 1 ? ` × 押し付け${num(p.wall)}` : ''}（切り捨て）`));
       out.push(fm(statFormula('攻撃', term('str'), g.atk, true)));
       const def = statFormula('防御', '防御', g.def, false);
       if (def) out.push(fm(def));
@@ -140,6 +140,9 @@ function strikeLines(st: BattleState, e: BattleLogEntry, detail: boolean): strin
   if (d.mpHalf) out.push(ln(`${T}の${term('mp')}を半分にした（${d.mpHalf[0]}→${d.mpHalf[1]}）`));
   if (d.heal) out.push(ln(`${T}の${term('hp')}が回復（${d.heal[0]}→${d.heal[1]}）`));
   if (d.knock) out.push(ln(`${T}を押し出した（${cellName(st, d.knock[0])} → ${cellName(st, d.knock[1])}）`));
+  // 押せなかったとき（0.10.0）
+  if (d.knockWall) out.push(ln(`押す先が塞がっていて、${T}を押し付けた（ダメージ×${num(d.knockWall.mult)}）`));
+  if (d.collide) out.push(ln(`${T}が押されて${who(st, d.collide.uid)}にぶつかった：<b class="dmg">${d.collide.dmg}</b>（${term('hp')} ${d.collide.hp[0]}→${d.collide.hp[1]}。与えたダメージの${num(D.combat.knock.collidePct)}%）`));
   return out.join('');
 }
 

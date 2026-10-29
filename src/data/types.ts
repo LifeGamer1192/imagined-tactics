@@ -173,6 +173,8 @@ export interface CombatConfig {
   tacticIntMult: number; tacticDefInDenominator: boolean;
   statusBase: number; statusMin: number; statusMax: number;
   counterMult: number; healIntScale: number; useExp: number; healExp: number; expGain: number;
+  /** 押し出す技で、押す先が塞がっているとき（0.10.0） */
+  knock: { wallMult: number; collidePct: number };
   /** 反撃した駒が得る経験値（0.9.1） */
   counterExp: number;
   /** 勝った側の駒すべてに足す経験値（0.9.0） */

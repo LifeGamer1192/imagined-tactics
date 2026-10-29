@@ -181,7 +181,7 @@ export function skillTip(s: SkillDef): string {
     else if (e.type === 'weakenStun') out.push(`当たると${e.chance}%で${withEffect('weaken')}と${withEffect('stun')}`);
     else if (e.type === 'mpHalf') out.push('相手の気力を半分にする');
     else if (e.type === 'heal') out.push('味方の体力を回復する');
-    else if (e.type === 'knockback') out.push('相手を1マス押し出す');
+    else if (e.type === 'knockback') out.push(`相手を1マス押し出す（押せないとき：後ろに駒がいれば、その駒にも与えたダメージの${D.combat.knock.collidePct}%。盤の外・入れない地形・閉じた門や柵なら、ダメージ×${D.combat.knock.wallMult}）`);
     else if (e.type === 'critBonus') out.push('会心が出やすい');
   }
   return out.join('\n');

@@ -106,6 +106,10 @@ export interface StrikeDetail {
   tries: StatusTry[];
   /** 吸収した体力、半分にした気力、技での回復、押し出し（それぞれ 前 → 後） */
   steal?: [number, number]; mpHalf?: [number, number]; heal?: [number, number]; knock?: [number, number];
+  /** 押し出す技で、押す先が塞がっていて押し付けた（0.10.0）：塞いでいるマスと、ダメージの倍率 */
+  knockWall?: { cell: number; mult: number };
+  /** 押し出す技で、後ろの駒にぶつけた（0.10.0）：その駒と、与えたダメージ・体力（前 → 後） */
+  collide?: { uid: number; dmg: number; hp: [number, number] };
 }
 
 /** 軍略の、相手ひとりぶんの内訳（記録のキー 'tactic.on'） */

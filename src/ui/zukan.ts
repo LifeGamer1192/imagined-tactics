@@ -89,7 +89,7 @@ function skillsPage(): string {
       else if (e.type === 'lifesteal') xs.push(`与えたダメージの${Math.round(e.rate * 100)}%を回復`);
       else if (e.type === 'mpHalf') xs.push(`相手の${esc(T.mp())}を半分にする`);
       else if (e.type === 'heal') xs.push(`味方の${esc(T.hp())}を回復する`);
-      else if (e.type === 'knockback') xs.push('相手を1マス押し出す');
+      else if (e.type === 'knockback') xs.push(`相手を1マス押し出す（押せないとき：後ろに駒がいれば、その駒にも与えたダメージの${D.combat.knock.collidePct}%。盤の外・入れない地形・閉じた門や柵なら、ダメージ×${D.combat.knock.wallMult}）`);
       else if (e.type === 'critBonus') xs.push('会心が出やすい（会心のとき×1.25）');
     }
     if (s.reload) xs.push(`撃つには${statusLink('loaded')}が要る`);

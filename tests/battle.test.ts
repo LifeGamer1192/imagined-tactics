@@ -171,6 +171,43 @@ describe('battle flow', () => {
     expect(a.expGained).toBeGreaterThanOrEqual(D.combat.useExp);
   });
 
+  // 押し出す技（0.10.0）：鉄盾押しも押す。押せないとき、後ろの駒にぶつければその駒にもダメージ、塞がっていればダメージ1.5倍
+  it('the iron shield push knocks back; a unit behind takes a share, a blocked edge makes it hit harder', () => {
+    const k037 = skillOf('k037');
+    expect(k037.effects.some((e) => e.type === 'knockback')).toBe(true);
+    // 押せる
+    {
+      const st = field(PLAIN), g = st.map.grid;
+      const a = troop(st, 'u09c', 0, g.idx(2, 3)), t = troop(st, 'u01a', 1, g.idx(3, 3));
+      const behind = g.step(t.pos, g.dirTo(a.pos, t.pos));
+      for (let i = 0; i < 20 && t.pos === g.idx(3, 3); i++) { a.acted = false; a.moved = false; apply(st, { type: 'skill', unit: a.id, skill: 'k037', target: t.pos }); }
+      expect(t.pos).toBe(behind);
+    }
+    // 後ろに駒（味方でも）：その駒にもダメージ
+    {
+      const st = field(PLAIN), g = st.map.grid;
+      const a = troop(st, 'u09c', 0, g.idx(2, 3)), t = troop(st, 'u01a', 1, g.idx(3, 3));
+      const b = troop(st, 'u01a', 0, g.step(t.pos, g.dirTo(a.pos, t.pos)));
+      const hp0 = b.hp, pos0 = t.pos;
+      for (let i = 0; i < 20 && b.hp === hp0; i++) { a.acted = false; a.moved = false; t.hp = t.maxHp; apply(st, { type: 'skill', unit: a.id, skill: 'k037', target: t.pos }); }
+      expect(b.hp).toBeLessThan(hp0);
+      expect(t.pos).toBe(pos0);
+      const d = st.log.map((e) => e.d).find((x) => x?.type === 'strike' && x.collide);
+      expect(d && d.type === 'strike' && d.dmg ? d.collide!.dmg : 0).toBe(d && d.type === 'strike' && d.dmg ? Math.max(1, Math.round(d.dmg.final * D.combat.knock.collidePct / 100)) : -1);
+    }
+    // 盤の端（押す先が盤の外）：ダメージが1.5倍
+    {
+      const st = field(PLAIN), g = st.map.grid;
+      const a = troop(st, 'u09c', 0, g.idx(7, 3)), t = troop(st, 'u01a', 1, g.idx(8, 3));
+      const st2 = field(PLAIN), a2 = troop(st2, 'u09c', 0, g.idx(2, 3)), t2 = troop(st2, 'u01a', 1, g.idx(3, 3));
+      const open = damageParts(st2, a2, k037, t2), edge = damageParts(st, a, k037, t);
+      expect(edge.wall).toBe(D.combat.knock.wallMult);
+      // 切り捨ての前に掛けるので、切り捨てたあとの値の1.5倍とは1ずれることがある
+      expect(edge.base).toBeGreaterThanOrEqual(Math.floor(open.base * D.combat.knock.wallMult));
+      expect(edge.base).toBeLessThanOrEqual(Math.floor((open.base + 1) * D.combat.knock.wallMult));
+    }
+  });
+
   it('rejects illegal actions', () => {
     const st = field(PLAIN);
     const a = troop(st, 'u01a', 0, 10), d = troop(st, 'u01a', 1, 40);

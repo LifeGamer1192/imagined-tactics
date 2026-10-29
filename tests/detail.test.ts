@@ -74,7 +74,7 @@ describe('battle log detail', () => {
             expect(stat(g.def)).toBeCloseTo(p.def, 9);
             expect(g.atk.value).toBe(p.atk);
             expect(g.def.value).toBe(p.def);
-            expect(Math.abs(Math.max(1, Math.floor(p.power * p.atk / p.def * p.bane * p.counter * p.fire * (p.field ?? 1))) - p.base)).toBeLessThanOrEqual(p.bane === 1 ? 0 : 1);
+            expect(Math.abs(Math.max(1, Math.floor(p.power * p.atk / p.def * p.bane * p.counter * p.fire * (p.field ?? 1) * (p.wall ?? 1))) - p.base)).toBeLessThanOrEqual(p.bane === 1 ? 0 : 1);
             expect(g.crit).toBe(g.critRoll < g.critPct);
             const raw = p.base * g.rnd * (g.crit ? g.critMult : 1) * g.critBonus * (g.shield?.ok ? 0.5 : 1);
             expect(raw).toBeCloseTo(g.raw, 6);

@@ -4,7 +4,7 @@ import { D } from '../data/db';
 import { seatName } from './map';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import {
-  atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, skillTargetCells,
+  atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, knockPlan, skillTargetCells,
   needsReload, skillCost, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
 } from '../rules/combat';
 import { killExp } from '../rules/growth';
@@ -190,9 +190,17 @@ function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: bo
     if (e.type === 'mpHalf') { const from = t.mp; t.mp = Math.floor(t.mp / 2); d.mpHalf = [from, t.mp]; }
     if (e.type === 'heal') { const from = t.hp; heal(t, skill.power); d.heal = [from, t.hp]; }
     if (e.type === 'knockback') {
-      const g = st.map.grid;
-      const to = g.step(t.pos, g.dirTo(a.pos, t.pos));
-      if (to >= 0 && !unitAt(st, to) && D.terrain.moveCost[st.map.terrain[to]][t.affinity] !== null) { d.knock = [t.pos, to]; t.pos = to; }
+      // 押し出す（0.10.0）：押せれば1マス遠ざける。後ろに駒がいれば、その駒（敵味方問わず）にもダメージ。
+      // 盤の外・入れない地形なら、ダメージはもう増えている（damageParts の wall）
+      const plan = knockPlan(st, a, t);
+      if (plan.kind === 'push') { d.knock = [t.pos, plan.to]; t.pos = plan.to; }
+      else if (plan.kind === 'wall') d.knockWall = { cell: plan.to, mult: D.combat.knock.wallMult };
+      else if (dmg > 0) {
+        const o = plan.other, hurtBy = o.side !== a.side ? a : null, n = Math.max(1, Math.round(dmg * D.combat.knock.collidePct / 100)), from = o.hp;
+        log(st, 'collide', { unit: t.name, other: o.name, dmg: n, uid: t.id, tid: o.id });
+        damage(st, o, n, hurtBy);
+        d.collide = { uid: o.id, dmg: n, hp: [from, o.hp] };
+      }
     }
   }
 }

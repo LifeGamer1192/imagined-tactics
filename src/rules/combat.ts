@@ -79,7 +79,26 @@ export interface DamageParts {
   bane: number; counter: number; fire: number;
   /** 地形と天気の倍率と、何が効いたか */
   field: number; fieldNotes: FieldParts['notes'];
+  /** 押し出す技で、押す先が塞がっていて押し付けたときの倍率（0.10.0。無ければ 1） */
+  wall?: number;
 }
+
+/**
+ * 押し出す技の行き先（0.10.0）：攻める側から見て、相手の向こうの1マス。
+ * push：押し出せる。unit：後ろに駒がいて押せない（その駒にもダメージ）。wall：盤の外・入れない地形・閉じた門や柵（ダメージが増える）
+ */
+export type KnockPlan = { kind: 'push'; to: number } | { kind: 'unit'; to: number; other: BUnit } | { kind: 'wall'; to: number };
+export function knockPlan(st: BattleState, a: BUnit, t: BUnit): KnockPlan {
+  const g = st.map.grid;
+  const to = g.step(t.pos, g.dirTo(a.pos, t.pos));
+  if (to < 0) return { kind: 'wall', to };
+  const other = unitAt(st, to);
+  if (other) return { kind: 'unit', to, other };
+  const s = st.structures?.[to];
+  if (D.terrain.moveCost[st.map.terrain[to]][t.affinity] === null || st.map.terrain[to] === 'void' || (s && s.closed)) return { kind: 'wall', to };
+  return { kind: 'push', to };
+}
+export const knocks = (skill: SkillDef): boolean => skill.effects.some((e) => e.type === 'knockback');
 
 export function damageParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, isCounter = false): DamageParts {
   const p: DamageParts = { base: 0, power: skill.power, atk: 0, def: 0, bane: 1, counter: 1, fire: 1, field: 1, fieldNotes: [] };
@@ -94,6 +113,8 @@ export function damageParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit
   const fm = fieldMult(st, a, skill.id, skill.range, false, t);
   p.field = fm.mult; p.fieldNotes = fm.notes;
   dmg *= p.field;
+  // 押し出す技で、押す先が塞がっていれば押し付けて強く当たる（後ろが駒なら、その駒にダメージを分ける方。ここは増えない）
+  if (knocks(skill) && knockPlan(st, a, t).kind === 'wall') { p.wall = D.combat.knock.wallMult; dmg *= p.wall; }
   p.base = Math.max(1, Math.floor(dmg));
   return p;
 }

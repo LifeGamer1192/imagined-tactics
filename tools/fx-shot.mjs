@@ -29,13 +29,19 @@ await page.waitForSelector('#end');
 await page.waitForSelector('#watch');
 
 // ---- 記録の3段階：観戦でしばらく進めてから、同じ記録を3通りに出して撮る
-await page.click('[data-speed="4"]');
-await page.click('#watch');
-await page.waitForTimeout(2500);
-await page.click('#watch');
-await page.waitForTimeout(300);
-if (!(await page.$('[data-log]'))) await page.click('#ctlMore');
-for (const [i, name] of [[0, 'simple'], [1, 'normal'], [2, 'detail']]) {
+// 観戦のボタンが見つからない・戦いが終わってしまったときは、記録の撮影を飛ばしてエフェクトへ進む
+const logOk = await (async () => {
+  try {
+    await page.click('[data-speed="4"]', { timeout: 3000 });
+    await page.click('#watch', { timeout: 3000 });
+    await page.waitForTimeout(2500);
+    await page.click('#watch', { timeout: 3000 });
+    await page.waitForTimeout(300);
+    if (!(await page.$('[data-log]'))) await page.click('#ctlMore', { timeout: 3000 });
+    return true;
+  } catch { console.log('記録の撮影は飛ばした（観戦のボタンが押せない）'); return false; }
+})();
+for (const [i, name] of logOk ? [[0, 'simple'], [1, 'normal'], [2, 'detail']] : []) {
   await page.click(`[data-log="${i}"]`);
   await page.waitForTimeout(150);
   await (await page.$('.battle aside')).screenshot({ path: path.join(out, `log_${name}.png`) });
@@ -68,6 +74,10 @@ const scenes = [
   ['軍略・補助 x25', { tactic: 'x25', dist: 2, ally: true }, [80, 230, 330, 520, 900]],
   ['軍略・妨害 x34', { tactic: 'x34', dist: 2 }, [80, 230, 330, 520, 900]],
   ['続けて当たる k001 + 反撃', { skill: 'k001', dist: 1, twice: true }, [200, 420, 700, 1000, 1500]],
+  ['ダメージ回復 k003（P94）', { skill: 'k003', dist: 1, hurtSelf: true }, [200, 420, 640, 900, 1300]],
+  ['押し出し k037', { skill: 'k037', dist: 1 }, [130, 260, 420, 700, 1000]],
+  ['押し付け k037（後ろが塞がる）', { skill: 'k037', dist: 1, wall: true }, [130, 260, 420, 700, 1000]],
+  ['ぶつかる k037（後ろに駒）', { skill: 'k037', dist: 1, second: true }, [130, 300, 450, 650, 1000]],
 ];
 const FW = 400, FH = 250, ROWS = 4;
 await page.evaluate(() => { window.__t = 100000; performance.now = () => window.__t; });
@@ -91,8 +101,10 @@ for (let s0 = 0; s0 < scenes.length; s0 += ROWS) {
       const A = st.units.find((u) => u.side === 0 && u.kind === 'troop');
       const foes = st.units.filter((u) => (sc.ally ? u.side === 0 && u.id !== A.id : u.side === 1) && u.kind === 'troop');
       const T = foes[0], T2 = foes[1];
-      // 平らなマスが右下へ5つ続く所を探して、そこに並べる
-      const free = (i) => i >= 0 && (st.map.terrain[i] === 'plain' || st.map.terrain[i] === 'road') && !st.units.some((u) => u.alive && u.pos === i);
+      // 置けるマスが右下へ5つ続く所を探して、そこに並べる
+      // 駒を置ける地形（入れない所・造り・要のマスは避ける。田や森の多い戦場でも並べられるように）
+      const OPEN = new Set(['plain', 'road', 'paddy', 'forest', 'desert', 'snowfield', 'town', 'bridge']);
+      const free = (i) => i >= 0 && OPEN.has(st.map.terrain[i]) && !st.structures?.[i] && !st.units.some((u) => u.alive && u.pos === i);
       let c0 = -1, line = [];
       for (let i = 0; i < g.n && c0 < 0; i++) {
         const l = g.line(i, 0, 5);
@@ -121,7 +133,18 @@ for (let s0 = 0; s0 < scenes.length; s0 += ROWS) {
       for (; tries < 80; tries++) {
         const n0 = st.log.length;
         a.view.clearFx();
-        A.acted = false; A.mp = 999; T.hp = sc.ally ? 1200 : 3000; A.hp = A.maxHp;
+        A.acted = false; A.mp = 999; T.hp = sc.ally ? 1200 : 3000; A.hp = sc.hurtSelf ? Math.round(A.maxHp / 2) : A.maxHp;
+        if (sc.skill === 'k037' || sc.wall) {
+          // 押し出す技：押された相手を戻し、押す向きの真後ろに、塞ぐマス（入れない）か後ろの駒を置く
+          T.pos = line[sc.dist - 1];
+          const back = g.step(T.pos, g.dirTo(A.pos, T.pos));
+          if (sc.wall) st.map.terrain[back] = 'void';
+          else if (sc.second) {
+            // 後ろの駒：相手の兵が1隊しかいなければ、ほかの駒（相手の将・味方。ぶつかるのは敵味方を問わない）
+            const B = T2 ?? st.units.find((u) => u.alive && u.id !== A.id && u.id !== T.id);
+            if (B) { B.pos = back; B.hp = B.maxHp = 3000; }
+          }
+        }
         r = a.perform([act], 1);
         keys = st.log.slice(n0).map((e) => e.key);
         if (!r.ok) break;

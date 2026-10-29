@@ -39,6 +39,7 @@ const TEXT: Record<string, string> = {
   'retreatAll': '{side}は戦場から退いた。{winner}の勝ち',
   'withdraw': '{unit}の部隊が、陣地から戦場を退いた（兵{n}隊も一緒に）',
   'turn': '── {side}の番（{round}巡目）──',
+  'collide': '{unit}が押されて{other}にぶつかった（{dmg}）',
 };
 
 export function logText(e: BattleLogEntry): string {

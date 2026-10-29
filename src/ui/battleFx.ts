@@ -232,11 +232,14 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
         if (uid < 0 || tid < 0) break;
         const crit = e.key === 'hit.crit', dmg = num(e.vars.dmg);
         const when = attack(uid, tid, cur?.fx ?? fallback(uid, tid), crit, false);
-        hurt(tid, dmg, when);
-        push({ kind: 'shake', unit: tid, amp: crit ? 8 : 4.5, t0: at(when), dur: T.shake * scale });
-        note(posOf(tid), String(dmg), VERMILION, crit, when, crit ? '会心' : undefined);
-        sound(crit ? 'crit' : 'hit', when);
         const d = cur?.d;
+        // 押し付け（0.10.0）：押す先が塞がっていて、ダメージが増えた。塞いでいるマスを光らせ、数字を大きく「押し付け×1.5」
+        const wall = d?.knockWall;
+        hurt(tid, dmg, when);
+        push({ kind: 'shake', unit: tid, amp: crit || wall ? 8 : 4.5, t0: at(when), dur: T.shake * scale });
+        if (wall && wall.cell >= 0) push({ kind: 'flash', cells: [wall.cell], color: VERMILION, t0: at(when), dur: 320 * scale });
+        note(posOf(tid), String(dmg), VERMILION, crit || !!wall, when, crit ? '会心' : wall ? `押し付け×${wall.mult}` : undefined);
+        sound(crit || wall ? 'crit' : 'hit', when);
         if (d?.dmg?.shield?.ok) chip(posOf(tid), '盾', OCHRE, when);
         if (d?.mpHalf) chip(posOf(tid), '気力半減', PURPLE, when + 60);
         // 押し出し：当たるまでは、もとのマスにいる
@@ -252,6 +255,20 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
           end = back;
         }
         lastImpact = end; gap(end);
+        break;
+      }
+      case 'collide': {
+        // 押されて後ろの駒にぶつかった（0.10.0）：押された駒が後ろへ寄って戻り、後ろの駒にダメージ
+        const pushed = uid, other = tid, dmg = num(e.vars.dmg);
+        if (pushed < 0 || other < 0) break;
+        const when = lastImpact + 140, a0 = xy(posOf(pushed)), b0 = xy(posOf(other));
+        const mid: [number, number] = [a0[0] + (b0[0] - a0[0]) * 0.35, a0[1] + (b0[1] - a0[1]) * 0.35];
+        push({ kind: 'slide', unit: pushed, pts: [a0, mid, a0], t0: at(when - 80), dur: T.knock * 1.6 * scale });
+        hurt(other, dmg, when);
+        push({ kind: 'shake', unit: other, amp: 6, t0: at(when), dur: T.shake * scale });
+        note(posOf(other), String(dmg), VERMILION, false, when, 'ぶつかった');
+        sound('thud', when);
+        lastImpact = when; gap(when);
         break;
       }
       case 'breach': {
