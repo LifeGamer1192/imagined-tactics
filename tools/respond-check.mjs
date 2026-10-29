@@ -48,10 +48,14 @@ const center = async (sel) => { const b = await (await page.$(sel)).boundingBox(
 await page.goto(url);
 // 図鑑（P90・P91）：開く・タブを替える・役職や兵種を選び直す・名前で探す
 await act('図鑑を開く', () => page.click('[data-zukan]'));
-for (const [t, n] of [['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['terrain', '地形・天気'], ['traits', '特性'], ['levels', 'レベル'], ['units', '兵種の対応表']]) await act(`図鑑：${n}のタブ`, () => page.click(`[data-ztab="${t}"]`));
+for (const [t, n] of [['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['terrain', '地形・天気'], ['traits', '特性'], ['levels', 'レベル'], ['units', '兵種']]) await act(`図鑑：${n}のタブ`, () => page.click(`[data-ztab="${t}"]`));
 await page.click('[data-ztab="levels"]'); await page.waitForFunction(() => !document.querySelector('.busy'));
 await act('図鑑：兵種を選び直す', () => page.selectOption('[data-zk="unit"]', 'u15c'));
 await act('図鑑：名前で探す', () => page.fill('[data-zk="q"]', '槍'));
+await page.fill('[data-zk="q"]', '');
+await page.click('[data-ztab="units"]'); await page.waitForFunction(() => !document.querySelector('.busy'));
+await act('図鑑：兵種から技へのリンク', () => page.click('#zk-units-u05b a.zk-go[data-zgo^="skills:"]'));
+await act('図鑑：技から兵種へのリンク', () => page.click('.zukan .help-body a.zk-go[data-zgo="units:u05b"]'));
 await page.fill('[data-zk="q"]', '');
 await act('図鑑を閉じる', () => page.click('.zukan .help-close'));
 await act('見本を選ぶ', () => page.click(`[data-sample="${sample}"]`));

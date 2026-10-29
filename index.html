@@ -603,6 +603,13 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .zukan .help-body td.zk-pic img { width: 44px; height: 44px; object-fit: contain; background: #f4efe2; border-radius: 4px; }
     .zukan .help-body td[data-tip] { cursor: help; text-decoration: underline dotted rgba(233,201,138,0.5); }
     .zk-pick select { max-width: 14em; margin: 0 8px 4px 2px; }
+    /* 行き来のリンク（P93） */
+    .zukan a.zk-go { color: #f0cf7a; text-decoration: underline dotted rgba(240,207,122,0.6); white-space: nowrap; }
+    .zukan a.zk-go:hover { color: #fff1c4; }
+    .zukan td.zk-arts { min-width: 18em; max-width: 30em; line-height: 1.8; }
+    .zukan td.zk-arts a.zk-go { display: inline-block; margin-right: 6px; }
+    .zk-mp { margin-left: 2px; font-size: 10.5px; color: #9fc3ff; }
+    .zukan .help-body tr.zk-hit td { background-color: rgba(240,207,122,0.28) !important; transition: background-color 0.3s; }
     @media (max-width: 520px) { .zukan .help header { gap: 4px 6px; padding: 8px; } .zukan .help nav button { padding: 3px 7px; font-size: 12.5px; } .zukan .help header b { font-size: 16px; } }
     /* 昇格の系図（P91）：左から右へ。枝分かれは縦に並べる */
     .zk-tree { margin: 4px 0 10px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: rgba(0,0,0,0.18); overflow-x: auto; }

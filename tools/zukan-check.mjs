@@ -36,6 +36,28 @@ for (const [tag, opts] of [['pc', { viewport: { width: 1366, height: 800 } }], [
     ok(`[${tag}] ${t}：窓が横にはみ出さない`, await fits());
     await shot(`2_${t}`);
   }
+  // 行き来のリンク（P93）：兵種 → 技 → 兵種、軍略 → 役職
+  await press('[data-ztab="units"]');
+  await page.waitForFunction(() => !document.querySelector('.busy'));
+  ok(`[${tag}] 兵種の表に気力と、技・軍略のリンク`, (await page.$$('.zk-units a.zk-go[data-zgo^="skills:"]')).length >= 50 && (await page.$$('.zk-units a.zk-go[data-zgo^="tactics:"]')).length > 5 && /気力/.test(await page.textContent('.zk-units')));
+  const toSkill = await page.$eval('#zk-units-u05b a.zk-go[data-zgo^="skills:"]', (a) => a.dataset.zgo.split(':')[1]);
+  await page.$eval('#zk-units-u05b a.zk-go[data-zgo^="skills:"]', (a) => a.scrollIntoView({ block: 'center' }));
+  await press('#zk-units-u05b a.zk-go[data-zgo^="skills:"]');
+  await page.waitForFunction((id) => !document.querySelector('.busy') && !!document.querySelector(`#zk-skills-${id}.zk-hit`), toSkill, { timeout: 5000 }).catch(() => {});
+  const seen = await page.$eval(`#zk-skills-${toSkill}`, (r) => { const b = r.getBoundingClientRect(), h = document.querySelector('.zukan .help-body').getBoundingClientRect(); return r.classList.contains('zk-hit') && b.top >= h.top - 1 && b.bottom <= h.bottom + 1; }).catch(() => false);
+  ok(`[${tag}] 兵種の技のリンクで、技の表のその行へ（見える所で光る）`, seen, toSkill);
+  await shot('4_link_skill');
+  await press(`#zk-skills-${toSkill} a.zk-go[data-zgo="units:u05b"]`);
+  await page.waitForFunction(() => !document.querySelector('.busy') && !!document.querySelector('#zk-units-u05b.zk-hit'), null, { timeout: 5000 }).catch(() => {});
+  ok(`[${tag}] 技の表から兵種へ戻れる`, !!(await page.$('#zk-units-u05b.zk-hit')));
+  await press('[data-ztab="tactics"]');
+  await page.waitForFunction(() => !document.querySelector('.busy'));
+  const cl = await page.$eval('.zukan .help-body a.zk-go[data-zgo^="classes:"]', (a) => a.dataset.zgo.split(':')[1]);
+  await page.$eval('.zukan .help-body a.zk-go[data-zgo^="classes:"]', (a) => a.scrollIntoView({ block: 'center' }));
+  await press('.zukan .help-body a.zk-go[data-zgo^="classes:"]');
+  await page.waitForFunction((id) => !document.querySelector('.busy') && !!document.querySelector(`#zk-classes-${id}.zk-hit`), cl, { timeout: 5000 }).catch(() => {});
+  ok(`[${tag}] 軍略の表から役職へ`, !!(await page.$(`#zk-classes-${cl}.zk-hit`)), cl);
+  await shot('5_link_class');
   // 昇格の系図：兵と武将の木が出る
   await press('[data-ztab="tree"]');
   await page.waitForFunction(() => !document.querySelector('.busy'));

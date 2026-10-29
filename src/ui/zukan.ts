@@ -11,7 +11,7 @@ import { fieldTable, terrainTable } from './help';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
 
 type Tab = 'units' | 'classes' | 'tree' | 'skills' | 'tactics' | 'terrain' | 'traits' | 'levels';
-const TABS: [Tab, string][] = [['units', '兵種の対応表'], ['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['terrain', '地形・天気'], ['traits', '特性'], ['levels', 'レベル']];
+const TABS: [Tab, string][] = [['units', '兵種'], ['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['terrain', '地形・天気'], ['traits', '特性'], ['levels', 'レベル']];
 type Ver = 'jp' | 'cn';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
@@ -34,6 +34,15 @@ const nm = (n: Loc): string => n[ver];
 const hit = (...names: string[]): boolean => !query || names.some((x) => x.includes(query));
 const pic = (set: string, id: string): string => { const u = artUrl(`unit/${set}/${id}`); return u ? `<img src="${u}" alt="" loading="lazy">` : '<span class="dim small">絵なし</span>'; };
 
+// ------------------------------------------------------------ 行き来のリンク（P93）
+// data-zgo="タブ:番号"。押すとそのタブへ移って、その行まで送り、行を光らせる。行には id="zk-<タブ>-<番号>" を付ける
+const rowId = (t: Tab, id: string): string => `zk-${t}-${id}`;
+const go = (t: Tab, id: string, label: string, tip = ''): string => `<a href="#${rowId(t, id)}" class="zk-go" data-zgo="${t}:${id}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${label}</a>`;
+const skillLink = (id: string): string => { const s = D.skills.find((x) => x.id === id); return s ? go('skills', id, `${esc(nm(s.name))}${s.mp ? `<small class="zk-mp">気${s.mp}</small>` : ''}`, skillTip(s)) : esc(id); };
+const tacticLink = (id: string): string => { const t = D.byTactic[id]; return t ? go('tactics', id, `${esc(nm(t.name))}<small class="zk-mp">気${t.mp}</small>`, tacticTip(t)) : esc(id); };
+const unitLink = (id: string): string => D.byUnit[id] ? go('units', id, esc(nm(D.byUnit[id].name))) : esc(id);
+const classLink = (id: string): string => D.byClass[id] ? go('classes', id, esc(nm(D.byClass[id].name))) : esc(id);
+
 // ------------------------------------------------------------ 兵種の対応表
 
 function unitsPage(): string {
@@ -43,12 +52,13 @@ function unitsPage(): string {
     const us = D.units.filter((u) => u.line === line && hit(u.name.jp, u.name.cn, westName(u.id) ?? '', u.id));
     if (!us.length) continue;
     out.push(`<h3>系統${line}：${esc(LINE[line] ?? '')}</h3><div class="scroll"><table class="zk-units">
-      <tr><th>番号</th><th>格</th><th>日本版</th><th>中国版</th><th>西洋版</th><th>体力</th><th>武力</th><th>知略</th><th>機敏</th><th>防御</th><th>移動</th><th>得意</th><th>采配</th><th>昇格先</th></tr>
-      ${us.map((u) => `<tr>
+      <tr><th>番号</th><th>格</th><th>日本版</th><th>中国版</th><th>西洋版</th><th>体力</th><th>気力</th><th>武力</th><th>知略</th><th>機敏</th><th>防御</th><th>移動</th><th>得意</th><th>采配</th><th>技・軍略（1回の気力）</th><th>昇格先</th></tr>
+      ${us.map((u) => `<tr id="${rowId('units', u.id)}">
         <td>${u.id}</td><td>${TIER[u.tier] ?? u.tier}</td>
         ${(['jp', 'cn', 'west'] as const).map((s) => `<td class="zk-pic" data-tip="${esc(unitTip(u.id))}">${pic(s, u.id)}<br>${esc(s === 'west' ? westName(u.id) ?? '' : u.name[s])}</td>`).join('')}
-        <td>${u.hp}</td><td>${u.str}</td><td>${u.int}</td><td>${u.agi}</td><td>${u.def}</td><td>${u.move}</td><td>${AFFINITY_NAME[u.affinity] ?? u.affinity}</td><td>${u.cost}</td>
-        <td class="zk-left">${(u.promote ?? []).filter((p) => D.byUnit[p.to]).map((p) => `${esc(nm(D.byUnit[p.to].name))}${p.lv ? ` Lv${p.lv}` : ''}${p.item ? `・品「${esc(D.items[p.item]?.jp ?? p.item)}」` : ''}`).join('<br>') || '—'}</td>
+        <td>${u.hp}</td><td>${u.mp || '—'}</td><td>${u.str}</td><td>${u.int}</td><td>${u.agi}</td><td>${u.def}</td><td>${u.move}</td><td>${AFFINITY_NAME[u.affinity] ?? u.affinity}</td><td>${u.cost}</td>
+        <td class="zk-left zk-arts">${[...u.skills.map(skillLink), ...u.tactics.map(tacticLink)].join(' ') || '—'}</td>
+        <td class="zk-left">${(u.promote ?? []).filter((p) => D.byUnit[p.to]).map((p) => `${unitLink(p.to)}${p.lv ? ` Lv${p.lv}` : ''}${p.item ? `・品「${esc(D.items[p.item]?.jp ?? p.item)}」` : ''}`).join('<br>') || '—'}</td>
       </tr>`).join('')}</table></div>`);
   }
   return out.length > 1 ? out.join('') : `${out[0]}<p>当てはまる兵種がありません。</p>`;
@@ -58,10 +68,10 @@ function unitsPage(): string {
 
 /** 技・軍略を持つもの（兵種と役職） */
 function holders(id: string, kind: 'skill' | 'tactic'): string {
-  const us = D.units.filter((u) => (kind === 'skill' ? u.skills : u.tactics).includes(id)).map((u) => nm(u.name));
-  const cs = kind === 'tactic' ? D.classes.filter((c) => c.tactics.includes(id)).map((c) => nm(c.name)) : [];
-  const all = [...cs.map((x) => `将：${x}`), ...us];
-  return all.length ? esc(all.join('・')) : '<span class="dim">—</span>';
+  const us = D.units.filter((u) => (kind === 'skill' ? u.skills : u.tactics).includes(id)).map((u) => unitLink(u.id));
+  const cs = kind === 'tactic' ? D.classes.filter((c) => c.tactics.includes(id)).map((c) => `将：${classLink(c.id)}`) : [];
+  const all = [...cs, ...us];
+  return all.length ? all.join('・') : '<span class="dim">—</span>';
 }
 
 function skillsPage(): string {
@@ -71,7 +81,7 @@ function skillsPage(): string {
   const extra = (s: SkillDef): string => skillTip(s).split('\n').filter((l) => /当たると|回復|押し出|会心|気力を半分|装填|水の上|巻き込む/.test(l)).join('、');
   const list = D.skills.filter((s) => hit(s.name.jp, s.name.cn, s.id)).sort((a, b) => Number(b.basic) - Number(a.basic) || a.id.localeCompare(b.id));
   if (!list.length) return '<p>当てはまる技がありません。</p>';
-  const row = (s: SkillDef): string => `<tr>
+  const row = (s: SkillDef): string => `<tr id="${rowId('skills', s.id)}">
     <td class="zk-left" data-tip="${esc(skillTip(s))}">${esc(nm(s.name))}</td><td>${s.basic ? '通常攻撃' : '技'}</td>
     <td>${s.noDamage ? '—' : s.power}</td><td>${s.hit ? (s.hit > 0 ? '+' : '') + s.hit : '±0'}</td><td>${s.mp || '—'}</td><td>${rng(s)}</td><td>${shape(s)}</td>
     <td>${MARK[s.vsGround] ?? s.vsGround}</td><td>${MARK[s.vsRider] ?? s.vsRider}</td><td>${s.afterMove ? '○' : '×'}</td><td>${s.counter ? '○' : '—'}</td>
@@ -98,7 +108,7 @@ function tacticsPage(): string {
   const kinds = Object.keys(TACTIC_KIND);
   const list = D.tactics.filter((t) => hit(t.name.jp, t.name.cn, t.id, TACTIC_KIND[t.kind] ?? '')).sort((a, b) => kinds.indexOf(a.kind) - kinds.indexOf(b.kind) || a.mp - b.mp);
   if (!list.length) return '<p>当てはまる軍略がありません。</p>';
-  const row = (t: TacticDef): string => `<tr>
+  const row = (t: TacticDef): string => `<tr id="${rowId('tactics', t.id)}">
     <td class="zk-left" data-tip="${esc(tacticTip(t))}">${esc(nm(t.name))}</td><td>${esc(KIND_SHORT[t.kind] ?? TACTIC_KIND[t.kind] ?? t.kind)}</td><td>${t.mp}</td><td>${t.power || '—'}</td><td>${where(t)}</td>
     <td class="zk-left zk-fx">${esc(effect(t)) || '—'}</td><td class="zk-left zk-who">${holders(t.id, 'tactic')}</td></tr>`;
   return `<p class="small">気力は1回に使う気力（教わったばかりの借り物は多くかかる）。威力は知略が高いほど強い。軍略は外れない（状態が付くかだけが確率）。「将：」は、その役職の武将が使える。名前に乗せると説明が出る。</p>
@@ -123,12 +133,12 @@ function classesPage(): string {
   for (const [title, cs0] of groups) {
     const cs = cs0.filter((c) => hit(c.name.jp, c.name.cn, c.id));
     if (!cs.length) continue;
-    out.push(`<h3>${title}</h3><div class="scroll"><table><tr><th>名前</th><th>格</th><th>通常攻撃</th><th>防御</th><th>移動</th><th>得意</th><th>${T.hp()}</th><th>${T.mp()}</th><th>${T.str()}</th><th>${T.int()}</th><th>${T.agi()}</th><th>軍略</th><th>なる条件</th></tr>
-      ${cs.map((c) => { const m = classMod(c); const a = c.attack; return `<tr>
+    out.push(`<h3>${title}</h3><div class="scroll"><table><tr><th>名前</th><th>格</th><th>通常攻撃</th><th>防御</th><th>移動</th><th>得意</th><th>${T.hp()}</th><th>${T.mp()}</th><th>${T.str()}</th><th>${T.int()}</th><th>${T.agi()}</th><th>軍略（1回の気力）</th><th>なる条件</th></tr>
+      ${cs.map((c) => { const m = classMod(c); const a = c.attack; return `<tr id="${rowId('classes', c.id)}">
         <td class="zk-left" data-tip="${esc(classTip(c.id))}">${esc(nm(c.name))}${c.sex === 'f' ? '<span class="dim small">（女）</span>' : ''}</td><td>${TIER[c.tier] ?? c.tier}${c.unique ? `<br><span class="dim small">${UNIQUE[c.unique] ?? ''}</span>` : ''}</td>
         <td>${a.kind === 'bow' ? '飛び道具' : '近接'} 威${a.power}<br><span class="dim small">射程${a.range[0] === a.range[1] ? a.range[1] : `${a.range[0]}〜${a.range[1]}`}</span></td><td>${c.def}</td><td>${c.move}</td><td>${AFFINITY_NAME[c.affinity] ?? c.affinity}</td>
         ${(['hp', 'mp', 'str', 'int', 'agi'] as const).map((k) => `<td>${m[k] ? sg(m[k]) : '±0'}</td>`).join('')}
-        <td class="zk-left zk-fx">${c.tactics.map((id) => D.byTactic[id] ? `<span data-tip="${esc(tacticTip(D.byTactic[id]))}">${esc(nm(D.byTactic[id].name))}</span>` : esc(id)).join('・') || '—'}</td>
+        <td class="zk-left zk-arts">${c.tactics.map(tacticLink).join(' ') || '—'}</td>
         <td class="zk-left">${reqText(c)}</td></tr>`; }).join('')}</table></div>`);
   }
   return out.length > 1 ? out.join('') : `${out[0]}<p>当てはまる役職がありません。</p>`;
@@ -292,6 +302,22 @@ export function initZukan(): void {
   back.addEventListener('click', (e) => {
     const el = e.target as HTMLElement;
     if (el === back || el.closest('.help-close')) { closeZukan(); return; }
+    // 行き来のリンク：そのタブへ移り（探す文字は消す）、その行まで送って光らせる
+    const g = el.closest<HTMLElement>('[data-zgo]');
+    if (g) {
+      e.preventDefault();
+      const [to, id] = g.dataset.zgo!.split(':') as [Tab, string];
+      tab = to; query = '';
+      back!.querySelector<HTMLInputElement>('[data-zk="q"]')!.value = '';
+      void busy(cached() ? '表を出しています…' : '表を作っています…', () => render()).then(() => {
+        const row = back!.querySelector<HTMLElement>(`#${rowId(to, id)}`);
+        if (!row) return;
+        row.scrollIntoView({ block: 'center' });
+        row.classList.add('zk-hit');
+        window.setTimeout(() => row.classList.remove('zk-hit'), 1800);
+      });
+      return;
+    }
     const t = el.closest<HTMLElement>('[data-ztab]');
     // 表は大きいので、作り置きがあっても描き直しに時間がかかる。先に表示を出してから替える
     if (t) { tab = t.dataset.ztab as Tab; void busy(cached() ? '表を出しています…' : '表を作っています…', () => render()); }
