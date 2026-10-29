@@ -14,7 +14,7 @@ import { D } from '../data/db';
 import type { SkillDef, TacticDef } from '../data/types';
 import {
   canCounter, canUseSkill, canUseTactic, healAmount, hitChance, skillDamage, skillTargetCells, skillVictims,
-  needsReload, tacticCost, tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
+  needsReload, tacticCost, tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets, aimChance,
 } from '../rules/combat';
 import { MinHeap } from '../core/heap';
 import { RNG, codeToSeed } from '../core/rng';
@@ -233,6 +233,7 @@ function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: nu
 }
 
 function scoreSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number, w: Record<string, number>, leader: BUnit | null): { value: number; counter: number } {
+  if (skill.bombard) return { value: scoreBombard(st, u, skill, target, w, leader) - skill.mp * w.mp, counter: 0 };
   let value = 0, counter = 0;
   const single = skill.shape.type === 'single';
   for (const t of skillVictims(st, u, skill, target)) {
@@ -261,6 +262,23 @@ function scoreSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number, 
   }
   return { value: value - skill.mp * w.mp, counter: counter * w.counter };
 }
+
+/**
+ * 狙って石を落とす技の点（0.12.0）：狙いどおり落ちる見込みで、落ちたマスの駒は100%、隣の駒は巻き込み（平均の割合）。
+ * 外れて隣へずれるぶんは、狙ったマスの駒への見込みを減らすだけで数える（ずれた先は数えない）。味方を巻き込むと減点
+ */
+function scoreBombard(st: BattleState, u: BUnit, skill: SkillDef, target: number, w: Record<string, number>, leader: BUnit | null): number {
+  const B = skill.bombard!, chance = aimChance(st, u, skill, target) / 100, splash = (B.splashMin + B.splashMax) / 200;
+  let v = 0;
+  for (const t of skillVictims(st, u, skill, target)) {
+    const center = t.pos === target;
+    const dmg = skillDamage(st, u, skill, t) * (center ? 1 : splash);
+    const x = valueOfHit(st, u, t, dmg, center ? chance : 1, w, leader);
+    v += isEnemyOf(u, t) ? x : -x * w.friendlyFire;
+  }
+  return v;
+}
+const isEnemyOf = (a: BUnit, b: BUnit): boolean => a.side !== b.side;
 
 /**
  * 敵とぶつかるまでの巡の見込み（0 = この巡のうちに届く）。近い敵ごとに、どちらかの届く範囲（移動＋射程）に入るまでの距離を、

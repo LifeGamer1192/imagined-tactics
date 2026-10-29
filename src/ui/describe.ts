@@ -184,15 +184,18 @@ const withEffect = (id: string): string => { const e = statusEffect(id); return 
 
 /** 技の説明 */
 export function skillTip(s: SkillDef): string {
-  const shape = s.shape.type === 'around' ? `自分の周り${s.shape.n}マス` : s.shape.type === 'line' ? `向いた方へ直線${s.shape.n}マス` : `1体（射程${s.range[0] === s.range[1] ? s.range[1] : `${s.range[0]}〜${s.range[1]}`}）`;
+  const rng = s.range[0] === s.range[1] ? `${s.range[1]}` : `${s.range[0]}〜${s.range[1]}`;
+  const shape = s.bombard ? `射程${rng}のどのマスでも（駒がいなくてもよい）` : s.shape.type === 'around' ? `自分の周り${s.shape.n}マス` : s.shape.type === 'line' ? `向いた方へ直線${s.shape.n}マス` : `1体（射程${rng}）`;
   const out = [`【${L(s.name)}】`, `対象：${shape}${s.targets === 'all' ? '（味方も巻き込む）' : ''}`];
+  // 狙って石を落とす（0.12.0）
+  if (s.bombard) out.push(`命中率の見込みで狙ったマスに石が落ち、外れると隣のどれかのマスにずれる。落ちたマスの駒は100%、その隣の駒は${s.bombard.splashMin}〜${s.bombard.splashMax}%のダメージ（敵味方を問わない。撃った駒は巻き込まない）`);
   if (!s.noDamage) out.push(`威力${s.power}${s.hit ? `、命中${s.hit > 0 ? '+' : ''}${s.hit}` : ''}`);
   if (s.mp) out.push(`気力を${s.mp}使う`);
   out.push(`地上の相手：${MARK[s.vsGround] ?? s.vsGround}、騎馬の相手：${MARK[s.vsRider] ?? s.vsRider}`);
   out.push(s.afterMove ? '動いたあとでも使える' : '動く前にしか使えない');
   if (s.counter) out.push('反撃にも使う');
   // 反撃を受けるか（P49）
-  if (s.noCounter) out.push('反撃：受けない（相手は反撃できない技）');
+  if (s.noCounter || s.bombard) out.push('反撃：受けない（相手は反撃できない技）');
   else if (s.shape.type !== 'single') out.push('反撃：受けない（範囲の技には反撃できない）');
   else if (s.range[0] >= 2) out.push(`反撃：相手の通常攻撃が距離${s.range[0]}以上に届くときだけ受ける（近くしか届かない相手からは受けない）`);
   else out.push('反撃：受けることがある（相手の通常攻撃が届く距離なら。相手が動けない・寝返り中なら受けない）');

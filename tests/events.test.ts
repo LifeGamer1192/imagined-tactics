@@ -189,7 +189,9 @@ describe('people', () => {
       const lord = c.gs.generals[f.lordId];
       if (Object.values(c.gs.generals).some((g) => g.faction === f.id)) expect(lord?.faction, f.name.ja).toBe(f.id);
     }
-    for (const g of Object.values(c.gs.generals)) for (const t of g.ties) expect(c.gs.generals[t.with], `${g.name.ja} tie`).toBeTruthy();
+    // 縁の相手は、武将か捕虜（捕虜は武将の一覧から外れるが、解き放たれれば戻るので縁は残す）
+    const captive = new Set((c.captives ?? []).map((x) => x.g.id));
+    for (const g of Object.values(c.gs.generals)) for (const t of g.ties) expect(!!c.gs.generals[t.with] || captive.has(t.with), `${g.name.ja} tie`).toBe(true);
   }, 240000);
 });
 

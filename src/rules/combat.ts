@@ -274,6 +274,8 @@ export const needsReload = (u: BUnit): boolean => u.skills.some((id) => skillOf(
 /** 技の対象に選べるマス。単体は相手のいるマス、直線は向きを示す隣のマス、周囲は自分のマス */
 export function skillTargetCells(st: BattleState, u: BUnit, skill: SkillDef): number[] {
   const g = st.map.grid;
+  // 狙って石を落とす技（0.12.0）：射程内のどのマスでも
+  if (skill.bombard) { const [min, max] = skillRange(st, u, skill); return g.range(u.pos, max, min).filter((i) => st.map.terrain[i] !== 'void'); }
   if (skill.shape.type === 'around') return [u.pos];
   if (skill.shape.type === 'line') return g.neighbors(u.pos);
   const [min, max] = skillRange(st, u, skill);
@@ -287,6 +289,8 @@ export function skillTargetCells(st: BattleState, u: BUnit, skill: SkillDef): nu
 export function skillVictims(st: BattleState, u: BUnit, skill: SkillDef, target: number): BUnit[] {
   const g = st.map.grid;
   let cells: number[];
+  // 狙って石を落とす技（0.12.0）：落ちたマスとその隣。敵味方を問わない（撃った駒は巻き込まない）
+  if (skill.bombard) return blastCells(st, target).map((c) => unitAt(st, c)).filter((t): t is BUnit => !!t && t.id !== u.id);
   if (skill.shape.type === 'around') cells = g.range(u.pos, skill.shape.n, 1);
   else if (skill.shape.type === 'line') cells = g.line(u.pos, g.dirTo(u.pos, target), skill.shape.n);
   else cells = [target];
@@ -361,9 +365,29 @@ export interface Forecast {
   counter: { damage: number; hit: number } | null;
 }
 
+/** 石の落ちるマスと、巻き込む隣のマス（0.12.0） */
+export function blastCells(st: BattleState, center: number): number[] {
+  return [center, ...st.map.grid.neighbors(center).filter((i) => st.map.terrain[i] !== 'void')];
+}
+
+/**
+ * 狙ったマスに落ちる見込み（0.12.0）。駒がいれば、その駒への命中率（これまでと同じ）。
+ * 空きのマスは、相手の機敏・地形・回避が無いので、機敏が同じ相手と見なす：命中の基本 ＋ 技の命中 ＋ 自分の地形 ＋ 命中の特技 ＋ 雨・霧・夜
+ */
+export function aimChance(st: BattleState, a: BUnit, skill: SkillDef, cell: number): number {
+  const t = unitAt(st, cell);
+  if (t && t.id !== a.id) return hitChance(st, a, skill, t);
+  const C = D.combat, W = C.weather;
+  let r = C.hitBase + skill.hit + terrainMod(st, a) + passivePct(a, 'hit');
+  if (st.weather === 'rain' && skill.range[1] >= 2) r += W.rainRangedHit;
+  if (st.weather === 'fog' && st.map.grid.distance(a.pos, cell) >= 2) r += W.fogFarHit;
+  if (st.night) r += W.nightHit;
+  return clamp(Math.round(r), C.hitMin, C.hitMax);
+}
+
 /** t が u に反撃できるか（生きていて、行動不能でなく、通常攻撃の射程内） */
 export function canCounter(st: BattleState, attacker: BUnit, skill: SkillDef, t: BUnit, basic: SkillDef | undefined): boolean {
-  if (!basic || skill.noCounter || skill.shape.type !== 'single') return false;
+  if (!basic || skill.noCounter || skill.bombard || skill.shape.type !== 'single') return false;
   if (disabled(t) || has(t, 'defect')) return false;
   const d = st.map.grid.distance(attacker.pos, t.pos);
   const [min, max] = skillRange(st, t, basic);

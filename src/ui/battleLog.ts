@@ -211,6 +211,17 @@ function plain(st: BattleState, e: BattleLogEntry, detail: boolean): string {
       const line = `${who(st, n(v.tid))}は毒で <b class="dmg">${v.dmg}</b>${tail}`;
       return detail && hp >= 0 ? `${line}${fm(`毒 ${v.dmg} ＝ ${term('hp')}の上限${v.max} × ${v.pct}%`)}` : line;
     }
+    // 狙って石を落とす（0.12.0）
+    case 'bombard': {
+      const ok = n(v.ok) === 1;
+      const line = `${who(st, n(v.uid))}の${esc(L(skillOf(String(v.sk)).name))}は${ok ? '狙ったマスに落ちた' : '<b>狙いがずれて</b>隣のマスに落ちた'}（${cellName(st, n(v.land))}）`;
+      return detail ? `${line}${fm(`狙ったマスに落ちる見込み ${v.chance}%：出目 ${roll(n(v.roll))} ${ok ? '＜' : '≧'} ${v.chance} → ${ok ? '狙いどおり' : '隣へずれる'}`)}` : line;
+    }
+    case 'blast': {
+      const center = n(v.center) === 1;
+      const line = `→ ${who(st, n(v.tid))}に${n(v.crit) ? '<b class="crit">会心！</b> ' : ''}<b class="dmg">${v.dmg}</b>（${center ? '落ちたマス' : `巻き込み ${v.pct}%`}。${term('hp')} ${v.hp0}→${v.hp1}）${n(v.shield) ? '　飛び道具を盾で受けて半分' : ''}`;
+      return detail ? `${line}${fm(`ダメージ ${v.dmg} ＝ 基準${v.base} × 乱数 × ${v.pct}%${n(v.crit) ? ` × 会心${num(D.combat.critMult)}` : ''}${n(v.shield) ? ' × 盾0.5' : ''}（四捨五入）`)}` : line;
+    }
     default: return esc(logText(e));
   }
 }

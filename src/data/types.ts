@@ -70,6 +70,11 @@ export interface SkillDef {
   /** 撃つには装填（状態 loaded）が要る。撃つと外れ、待機すると装填する（弩・鉄砲の必中技） */
   reload?: boolean;
   noCounter?: boolean;
+  /**
+   * 狙って石を落とす（0.12.0。投石機の中級・上級）：射程内のどのマスでも狙える（駒がいなくてもよい）。
+   * 命中率で狙ったマスに落ち、外れると隣のどれかのマスにずれる。落ちたマスの駒は 100%、その隣の駒は splashMin〜splashMax% のダメージ。敵味方を問わない
+   */
+  bombard?: { splashMin: number; splashMax: number };
 }
 
 export type Passive =

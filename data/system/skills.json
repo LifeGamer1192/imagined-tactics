@@ -1053,7 +1053,11 @@
    "type": "single"
   },
   "targets": "enemy",
-  "effects": []
+  "effects": [],
+  "bombard": {
+   "splashMin": 10,
+   "splashMax": 50
+  }
  },
  {
   "id": "k041",
@@ -1101,7 +1105,11 @@
    "type": "single"
   },
   "targets": "enemy",
-  "effects": []
+  "effects": [],
+  "bombard": {
+   "splashMin": 10,
+   "splashMax": 50
+  }
  },
  {
   "id": "k043",

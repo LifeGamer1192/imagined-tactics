@@ -35,7 +35,7 @@ import { NationMap } from '../render/nationMap';
 
 import {
   canUseSkill, canUseTactic, forecastSkill, needsReload, skillCost, tacticCost, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
-  tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets, unitFx,
+  tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets, unitFx, aimChance, blastCells, skillDamage,
 } from '../rules/combat';
 import { reach, stepCost, unitAt } from '../rules/move';
 import { statRows } from '../rules/statNotes';
@@ -1375,6 +1375,17 @@ export class App {
       const s = skillOf(this.mode.id);
       if (!skillTargetCells(st, u, s).includes(this.hoverCell)) return none;
       const vs = skillVictims(st, u, s, this.hoverCell);
+      // 狙って石を落とす技（0.12.0）：落ちる見込み、落ちたマスは100%、隣は巻き込み（敵味方を問わない）
+      if (s.bombard) {
+        const B = s.bombard, chance = aimChance(st, u, s, this.hoverCell);
+        const head = `<div class="fline">狙ったマスに落ちる見込み <b>${chance}%</b>（外れると隣のどれかのマスにずれる）。落ちたマスは100%、隣は${B.splashMin}〜${B.splashMax}%のダメージ。<b>敵味方を問わない</b></div>`;
+        const cards = vs.map((t) => {
+          const center = t.pos === this.hoverCell, d = skillDamage(st, u, s, t);
+          const name = `${t.name}${t.side === u.side ? '（味方！）' : ''}`;
+          return center ? this.fcCard(name, t, d, chance, '落ちたマス') : this.fcCard(name, t, Math.round(d * B.splashMax / 100), 100, `巻き込み（${Math.round(d * B.splashMin / 100)}〜${Math.round(d * B.splashMax / 100)}）`);
+        });
+        return { text: head + cards.join(''), area: new Set(blastCells(st, this.hoverCell)) };
+      }
       // 見込みを図で：相手の体力の棒に、期待値で削れる分と当たれば削れる分を重ねる。命中率は棒で。反撃は自分の体力の棒（小さめ）
       const cards = vs.map((t) => {
         const f = forecastSkill(st, u, s, t, basicSkill(t));

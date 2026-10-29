@@ -41,6 +41,8 @@ const TEXT: Record<string, string> = {
   'turn': '── {side}の番（{round}巡目）──',
   'collide': '{unit}が押されて{other}にぶつかった（{dmg}）',
   'unhorse': '{unit}が落馬した（{turns}巡のあいだ下馬）',
+  'bombard': '{unit}の{skill}が落ちた',
+  'blast': '{target}に{dmg}（{pct}%）',
 };
 
 export function logText(e: BattleLogEntry): string {

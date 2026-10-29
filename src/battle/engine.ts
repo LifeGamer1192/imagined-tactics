@@ -5,7 +5,7 @@ import { seatName } from './map';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import {
   atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, knockPlan, skillTargetCells,
-  needsReload, skillCost, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts,
+  needsReload, skillCost, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts, aimChance, blastCells, isEnemy,
 } from '../rules/combat';
 import { killExp } from '../rules/growth';
 import { reach, unitAt } from '../rules/move';
@@ -218,6 +218,34 @@ function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: bo
   }
 }
 
+/**
+ * 狙って石を落とす（0.12.0。投石機の中級・上級）。命中率で狙ったマスに落ち、外れると隣のどれかのマスにずれる。
+ * 落ちたマスの駒は 100%、その隣の駒は splashMin〜splashMax%（駒ごとに決める）のダメージ。敵味方を問わない（撃った駒は巻き込まない）。
+ * 反撃は無い。会心は落ちたマスの駒だけ。2マス以上離れていれば、飛び道具の盾が効く
+ */
+function bombard(st: BattleState, u: BUnit, skill: SkillDef, aim: number): void {
+  const rng = st.rng, g = st.map.grid, B = skill.bombard!;
+  const chance = has(u, 'sureNext') ? 100 : aimChance(st, u, skill, aim);
+  const roll = rng.float() * 100, ok = roll < chance;
+  const near = blastCells(st, aim).slice(1);
+  const land = ok || !near.length ? aim : near[rng.int(0, near.length - 1)];
+  log(st, 'bombard', { uid: u.id, unit: u.name, skill: skill.name.jp, sk: skill.id, cell: aim, land, chance, roll: Math.round(roll * 100) / 100, ok: ok ? 1 : 0 });
+  for (const c of blastCells(st, land)) {
+    const t = unitAt(st, c);
+    if (!t || t.id === u.id || !t.alive) continue;
+    const center = c === land, pct = center ? 100 : rng.int(B.splashMin, B.splashMax);
+    const base = damageParts(st, u, skill, t, false).base;
+    let dmg = base * rng.range(D.combat.randomMin, D.combat.randomMax) * pct / 100;
+    const crit = center && rng.float() * 100 < critChance(u);
+    if (crit) dmg *= D.combat.critMult;
+    let shield = false;
+    if (g.distance(u.pos, t.pos) >= 2) for (const p of passive(t, 'missileGuard')) { if (rng.float() * 100 < p.chance) { dmg /= 2; shield = true; } break; }
+    const n = Math.max(1, Math.round(dmg)), from = t.hp;
+    damage(st, t, n, isEnemy(u, t) ? u : null);
+    log(st, 'blast', { uid: u.id, tid: t.id, unit: u.name, target: t.name, dmg: n, pct, center: center ? 1 : 0, crit: crit ? 1 : 0, shield: shield ? 1 : 0, hp0: from, hp1: t.hp, base });
+  }
+}
+
 /** 直伝の借り物を使った回数を数える（戦いのあと、身につく回数に足す。P68） */
 function countBorrowed(u: BUnit, id: string): void {
   if (u.borrowed?.includes(id)) (u.artUses ??= {})[id] = (u.artUses[id] ?? 0) + 1;
@@ -229,6 +257,8 @@ function doSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number): vo
   // 装填の要る技は、撃つと装填が外れる
   if (skill.reload) removeStatus(u, 'loaded');
   u.expGained += D.combat.useExp;
+  // 狙って石を落とす技（0.12.0）
+  if (skill.bombard) { bombard(st, u, skill, target); removeStatus(u, 'atkNext'); removeStatus(u, 'sureNext'); return; }
   const single = skill.shape.type === 'single';
   const victims = skillVictims(st, u, skill, target);
   for (const t of victims) {

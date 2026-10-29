@@ -141,6 +141,8 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
   /** 軍略：色・種類・使った駒、いまの相手に効く時刻 */
   let tac: { fx: TacticFx; color: RGB; uid: number; single: boolean; damage: boolean } | null = null;
   let tacAt: number | null = null;
+  /** 石の落ちる時刻（0.12.0。続く blast の記録は、この時刻に当たる） */
+  let blastAt: number | null = null;
 
   /**
    * 攻める動きとエフェクト。戻り値は、当たる瞬間。
@@ -262,6 +264,36 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
           end = back;
         }
         lastImpact = end; gap(end);
+        break;
+      }
+      case 'bombard': {
+        // 狙って石を落とす（0.12.0）：石が弧を描いて落ちたマスへ。落ちたマスと隣を光らせ、土煙。ずれたら狙ったマスに「ずれた」
+        const a = posOf(uid), land = num(e.vars.land), aim = num(e.vars.cell);
+        if (a < 0 || land < 0) break;
+        const [ax, ay] = xy(a), [lx, ly] = xy(land);
+        const ux = lx - ax, uy = ly - ay, len = Math.hypot(ux, uy) || 1;
+        const flight = FLIGHT.stone[0] + FLIGHT.stone[1] * Math.max(1, g.distance(a, land));
+        push({ kind: 'lunge', unit: uid, dx: -ux / len * HEX * 0.14, dy: -uy / len * HEX * 0.14, t0: at(t), dur: T.lunge * scale });
+        push({ kind: 'proj', from: [ax + ux / len * HEX * 0.5, ay + uy / len * HEX * 0.5], to: [lx, ly], style: 'stone', seed: ++seed, t0: at(t), dur: flight * scale });
+        sound('throw', t);
+        const hitAt = t + flight;
+        puff('dust', lx, ly, hitAt, T.burst * 1.3);
+        sound('thud', hitAt);
+        push({ kind: 'flash', cells: [land], color: VERMILION, t0: at(hitAt), dur: 380 * scale });
+        push({ kind: 'flash', cells: g.neighbors(land), color: OCHRE, t0: at(hitAt + 40), dur: 340 * scale });
+        if (num(e.vars.ok) !== 1 && aim >= 0) chip(aim, 'ずれた', GREY, hitAt - 80);
+        blastAt = hitAt; lastImpact = hitAt;
+        if (!entries.some((x) => x.key === 'blast')) gap(hitAt);
+        break;
+      }
+      case 'blast': {
+        if (tid < 0) break;
+        const when = blastAt ?? t, dmg = num(e.vars.dmg), center = num(e.vars.center) === 1, crit = num(e.vars.crit) === 1;
+        hurt(tid, dmg, when);
+        push({ kind: 'shake', unit: tid, amp: center ? 7 : 4, t0: at(when), dur: T.shake * scale });
+        note(posOf(tid), String(dmg), VERMILION, center || crit, when, crit ? '会心' : center ? undefined : `巻き込み${num(e.vars.pct)}%`);
+        if (num(e.vars.shield)) chip(posOf(tid), '盾', OCHRE, when);
+        lastImpact = when;
         break;
       }
       case 'collide': {

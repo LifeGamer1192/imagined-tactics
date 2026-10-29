@@ -17,6 +17,18 @@ function check(name, ok, detail = '') {
   console.log(`${ok ? 'OK ' : 'NG '} ${name}${detail ? `  … ${detail}` : ''}`);
 }
 const shot = (page, name) => page.screenshot({ path: `${out}/${name}.png` });
+/** 今月の知らせ・捕虜の窓が出ていたら閉じる（捕虜は解き放つ）。月を進めた後や読み込んだ後に出る */
+async function closeAsks(page) {
+  await page.waitForTimeout(400);
+  for (let i = 0; i < 8; i++) {
+    const rel = await page.$('.result.ask.captive [data-a="release"]');
+    if (rel) { await rel.click(); const ok = await page.waitForSelector('.confirm [data-a="ok"]', { timeout: 3000 }).catch(() => null); if (ok) await ok.click(); continue; }
+    const b = await page.$('.result.ask.confirm button');
+    if (!b) break;
+    await b.click().catch(() => {});
+    await page.waitForTimeout(150);
+  }
+}
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1360, height: 820 }, acceptDownloads: true });
@@ -345,8 +357,7 @@ check('月を進められる', date0 !== date1, `${date0.trim().slice(0, 12)} �
 // ============================================================ 6. セーブと読み込み
 const snap = () => page.evaluate(() => { const c = window.__campaign.c; return JSON.stringify([c.gs.tick, c.months, c.gs.provinces.map((p) => p.owner), c.gs.factions[c.player]?.supply, Object.values(c.gs.generals).map((g) => [g.id, g.level, g.troops.length, g.prov])]); });
 await page.waitForTimeout(400);
-// 今月の知らせ（昇進できる、など）の窓が出ていたら閉じる
-for (const b of await page.$$('.result.ask.confirm button')) await b.click().catch(() => {});
+await closeAsks(page);
 await page.click('#saves');
 await page.waitForSelector('.savemenu');
 await shot(page, '11_save_menu');
@@ -371,6 +382,7 @@ for (let i = 0; i < 12; i++) {
 }
 await page.waitForSelector('#next');
 check('進めると状態が変わる', (await snap()) !== saved);
+await closeAsks(page);
 await page.click('#saves');
 await page.waitForSelector('[data-load="1"]');
 await page.click('[data-load="1"]');
@@ -408,6 +420,7 @@ await page.waitForSelector('#next');
 check('読み込んだあとも月を進められる', (await snap()) !== saved);
 
 // 枠を削除できる
+await closeAsks(page);
 await page.click('#saves');
 await page.waitForSelector('[data-del="1"]');
 await page.click('[data-del="1"]');

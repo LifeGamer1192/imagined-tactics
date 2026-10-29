@@ -80,6 +80,8 @@ const scenes = [
   ['ぶつかる k037（後ろに駒）', { skill: 'k037', dist: 1, second: true }, [130, 300, 450, 650, 1000]],
   ['飛び道具の盾 k025（0.11.0）', { skill: 'k025', dist: 3, tPass: [{ type: 'missileGuard', chance: 100 }] }, [60, 240, 330, 520, 900]],
   ['落馬 k103（0.11.0）', { skill: 'k103', dist: 1, aPass: [{ type: 'unhorse', turns: 2 }], tRider: true }, [130, 300, 420, 620, 1000]],
+  ['投石 k042（落ちたマスと隣。0.12.0）', { skill: 'k042', dist: 3, second: true }, [100, 300, 480, 700, 1100]],
+  ['投石 k042（外れて隣へずれる）', { skill: 'k042', dist: 3, second: true, miss: true }, [100, 300, 480, 700, 1100]],
 ];
 const FW = 400, FH = 250, ROWS = 4;
 await page.evaluate(() => { window.__t = 100000; performance.now = () => window.__t; });

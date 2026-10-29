@@ -1,12 +1,12 @@
 // 歩兵・槍・長槍・戟と、騎馬武者・盾・陣太鼓・黒鍬の特徴（0.11.0）
 import { describe, expect, it } from 'vitest';
-import { apply, startTurn } from '../src/battle/engine';
+import { addStatus, apply, startTurn } from '../src/battle/engine';
 import { parseMap, type BattleMap } from '../src/battle/map';
 import type { BUnit, BattleState, Side } from '../src/battle/types';
 import { capLines, convert, makeTroop } from '../src/convert/convert';
 import { RNG } from '../src/core/rng';
 import { D } from '../src/data/db';
-import { breachParts, damageParts } from '../src/rules/combat';
+import { aimChance, blastCells, breachParts, damageParts, skillDamage, skillTargetCells } from '../src/rules/combat';
 import { reach } from '../src/rules/move';
 import { has, isCavalry, skillOf, terrainMod } from '../src/rules/stats';
 import { loadFixture } from './helpers';
@@ -168,5 +168,69 @@ describe('recruiting', () => {
       expect(top, name).toBeLessThan(0.4);
       expect([19, 20, 21].some((l) => lines.has(l)), name).toBe(true);
     }
+  });
+});
+
+describe('catapults drop stones on a chosen hex (0.12.0)', () => {
+  it('the middle and top tiers can aim at any hex in range, even an empty one', () => {
+    const st = field(PLAIN), g = st.map.grid;
+    for (const id of ['u10b', 'u10c']) {
+      const c = troop(st, id, 0, g.idx(1, 3));
+      const s = D.byUnit[id].skills.map((k) => skillOf(k)).find((k) => k.bombard)!;
+      expect(s, id).toBeTruthy();
+      const cells = skillTargetCells(st, c, s);
+      expect(cells).toContain(g.idx(1 + s.range[1], 3));
+      expect(cells.every((i) => g.distance(c.pos, i) >= s.range[0] && g.distance(c.pos, i) <= s.range[1])).toBe(true);
+      c.alive = false;
+    }
+    expect(D.byUnit.u10a.skills.some((k) => skillOf(k).bombard)).toBe(false);
+  });
+
+  it('a hit lands on the aimed hex: 100% there, 10-50% on the neighbours, friend or foe, never the thrower; no counter', () => {
+    const st = field(PLAIN), g = st.map.grid;
+    const c = troop(st, 'u10c', 0, g.idx(1, 3)), aim = g.idx(4, 3);
+    const s = skillOf('k042');
+    const foe = troop(st, 'u01a', 1, aim), [n1, n2] = g.neighbors(aim);
+    const friend = troop(st, 'u01a', 0, n1), foe2 = troop(st, 'u06a', 1, n2);
+    for (const u of [foe, friend, foe2]) { u.hp = u.maxHp = 1e5; u.passives = []; }
+    c.critPct = -100;
+    addStatus(st, c, 'sureNext');
+    const base = { foe: skillDamage(st, c, s, foe), friend: skillDamage(st, c, s, friend), foe2: skillDamage(st, c, s, foe2) };
+    apply(st, { type: 'skill', unit: c.id, skill: 'k042', target: aim });
+    const b = st.log.find((e) => e.key === 'bombard')!;
+    expect(b.vars.land).toBe(aim);
+    const blast = (u: BUnit) => st.log.find((e) => e.key === 'blast' && e.vars.tid === u.id)!.vars;
+    expect(blast(foe).pct).toBe(100);
+    expect(1e5 - foe.hp).toBeGreaterThanOrEqual(Math.floor(base.foe * 0.9));
+    for (const [u, d] of [[friend, base.friend], [foe2, base.foe2]] as const) {
+      const v = blast(u);
+      expect(v.pct).toBeGreaterThanOrEqual(10); expect(v.pct).toBeLessThanOrEqual(50);
+      expect(1e5 - u.hp).toBeLessThanOrEqual(Math.ceil(d * 1.1 * 0.5) + 1);
+    }
+    expect(friend.hp).toBeLessThan(1e5);
+    expect(st.log.some((e) => e.key === 'strike')).toBe(false);   // 反撃は無い
+    // 撃った駒は、隣に落ちても巻き込まない
+    const st2 = field(PLAIN), g2 = st2.map.grid;
+    const c2 = troop(st2, 'u10b', 0, g2.idx(2, 3)); addStatus(st2, c2, 'sureNext');
+    const hp = c2.hp;
+    apply(st2, { type: 'skill', unit: c2.id, skill: 'k040', target: g2.idx(3, 3) });
+    expect(c2.hp).toBe(hp);
+  });
+
+  it('a miss drifts to one of the neighbouring hexes, and the hit chance on an empty hex ignores evasion', () => {
+    const st = field(PLAIN), g = st.map.grid;
+    const c = troop(st, 'u10c', 0, g.idx(1, 3)), aim = g.idx(4, 3);
+    c.passives.push({ type: 'hit', pct: -500 });
+    expect(aimChance(st, c, skillOf('k042'), aim)).toBe(D.combat.hitMin);
+    let drifted = 0;
+    for (let k = 0; k < 20; k++) {
+      c.acted = false; c.moved = false;
+      apply(st, { type: 'skill', unit: c.id, skill: 'k042', target: aim });
+      const b = [...st.log].reverse().find((e) => e.key === 'bombard')!;
+      if (b.vars.land !== aim) { drifted++; expect(blastCells(st, aim)).toContain(b.vars.land); }
+    }
+    expect(drifted).toBeGreaterThan(15);
+    c.passives = c.passives.filter((p) => p.type !== 'hit');
+    expect(aimChance(st, c, skillOf('k042'), aim)).toBe(D.combat.hitBase + skillOf('k042').hit);
   });
 });
