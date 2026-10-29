@@ -17,6 +17,8 @@
   "counterMult": 1,
   "healIntScale": 100,
   "useExp": 20,
+  "_counterExp": "反撃した駒が得る経験値（当たり外れに関わらず。0.9.1）",
+  "counterExp": 20,
   "healExp": 40,
   "expGain": 1,
   "_winExp": "勝った側の駒すべてに足す経験値（0.9.0）。rout：敵の武将をみな倒すか退かせて勝った。other：それ以外（天守・本丸・本陣を押さえた、時間切れ）",
