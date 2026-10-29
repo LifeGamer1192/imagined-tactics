@@ -99,7 +99,7 @@ export function personalityTip(p: Personality, label: string): string {
   return [`【性格：${label}】`, '特性と能力から決まる、戦場での動き方です。おまかせのとき、この武将と率いる兵はこの傾向で動きます。', ...(lines.length ? lines : ['・目立った癖はなく、状況に応じて動く'])].join('\n');
 }
 
-const MARK: Record<string, string> = { sure: '必中', o: '有効', tri: '効きにくい', x: '効かない' };
+export const MARK: Record<string, string> = { sure: '必中', o: '有効', tri: '効きにくい', x: '効かない' };
 
 const sgn = (v: number): string => (v > 0 ? `+${v}` : String(v));
 
@@ -185,7 +185,7 @@ export function skillTip(s: SkillDef): string {
   return out.join('\n');
 }
 
-const TACTIC_KIND: Record<string, string> = {
+export const TACTIC_KIND: Record<string, string> = {
   damage: 'ダメージを与える', heal: '体力を回復する', cure: '悪い状態を治す', mpRestore: '気力を回復する', buff: '味方を強くする', debuff: '敵を弱くする',
   status: '状態を変える', dispel: 'かかっている効果を消す', pull: '引き寄せる', revive: '倒れた味方を立て直す', displace: '位置を動かす',
 };

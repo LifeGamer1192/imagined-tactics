@@ -224,7 +224,7 @@ export class App {
         <p><label class="btn">セーブファイルを選ぶ<input type="file" accept=".histsim,.json,.hexsim,.imarpg" hidden></label> <button id="continue" hidden>つづきから</button></p>
         <p class="dim">または、サンプルから始める</p>
         <p>${SAMPLES.map(([id, name]) => `<button data-sample="${id}">${name}</button>`).join(' ')}</p>
-        <p><button data-help="intro">遊び方</button></p>
+        <p><button data-help="intro">遊び方</button> <button data-zukan="units">図鑑</button></p>
         <p class="error">${esc(error)}</p>
         <p class="worlds-lead">${WORLDS_LEAD}</p>
         ${worldsHtml()}
