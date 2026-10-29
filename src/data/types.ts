@@ -172,7 +172,11 @@ export interface CombatConfig {
   critRate: number; critMult: number; randomMin: number; randomMax: number;
   tacticIntMult: number; tacticDefInDenominator: boolean;
   statusBase: number; statusMin: number; statusMax: number;
-  counterMult: number; healIntScale: number; useExp: number; healExp: number; expGain: number; escapeChance: number;
+  counterMult: number; healIntScale: number; useExp: number; healExp: number; expGain: number;
+  /** 勝った側の駒すべてに足す経験値（0.9.0） */
+  winExp: { rout: number; other: number };
+  /** 天守・本丸・本陣に立つ駒の防御の上乗せ（％。0.9.0） */
+  seatDefPct: number; escapeChance: number;
   weather: WeatherConfig;
 }
 

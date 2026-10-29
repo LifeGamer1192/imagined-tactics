@@ -847,6 +847,7 @@ export class CampaignScreen {
         <p class="small">顔ぶれ：${list.map((x) => `${esc(x.name)} Lv${x.lv}・兵${x.troops}`).join('、') || '—'}</p>
         <p class="small"><span class="dim">倒された武将</span>　${beaten.length ? beaten.map(esc).join('、') : 'なし'}</p>
         <p class="small"><span class="dim">失った兵</span>　${lost.length ? `${lost.length}隊：${[...by].map(([gname, us]) => `${esc(gname)}の${us.map(esc).join('・')}`).join('、')}` : 'なし'}</p>
+        ${sum.winner === s && sum.winExp ? `<p class="small"><span class="dim">勝利の経験値</span>　全員に +${sum.winExp.amount}（${sum.winExp.rout ? '敵の武将をみな退けた' : '要のマスを押さえた・守り切った'}）</p>` : ''}
         ${ups.length ? `<p class="small"><span class="dim">レベルが上がった</span>　${ups.map((u) => `${esc(u.name)} Lv${u.from}→${u.to}`).join('、')}</p>` : ''}</div>`;
     };
     const fate = side === 1

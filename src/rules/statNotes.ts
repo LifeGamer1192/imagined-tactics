@@ -4,7 +4,8 @@
 import type { BStatus, BUnit, BattleState } from '../battle/types';
 import { D } from '../data/db';
 import type { StatusId } from '../data/types';
-import { agility, attackPower, defense, has, intellect, moveOf, outOfCommand, passive, supplyMultOf, tacticResist, terrainMod } from './stats';
+import { agility, attackPower, defense, has, intellect, moveOf, outOfCommand, passive, seatDefMult, supplyMultOf, tacticResist, terrainMod } from './stats';
+import { seatName } from '../battle/map';
 
 export interface StatCause { why: string; value: string; turns?: string }
 export interface StatRow { key: string; base: number; now: number; causes: StatCause[] }
@@ -48,6 +49,7 @@ export function statRows(st: BattleState, u: BUnit, statusName: (id: StatusId) =
       ? withV(stat('confuse'), `${S.confuse.def}に固定`)
       : [
           ...withV(stat('defUp'), pc(S.defUp.defPct)), ...withV(stat('weaken'), pc(S.weaken.defPct)),
+          ...(seatDefMult(st, u) !== 1 ? [{ why: seatName(st.map.terrain[u.pos]), value: pc(D.combat.seatDefPct), turns: 'そのマスにいる間' }] : []),
           ...(out ? [{ why: '采配範囲外', value: mul(1 + S.outOfCommand.atkDefPct / 100), turns: '将の近くへ戻るまで' }] : []),
           ...(sup !== 1 ? [{ why: '飛び地で戦う', value: mul(sup), turns: '戦いの終わりまで' }] : []),
         ];

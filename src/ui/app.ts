@@ -1095,6 +1095,7 @@ export class App {
       <h3 style="color:${SIDE_COLOR[s]}">${s === 0 ? '攻め手' : '守り手'}　${esc(st.sideNames[s])}${sum.winner === s ? '（勝ち）' : ''}</h3>
       <p><span class="dim">倒された武将</span>　${beaten.length ? beaten.map(esc).join('、') : 'なし'}</p>
       <p><span class="dim">失われた兵</span>　${lost.length ? `${lost.length}隊<br>${lostText}` : 'なし'}</p>
+      ${sum.winner === s && sum.winExp ? `<p><span class="dim">勝利の経験値</span>　全員に +${sum.winExp.amount}（${sum.winExp.rout ? '敵の武将をみな退けた' : '要のマスを押さえた・守り切った'}）</p>` : ''}
       ${ups.length ? `<p><span class="dim">レベルアップ</span><br>${ups.map((l) => `${esc(l.name)} Lv${l.from} → Lv${l.to}`).join('<br>')}</p>` : ''}
     </div>`;
   }

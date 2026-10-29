@@ -2,7 +2,9 @@
 import { describe, expect, it } from 'vitest';
 import { autoBattle, nextAiActions } from '../src/ai/ai';
 import { apply } from '../src/battle/engine';
-import { attackPower } from '../src/rules/stats';
+import { attackPower, defense } from '../src/rules/stats';
+import { applyBattleResult } from '../src/battle/result';
+import { D } from '../src/data/db';
 import { endTurn } from '../src/battle/engine';
 import { mapFromProvince , BM } from '../src/battle/map';
 import { createBattle } from '../src/battle/setup';
@@ -120,5 +122,40 @@ describe('taking the castle', () => {
     // 守り手の兵は天守へ寄り、天守の上の攻め手を叩く
     expect(dist1).toBeLessThan(dist0);
     expect(!holder.alive || holder.hp < hp0 || holder.pos !== h.cell).toBe(true);
+  });
+
+  // 0.9.0：要のマスの防御、勝利の経験値
+  it('a unit on the keep gets +15% defence, whichever side it is on', async () => {
+    const st = await castleBattle({ fort: 0.85, walls: true });
+    const u = st.units.find((x) => x.side === 0 && x.kind === 'troop')!;
+    const off = defense(st, u);
+    occupy(st);
+    const on = st.units.find((x) => x.pos === st.hold!.cell)!;
+    expect(on.side).toBe(0);
+    expect(defense(st, on)).toBeCloseTo(on.def * (1 + D.combat.seatDefPct / 100), 6);
+    expect(off).toBe(u.def);
+  });
+
+  it('every unit of the winning side gets the victory experience: more for routing the enemy than for the keep', async () => {
+    for (const how of ['keep', 'rout'] as const) {
+      const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
+      const [fa, fb] = Object.values(gs.factions).sort((a, b) => generalsOf(gs, b.id).length - generalsOf(gs, a.id).length);
+      const map = mapFromProvince(save.world, fb.capital, { capital: true, fort: 0.6 });
+      const pick = (id: number) => generalsOf(gs, id).slice(0, 2).map((g) => g.id);
+      const st = createBattle(gs, map, [pick(fa.id), pick(fb.id)], 'winexp');
+      const atk = pick(fa.id).map((id) => gs.generals[id]);
+      const before = atk.map((g) => ({ lv: g.level, exp: g.exp, troops: g.troops.map((t) => ({ lv: t.level, exp: t.exp })) }));
+      if (how === 'keep') { occupy(st); for (let k = 0; k < st.hold!.need; k++) round(st); }
+      else { for (const u of st.units) if (u.side === 1 && u.kind === 'general') u.alive = false; endTurn(st); }
+      expect(st.winner).toBe(0);
+      const sum = applyBattleResult(gs, st);
+      const want = how === 'rout' ? D.combat.winExp.rout : D.combat.winExp.other;
+      expect(sum.winExp).toEqual({ amount: want, rout: how === 'rout' });
+      atk.forEach((g, i) => {
+        // 何もしていない駒も、経験値が増える（レベルが上がったか、経験が増えた）
+        expect(g.level > before[i].lv || g.exp > before[i].exp).toBe(true);
+        g.troops.forEach((t, j) => expect(t.level > before[i].troops[j].lv || t.exp > before[i].troops[j].exp).toBe(true));
+      });
+    }
   });
 });

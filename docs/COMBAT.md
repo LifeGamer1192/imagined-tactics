@@ -13,7 +13,7 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 | 値 | 式 |
 |---|---|
 | 攻撃 | `max(1, 武力 × C.atkPerStr × 強化・弱化の掛け目 × 采配外の倍率 × 陣営の掛け目)`。％：次の攻撃アップ S.atkNext.atkPct、攻撃アップ S.atkUp.atkPct、攻防ダウン S.weaken.atkPct、攻撃ダウン S.atkDown.atkPct |
-| 防御 | 混乱中は `S.confuse.def` で固定。ほかは `max(1, 防御 × 強化・弱化の掛け目 × 采配外の倍率 × 陣営の掛け目)`。％：防御アップ S.defUp.defPct、攻防ダウン S.weaken.defPct |
+| 防御 | 混乱中は `S.confuse.def` で固定。ほかは `max(1, 防御 × 強化・弱化の掛け目 × 要のマスの掛け目 × 采配外の倍率 × 陣営の掛け目)`。％：防御アップ S.defUp.defPct、攻防ダウン S.weaken.defPct。要のマスの掛け目（0.9.0）：天守・砦の本丸・本陣（勝ち負けに関わる要のマス）に立つ駒は `1 ＋ C.seatDefPct ÷ 100`（今は1.15。どちらの陣営でも。地形の命中・回避の補正とは別）、ほかは 1 |
 | 機敏 | `round(機敏 × 強化・弱化の掛け目)`。％：命中回避アップ S.agiUp.agiPct、足止め S.grounded.agiPct |
 | 知略 | `max(1, round(知略 × 強化・弱化の掛け目))`。％：知略ダウン S.intDown.intPct |
 | 軍略への耐性 | `min(0.9, 特技 tacticResist の合計 ÷ 100 ＋ S.resistUp.pct ÷ 100（軍略耐性アップ） − 采配外なら S.outOfCommand.tacticDamagePct ÷ 100)`。負なら受けるダメージが増える |
@@ -137,6 +137,7 @@ hex-sim の戦闘で使っている計算式を1か所にまとめたもの。�
 ## 9. 経験値（参考）
 
 - 技・軍略を使うと C.useExp（回復・立て直しは C.healExp）、相手を倒すと `exp.json` の kill（`base ＋ perLv × 相手のLV`）。
+- 勝利の経験値（0.9.0）：戦いのあと、勝った側の駒すべて（倒された将も含む。失われた兵は除く）に足す。敵の武将をみな倒すか退かせて勝ったら C.winExp.rout（150）、それ以外の勝ち（要のマスを押さえた・時間切れ）は C.winExp.other（100）。戦いの中の経験値（× C.expGain）と合わせて、特性の得る経験（expPct）を掛ける前に足す。
 - 次のレベルまで：`round(K × (1 ＋ (LV−1)² ÷ exp.curve.div))`。K は exp.json の k（役職・兵種ごと）。レベルに上限は無い。
 
 ## 10. 武将の特性（hex-sim。2026-10-20・P56）

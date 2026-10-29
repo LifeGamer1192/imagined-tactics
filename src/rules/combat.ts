@@ -7,7 +7,7 @@ import { BM } from '../battle/map';
 import { unitAt } from './move';
 import {
   affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf, fieldMult, type FieldParts, basicSkill, attackKinds,
-  skillOf, tacticResist, terrainAt, terrainMod,
+  skillOf, tacticResist, terrainAt, terrainMod, seatDefMult,
 } from './stats';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -116,6 +116,8 @@ export interface StatParts {
   supply: number;
   /** 混乱中の防御のように、決まった値になっている */
   fixed: boolean;
+  /** 天守・本丸・本陣に立つときの防御の掛け目（0.9.0。無ければ 1） */
+  seat?: number;
 }
 
 export function atkParts(st: BattleState, u: BUnit): StatParts {
@@ -131,7 +133,7 @@ export function defParts(st: BattleState, u: BUnit): StatParts {
   if (has(u, 'confuse')) return { value, base: S.confuse.def, mult: 1, adds: [], out: 1, supply: 1, fixed: true };
   const adds: [StatusId, number][] = [];
   for (const id of ['defUp', 'weaken'] as const) if (has(u, id)) adds.push([id, S[id].defPct]);
-  return { value, base: u.def, mult: 1, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, supply: supplyMultOf(st, u), fixed: false };
+  return { value, base: u.def, mult: 1, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, supply: supplyMultOf(st, u), fixed: false, seat: seatDefMult(st, u) };
 }
 
 export function critChance(a: BUnit): number {

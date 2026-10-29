@@ -21,12 +21,18 @@ export interface BattleSummary {
   beatenIds: string[];
   /** 倒された武将ごとの、負わされた相手の将（とどめを刺した将を先に、あとは与えたダメージの多い順に3人まで） */
   beatenBy?: Record<string, string[]>;
+  /** 勝った側の駒すべてに足した経験値（0.9.0）。rout：敵の武将をみな倒すか退かせて勝った */
+  winExp?: { amount: number; rout: boolean };
 }
 
 export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary {
   if (st.winner === null) throw new Error('戦闘がまだ終わっていません');
   const rng = new RNG(codeToSeed(`${gs.seed}:${gs.tick}:result:${st.round}:${st.units.filter((u) => u.alive).length}`));
-  const sum: BattleSummary = { winner: st.winner, rounds: st.round, levelUps: [], lost: [], beaten: [], beatenSides: [], beatenIds: [] };
+  // 勝利の経験値（0.9.0）：勝った側の駒すべてに。敵の武将をみな倒すか退かせて勝ったら多く、天守・時間切れなどの勝ちは少し
+  const rout = st.log.some((l) => l.key === 'win');
+  const winExp = rout ? D.combat.winExp.rout : D.combat.winExp.other;
+  const sum: BattleSummary = { winner: st.winner, rounds: st.round, levelUps: [], lost: [], beaten: [], beatenSides: [], beatenIds: [], winExp: { amount: winExp, rout } };
+  const expOf = (u: (typeof st.units)[number]): number => u.expGained * D.combat.expGain + (u.home === st.winner ? winExp : 0);
   const remove = new Map<string, Set<number>>();
   // 同じ武将に同じ名前の兵が2隊以上いるときは「（2隊目）」を添える（失った兵と、上がった兵を見分けられるように）
   const troopUnits = st.units.filter((u) => u.kind !== 'general');
@@ -48,7 +54,7 @@ export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary
       }
       addUses(g.taught);
       const from = g.level;
-      if (u.expGained > 0 && gainGeneralExp(g, u.expGained * D.combat.expGain, rng) > 0) sum.levelUps.push({ name: g.name.ja, from, to: g.level, side: u.home });
+      if (expOf(u) > 0 && gainGeneralExp(g, expOf(u), rng) > 0) sum.levelUps.push({ name: g.name.ja, from, to: g.level, side: u.home });
       continue;
     }
     const t = g.troops[u.troopIndex];
@@ -63,7 +69,7 @@ export function applyBattleResult(gs: GameStart, st: BattleState): BattleSummary
     }
     addUses(t.taught);
     const from = t.level;
-    if (u.expGained > 0 && gainTroopExp(t, u.expGained * D.combat.expGain, rng) > 0) sum.levelUps.push({ name: `${g.name.ja}の${label(u)}`, from, to: t.level, side: u.home });
+    if (expOf(u) > 0 && gainTroopExp(t, expOf(u), rng) > 0) sum.levelUps.push({ name: `${g.name.ja}の${label(u)}`, from, to: t.level, side: u.home });
   }
   for (const [gid, idxs] of remove) gs.generals[gid].troops = gs.generals[gid].troops.filter((_t, i) => !idxs.has(i));
   return sum;

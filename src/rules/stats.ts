@@ -79,10 +79,15 @@ export function attackPower(st: BattleState, u: BUnit): number {
 /** 陣営の攻撃・防御の掛け目（飛び地で戦う側は 1 未満）。BattleState.supplyMult */
 export function supplyMultOf(st: BattleState, u: BUnit): number { return st.supplyMult?.[u.home] ?? 1; }
 
+/** 天守・砦の本丸・本陣（勝ち負けに関わる要のマス）に立つ駒の防御の掛け目（0.9.0。どちらの陣営でも） */
+export function seatDefMult(st: BattleState, u: BUnit): number {
+  return st.hold && u.pos === st.hold.cell ? 1 + D.combat.seatDefPct / 100 : 1;
+}
+
 export function defense(st: BattleState, u: BUnit): number {
   const S = D.status;
   if (has(u, 'confuse')) return S.confuse.def;
-  let v = u.def * pctMult(defPcts(u));
+  let v = u.def * pctMult(defPcts(u)) * seatDefMult(st, u);
   if (outOfCommand(st, u)) v *= 1 + S.outOfCommand.atkDefPct / 100;
   v *= supplyMultOf(st, u);
   return Math.max(1, v);
