@@ -977,7 +977,11 @@
    "type": "single"
   },
   "targets": "enemy",
-  "effects": []
+  "effects": [
+   {
+    "type": "knockback"
+   }
+  ]
  },
  {
   "id": "k038",

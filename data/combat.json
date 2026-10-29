@@ -17,6 +17,8 @@
   "counterMult": 1,
   "healIntScale": 100,
   "useExp": 20,
+  "_knock": "押し出す技（0.10.0）：押す先が塞がっているとき。wallMult：盤の外・入れない地形・閉じた門や柵に押し付けたら、ダメージの倍率。collidePct：後ろに駒がいたら、その駒（敵味方問わず）にも、本体に与えたダメージのこの％",
+  "knock": { "wallMult": 1.5, "collidePct": 50 },
   "_counterExp": "反撃した駒が得る経験値（当たり外れに関わらず。0.9.1）",
   "counterExp": 20,
   "healExp": 40,
