@@ -2321,6 +2321,12 @@
     "terrain": "mountain",
     "pct": 21,
     "rank": "A"
+   },
+   {
+    "type": "lowland",
+    "defPct": 15,
+    "evadePct": 5,
+    "rank": null
    }
   ],
   "promote": [
@@ -2386,6 +2392,12 @@
     "type": "regen",
     "pct": 10,
     "rank": "S"
+   },
+   {
+    "type": "lowland",
+    "defPct": 15,
+    "evadePct": 5,
+    "rank": null
    }
   ],
   "promote": []
@@ -2441,6 +2453,12 @@
     "terrain": "mountain",
     "pct": 49,
     "rank": "S"
+   },
+   {
+    "type": "lowland",
+    "defPct": 15,
+    "evadePct": 5,
+    "rank": null
    }
   ],
   "promote": []
@@ -2546,8 +2564,7 @@
    ]
   },
   "skills": [
-   "k057",
-   "k058"
+   "k057"
   ],
   "tactics": [],
   "passives": [
@@ -2608,8 +2625,7 @@
   },
   "skills": [
    "k059",
-   "k060",
-   "k061"
+   "k060"
   ],
   "tactics": [],
   "passives": [
