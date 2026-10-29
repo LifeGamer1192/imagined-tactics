@@ -1,5 +1,5 @@
 {
- "version": "0.11.0",
+ "version": "0.12.0",
  "schema": "docs/SHARED_DATA.md",
  "formulas": "docs/COMBAT.md",
  "files": {
