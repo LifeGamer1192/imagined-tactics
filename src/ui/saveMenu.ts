@@ -72,7 +72,8 @@ export async function openSaveMenu(parent: HTMLElement, opts: SaveMenuOptions): 
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = `hex-sim_${s.summary.faction}_${s.summary.year}_${s.summary.month}.hexsim`.replace(/[\\/:*?"<>|\s]+/g, '_');
-      a.click();
+      // 文書に付けてから押す（付けないと、ファイル名が付かないブラウザがある）
+      document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     };
     const file = box.querySelector<HTMLInputElement>('input[type=file]')!;

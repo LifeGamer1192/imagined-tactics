@@ -45,6 +45,7 @@ import { personalityLabel, personalityOf, planLabel, PLAN_LABEL, PLAN_TIP } from
 import { bindPlan, getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
 import { spanText, startChronicle } from '../strategy/chronicle';
 import { artUrl } from '../art/art';
+import { mapModesFor, mapPaint, saveMapMode, savedMapMode, type MapMode } from './mapModes';
 import { faceFor } from '../art/faces';
 
 /** 画面の土台（App）に求めるもの */
@@ -177,6 +178,9 @@ export class CampaignScreen {
   private townRetry = 0;
   /** オート（P81）：進める長さ（1〜3か月、0 はずっと）、オート中か、残りの月数、始めたときの記録の位置（終わってから知らせを出す） */
   private autoLen = 1;
+  /** 地図の切り替え（P97）と、選ぶ欄が開いているか */
+  private mapMode: MapMode = savedMapMode();
+  private mapMenu = false;
   /** 徴兵の選択を覚えておく（武将ごと・最後に選んだもの。P81） */
   private lastUnit: Record<string, string> = {};
   private lastUnitAny = '';
@@ -1061,8 +1065,35 @@ export class CampaignScreen {
       attack: this.order === 'attack' ? this.targets('attack') : undefined,
       alarm: this.alarm ?? undefined,
       flash: this.flash ?? undefined,
+      paint: mapPaint(c, this.curMapMode()) ?? undefined,
     };
     this.view.draw();
+  }
+
+  /**
+   * 地図を選ぶ欄：地図の上（左上）に浮かべる。スマホ縦では情報欄が狭く、欄の中に出すと下が隠れるため。
+   * 情報欄は書き換えのたびに入れ替わるので、欄は地図の枠（.battle）に置いて作り直す
+   */
+  private mapMenuBox(): void {
+    const frame = this.host.root.querySelector<HTMLElement>('.battle');
+    if (!frame) return;
+    frame.querySelector('.mapmenu')?.remove();
+    if (!this.mapMenu) return;
+    const box = document.createElement('div');
+    box.className = 'mapmenu';
+    box.innerHTML = `<div class="mm-head"><b>地図を切り替える</b><button class="mm-x" data-a="close" title="閉じる">×</button></div>
+      <div class="mm-list">${mapModesFor(this.c).map((m) => `<button data-mapmode="${m.id}" class="${m.id === this.curMapMode() ? 'on' : ''}"><b>${esc(m.name)}</b><span>${esc(m.tip)}</span></button>`).join('')}</div>
+      <div class="dim small">他国の領は、偵察度が足りないと「分からない」（灰色）になります。</div>`;
+    box.querySelector<HTMLButtonElement>('[data-a="close"]')!.onclick = () => { this.mapMenu = false; this.refresh(); };
+    box.querySelectorAll<HTMLButtonElement>('[data-mapmode]').forEach((b) => {
+      b.onclick = () => { this.mapMode = b.dataset.mapmode as MapMode; saveMapMode(this.mapMode); this.mapMenu = false; this.refresh(); };
+    });
+    frame.appendChild(box);
+  }
+
+  /** 今の地図（観戦で選べない地図になっていたら領地） */
+  private curMapMode(): MapMode {
+    return mapModesFor(this.c).some((m) => m.id === this.mapMode) ? this.mapMode : 'land';
   }
 
   private generalHtml(g: GGeneral, own: boolean): string {
@@ -1631,8 +1662,10 @@ export class CampaignScreen {
         ${c.player ? `<button id="reelBtn" title="月を進めたあと、ほかの国どうしの戦いを1つずつ見せるか">他国の戦い：${reelOn() ? '見る' : '見ない'}</button>` : ''}
         <button id="saves">セーブ</button>
         <button id="bgmBtn" title="曲の音量（押すたびに切・小・中・大）">曲：${BGM_LEVEL_NAME[bgmLevel()]}</button>
+        <button id="mapModeBtn" class="${this.mapMenu ? 'on' : ''}" data-tip="地図の塗り分けを切り替えます（領地・人口・収入・兵の数 など）">地図：${esc(mapModesFor(c).find((m) => m.id === this.curMapMode())!.name)}</button>
         <button id="exit">やめる</button>
       </div>
+
       ${me ? `<div class="dim small">特色：${traitsOf(me).map((t) => `${t.name}（${t.text}）`).join('、')}${this.itemsText()}</div>` : ''}
       ${this.offersHtml()}${over}${body}`;
     const root = this.host.root;
@@ -1958,6 +1991,8 @@ export class CampaignScreen {
       })();
     });
     on('#bgmBtn', () => { setBgmLevel((bgmLevel() + 1) % BGM_LEVEL_NAME.length); this.refresh(); });
+    on('#mapModeBtn', () => { this.mapMenu = !this.mapMenu; this.refresh(); });
+    this.mapMenuBox();
     on('#reelBtn', () => { setReel(!reelOn()); this.refresh(); });
     on('#planBtn', () => this.openPlan());
     on('#captiveBtn', () => this.captiveList());

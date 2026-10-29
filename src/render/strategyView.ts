@@ -38,6 +38,15 @@ export interface StrategyHighlight {
   alarm?: { from: number; to: number };
   /** 持ち主が変わったところを見せる領（月送りの演出） */
   flash?: number;
+  /** 地図の切り替え（人口・収入など）。あれば勢力の色の代わりにこの色で塗り、数と凡例を出す（P97） */
+  paint?: MapPaint;
+}
+
+/** 地図の塗り分け：領 → 色、領 → 添える数、凡例 */
+export interface MapPaint {
+  fills: Map<number, string>;
+  labels: Map<number, string>;
+  legend: { title: string; items: { color: string; label: string }[] };
 }
 
 /** 国名を書く曲線（始点・制御点・終点） */
@@ -372,9 +381,11 @@ export class StrategyView {
     while (bakeStep(k)) { /* 残りの区画 */ }
     ctx.drawImage(k.base, 0, 0, m.w, m.h);
 
-    // 勢力の色：薄い塗りと、境に沿った内側の色の帯
+    // 勢力の色：薄い塗りと、境に沿った内側の色の帯（地図を切り替えているときは、その色で領を塗る）
     ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-    for (const [id, g] of this.geo) {
+    const paint = this.hl.paint;
+    if (paint) for (const [id, col] of paint.fills) { if (this.provPath[id]) { ctx.globalAlpha = 0.8; ctx.fillStyle = col; ctx.fill(this.provPath[id]); ctx.globalAlpha = 1; } }
+    else for (const [id, g] of this.geo) {
       const f = gs.factions[id];
       if (!f) continue;
       const lord = f.overlord && gs.factions[f.overlord] ? f.overlord : 0;
@@ -492,9 +503,63 @@ export class StrategyView {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (style.paperGrain) applyPaper(ctx, cv.width, cv.height, 0.2);
     this.drawLabels();
-    this.drawCounts();
+    if (!paint) this.drawCounts();
     this.drawCompass();
     this.drawCartouche();
+    if (paint) { this.drawPaintLabels(paint); this.drawLegend(paint); }
+  }
+
+  /** 切り替えた地図の数：領の上に小さな札で */
+  private drawPaintLabels(paint: MapPaint): void {
+    const gs = this.gs!, cam = this.cam, ctx = cam.ctx;
+    ctx.save();
+    ctx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
+    const fs = Math.round(Math.max(10, Math.min(13, this.radius * cam.zoom * 0.55)));
+    ctx.font = `700 ${fs}px ${this.style.labelFont}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // 重なる札は描かない。選んだ領・指している領・自分の領を先に
+    const pri = (id: number): number => id === this.hl.selected ? 0 : id === this.hl.hover ? 1 : gs.provinces[id]?.owner === this.hl.player ? 2 : 3;
+    const order = [...paint.labels.keys()].sort((a, b) => pri(a) - pri(b));
+    const drawn: [number, number, number, number][] = [];
+    for (const id of order) {
+      const p = gs.provinces[id], text = paint.labels.get(id)!;
+      if (!p) continue;
+      const [sx, sy] = cam.toScreen(p.cx, p.cy);
+      if (sx < -40 || sy < -20 || sx > cam.vw + 40 || sy > cam.vh + 20) continue;
+      const w = ctx.measureText(text).width + 8, h = fs + 5;
+      const box: [number, number, number, number] = [sx - w / 2, sy - h / 2, sx + w / 2, sy + h / 2];
+      if (drawn.some((d) => box[0] < d[2] && d[0] < box[2] && box[1] < d[3] && d[1] < box[3])) continue;
+      drawn.push(box);
+      ctx.fillStyle = 'rgba(250,244,228,0.92)'; ctx.strokeStyle = 'rgba(40,32,22,0.7)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect?.(sx - w / 2, sy - h / 2, w, h, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = INK; ctx.fillText(text, sx, sy + 0.5);
+    }
+    ctx.restore();
+  }
+
+  /** 切り替えた地図の凡例：右上に、色の見本と区切り */
+  private drawLegend(paint: MapPaint): void {
+    const cam = this.cam, ctx = cam.ctx, { title, items } = paint.legend;
+    ctx.save();
+    ctx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
+    const fs = cam.vw < 420 ? 11 : 12.5, row = fs + 7, sw = fs + 2, pad = 8;
+    ctx.font = `${fs}px ${this.style.labelFont}`;
+    const tw = Math.max(ctx.measureText(`地図：${title}`).width + 4, ...items.map((it) => ctx.measureText(it.label).width + sw + 8));
+    const w = tw + pad * 2, h = pad * 2 + row * (items.length + 1);
+    const x = cam.vw - w - 8, y = 8;
+    ctx.fillStyle = 'rgba(244,234,210,0.94)'; ctx.strokeStyle = INK; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.roundRect?.(x, y, w, h, 7); ctx.fill(); ctx.stroke();
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillStyle = INK;
+    ctx.font = `700 ${fs}px ${this.style.labelFont}`;
+    ctx.fillText(`地図：${title}`, x + pad, y + pad + row / 2);
+    ctx.font = `${fs}px ${this.style.labelFont}`;
+    items.forEach((it, i) => {
+      const yy = y + pad + row * (i + 1) + row / 2;
+      ctx.fillStyle = it.color; ctx.fillRect(x + pad, yy - sw / 2, sw, sw);
+      ctx.strokeStyle = 'rgba(40,32,22,0.6)'; ctx.lineWidth = 1; ctx.strokeRect(x + pad, yy - sw / 2, sw, sw);
+      ctx.fillStyle = INK; ctx.fillText(it.label, x + pad + sw + 6, yy + 0.5);
+    });
+    ctx.restore();
   }
 
   /** 領の町の絵（地図に描いているもの）。領の欄に小さく出す。無ければ null */
@@ -563,6 +628,8 @@ export class StrategyView {
     ctx.save();
     ctx.setTransform(cam.dpr, 0, 0, cam.dpr, 0, 0);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // 地図を切り替えているときは、国名を薄くして塗り分けと数を見やすくする
+    if (this.hl.paint) ctx.globalAlpha = 0.35;
     for (const [id, g] of this.geo) {
       const f = gs.factions[id];
       if (!f) continue;
