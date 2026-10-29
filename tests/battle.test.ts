@@ -157,6 +157,20 @@ describe('battle flow', () => {
     expect(st.log.some((l) => l.key === 'defeat')).toBe(true);
   });
 
+  it('a unit that counters gains experience too, hit or miss (0.9.1)', () => {
+    const st = field(PLAIN);
+    const g = st.map.grid;
+    // 雑兵どうし：攻めても1撃では倒れず、相手は反撃する
+    const a = troop(st, 'u01a', 0, g.idx(2, 3)), d = troop(st, 'u01a', 1, g.idx(3, 3));
+    apply(st, { type: 'skill', unit: a.id, skill: a.skills[0], target: d.pos });
+    expect(d.alive).toBe(true);
+    const counter = st.log.find((l) => l.key === 'strike' && (l.d as { counter?: boolean }).counter);
+    expect(counter).toBeTruthy();
+    expect(d.expGained).toBe(D.combat.counterExp);
+    expect(counter!.vars.exp).toBe(D.combat.counterExp);
+    expect(a.expGained).toBeGreaterThanOrEqual(D.combat.useExp);
+  });
+
   it('rejects illegal actions', () => {
     const st = field(PLAIN);
     const a = troop(st, 'u01a', 0, 10), d = troop(st, 'u01a', 1, 40);

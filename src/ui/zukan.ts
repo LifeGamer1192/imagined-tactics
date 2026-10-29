@@ -227,7 +227,7 @@ function levelsPage(): string {
   }
   const c = D.byClass[pickClass], u = D.byUnit[pickUnit];
   return `<p class="small">次のレベルまでの経験値 ＝ K ×（1 ＋（いまのレベル − 1）² ÷ ${curve}）。K は役職・兵種ごと（当主の役職はみな同じ）。レベルに上限は無い。</p>
-    <p class="small">経験値の入り方：技・軍略を使うと ${C.useExp}（回復は ${C.healExp}）、相手を倒すと相手の種類とレベルしだい、勝つと勝った側の駒すべてに +${C.winExp.rout}（敵の武将をみな退けた）か +${C.winExp.other}（要のマスを押さえた・守り切った）。武将は特性の「得る経験」で増減する。国モードでは訓練でも入る。</p>
+    <p class="small">経験値の入り方：技・軍略を使うと ${C.useExp}（回復は ${C.healExp}）、反撃すると ${C.counterExp}（当たり外れに関わらず）、相手を倒すと相手の種類とレベルしだい、勝つと勝った側の駒すべてに +${C.winExp.rout}（敵の武将をみな退けた）か +${C.winExp.other}（要のマスを押さえた・守り切った）。武将は特性の「得る経験」で増減する。国モードでは訓練でも入る。</p>
     <p class="zk-pick">武将の役職 <select data-zk="class">${classes.map((x) => opt(x.id, nm(x.name), pickClass)).join('')}</select>
       兵種 <select data-zk="unit">${D.units.map((x) => opt(x.id, `${nm(x.name)}（${x.id}）`, pickUnit)).join('')}</select></p>
     <div class="scroll"><table class="zk-levels"><tr><th>Lv</th><th>倍率</th><th data-tip="${esc(classTip(c.id))}">${esc(nm(c.name))}：次まで</th><th>累計</th><th data-tip="${esc(unitTip(u.id))}">${esc(nm(u.name))}：次まで</th><th>累計</th></tr>${rows.join('')}</table></div>`;

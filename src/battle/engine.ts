@@ -215,7 +215,13 @@ function doSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number): vo
     const basic = basicSkill(t);
     const counter = single && canCounter(st, u, skill, t, basic);
     strike(st, u, skill, t, single, false);
-    if (counter && t.alive && u.alive && st.winner === null && canCounter(st, u, skill, t, basic)) strike(st, t, basic!, u, true, true);
+    if (counter && t.alive && u.alive && st.winner === null && canCounter(st, u, skill, t, basic)) {
+      // 反撃にも経験値（0.9.1）：当たり外れに関わらず、反撃した駒に。記録の行に書く
+      const at = st.log.length;
+      strike(st, t, basic!, u, true, true);
+      t.expGained += D.combat.counterExp;
+      if (st.log[at]?.key === 'strike') st.log[at].vars.exp = D.combat.counterExp;
+    }
   }
   removeStatus(u, 'atkNext');
   removeStatus(u, 'sureNext');

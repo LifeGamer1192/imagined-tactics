@@ -115,10 +115,12 @@ function strikeLines(st: BattleState, e: BattleLogEntry, detail: boolean): strin
   const T = who(st, tid);
   const head = d.counter ? `反撃：${who(st, uid)}の${esc(L(skillOf(String(e.vars.sk)).name))} → ` : '→ ';
   const out: string[] = [];
-  if (!d.landed) out.push(ln(`${head}${T}：<span class="miss">外れ</span>`));
+  // 反撃した駒の経験値（0.9.1）
+  const cexp = d.counter && n(e.vars.exp) > 0 ? `<span class="dim">（${who(st, uid)}に経験 +${num(n(e.vars.exp) * D.combat.expGain)}）</span>` : '';
+  if (!d.landed) out.push(ln(`${head}${T}：<span class="miss">外れ</span>${cexp}`));
   else if (d.dmg && d.hp) {
-    out.push(ln(`${head}${T}に${d.dmg.crit ? '<b class="crit">会心！</b> ' : '命中 '}<b class="dmg">${d.dmg.final}</b>（${term('hp')} ${d.hp[0]}→${d.hp[1]}）${d.dmg.shield?.ok ? '　盾で受けて半分' : ''}`));
-  } else out.push(ln(`${head}${T}に命中（ダメージなし）`));
+    out.push(ln(`${head}${T}に${d.dmg.crit ? '<b class="crit">会心！</b> ' : '命中 '}<b class="dmg">${d.dmg.final}</b>（${term('hp')} ${d.hp[0]}→${d.hp[1]}）${d.dmg.shield?.ok ? '　盾で受けて半分' : ''}${cexp}`));
+  } else out.push(ln(`${head}${T}に命中（ダメージなし）${cexp}`));
   if (detail) {
     out.push(fm(hitFormula(d.hit, d.roll, d.landed)));
     const g = d.dmg;
