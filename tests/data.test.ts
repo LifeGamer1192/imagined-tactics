@@ -7,7 +7,7 @@ describe('system data', () => {
   it('counts', () => {
     expect(D.classes.length).toBe(63);
     expect(D.units.length).toBe(59);
-    expect(D.skills.length).toBe(105);
+    expect(D.skills.length).toBe(103);
     expect(D.tactics.length).toBe(39);
   });
 
@@ -76,7 +76,9 @@ describe('shared IDs (ima-rpg uses the same IDs; never renumber)', () => {
   it('skills k001-k092, tactics x01-x39, units u01a-u18c stay as they are', () => {
     const pad = (n: number, w: number) => String(n).padStart(w, '0');
     // 0.11.0：技 k093〜k105 と、兵種 u01d・u01e・u19a・u19c・u20a・u20b・u21a・u21b・u21c を足した（前の ID はそのまま）
-    expect(D.skills.map((s) => s.id)).toEqual(Array.from({ length: 105 }, (_, i) => `k${pad(i + 1, 3)}`));
+    // 0.13.0：蹂躙（k058・k061）を外した。番号は詰めない（ほかの技の ID はそのまま）
+    const removed = new Set(['k058', 'k061']);
+    expect(D.skills.map((s) => s.id)).toEqual(Array.from({ length: 105 }, (_, i) => `k${pad(i + 1, 3)}`).filter((id) => !removed.has(id)));
     expect(D.tactics.map((t) => t.id)).toEqual(Array.from({ length: 39 }, (_, i) => `x${pad(i + 1, 2)}`));
     expect(D.units.map((u) => u.id).sort()).toEqual([
       'u01a', 'u01b', 'u01c', 'u02a', 'u02b', 'u03a', 'u03b', 'u04a', 'u04b', 'u05a', 'u05b', 'u05c', 'u06a', 'u06b',

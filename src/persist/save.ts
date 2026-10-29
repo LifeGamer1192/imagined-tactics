@@ -3,7 +3,8 @@
 // 戦場マップを作るのに hist-sim の世界（地形）が要るので、読み込んだ hist-sim の世界もいっしょに持つ。
 
 import type { HWorld } from '../bridge/histsim';
-import type { GameStart } from '../convert/model';
+import type { GameStart, GGeneral, GTroop } from '../convert/model';
+import { D } from '../data/db';
 import { RNG } from '../core/rng';
 import type { Campaign, CampaignLog } from '../strategy/campaign';
 import { fillLowerClasses } from '../rules/growth';
@@ -87,6 +88,27 @@ const MIGRATIONS: Record<number, (s: HexSave) => HexSave> = {
   // 1 -> 2: (s) => ({ ...s, ... }),
 };
 
+/**
+ * 今のデータに無い技（外した技：蹂躙 k058・k061。0.13.0）を、将・兵・捕虜・予備兵の覚えた技と直伝の中から取り除く。
+ * 教えている途中のものも取りやめる
+ */
+function pruneSkills(c: Campaign): void {
+  const ok = (id: string): boolean => !!D.bySkill[id];
+  const fixTroop = (t: GTroop): void => {
+    if (t.extraSkills) t.extraSkills = t.extraSkills.filter(ok);
+    if (t.taught) t.taught = t.taught.filter((x) => x.kind !== 'skill' || ok(x.id));
+  };
+  const fixGeneral = (g: GGeneral): void => {
+    if (g.skills) g.skills = g.skills.filter((id) => id.startsWith('atk:') || ok(id));
+    if (g.taught) g.taught = g.taught.filter((x) => x.kind !== 'skill' || ok(x.id));
+    g.troops.forEach(fixTroop);
+  };
+  Object.values(c.gs.generals).forEach(fixGeneral);
+  (c.captives ?? []).forEach((x) => fixGeneral(x.g));
+  for (const list of Object.values(c.reserve ?? {})) list.forEach(fixTroop);
+  if (c.lessons) c.lessons = c.lessons.filter((l) => l.kind !== 'skill' || ok(l.art));
+}
+
 export function restore(s: HexSave): Campaign {
   if (!s || s.format !== SAVE_FORMAT || !s.campaign || !s.world) throw new HexSaveError('hex-sim のセーブではありません');
   if (s.version > SAVE_VERSION) throw new HexSaveError(`新しい版のセーブです（版数 ${s.version}）。このアプリを更新してください`);
@@ -103,6 +125,7 @@ export function restore(s: HexSave): Campaign {
   for (const g of Object.values(c.gs.generals)) fillLowerClasses(g);
   // 偵察度の無い古いセーブは、隣の領から始める
   if (!c.scout) initScout(c);
+  pruneSkills(c);
   return c;
 }
 

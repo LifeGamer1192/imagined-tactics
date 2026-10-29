@@ -244,6 +244,12 @@ function bombard(st: BattleState, u: BUnit, skill: SkillDef, aim: number): void 
     damage(st, t, n, isEnemy(u, t) ? u : null);
     log(st, 'blast', { uid: u.id, tid: t.id, unit: u.name, target: t.name, dmg: n, pct, center: center ? 1 : 0, crit: crit ? 1 : 0, shield: shield ? 1 : 0, hp0: from, hp1: t.hp, base });
   }
+  // 範囲の門・砦の門・柵にも当たる（0.13.0）。駒が立っていない造りだけ。威力は石の技（攻城の倍率も掛かる）、隣は巻き込みの割合
+  for (const c of blastCells(st, land)) {
+    if (!st.structures?.[c] || unitAt(st, c)) continue;
+    const pct = c === land ? 100 : rng.int(B.splashMin, B.splashMax);
+    hitStructure(st, u, c, breachParts(st, u, c, skill), pct);
+  }
 }
 
 /** 直伝の借り物を使った回数を数える（戦いのあと、身につく回数に足す。P68） */
@@ -543,13 +549,20 @@ const STRUCT_NAME: Record<string, string> = { gate: '門', fortgate: '砦の門'
 
 /** 造りを壊す：乱数を掛けたダメージを耐久から引き、0になれば決まった地形（門は道、柵は平地）に変わる */
 function doBreach(st: BattleState, u: BUnit, cell: number): void {
+  hitStructure(st, u, cell, breachParts(st, u, cell), 100);
+}
+
+/**
+ * 造りに当てる：乱数を掛けたダメージ（pct% ぶん）を耐久から引き、0になれば決まった地形に変える。
+ * 壊す（通常攻撃）と、投石の落ちたマス・巻き込み（0.13.0）で使う
+ */
+function hitStructure(st: BattleState, u: BUnit, cell: number, p: ReturnType<typeof breachParts>, pct: number): void {
   const str = st.structures![cell];
-  const p = breachParts(st, u, cell);
   const roll = st.rng.range(D.combat.randomMin, D.combat.randomMax);
-  const dmg = Math.max(1, Math.round(p.base * roll));
+  const dmg = Math.max(1, Math.round(p.base * roll * pct / 100));
   str.hp = Math.max(0, str.hp - dmg);
   const what = STRUCT_NAME[str.kind] ?? str.kind;
-  log(st, 'breach', { uid: u.id, unit: u.name, what, dmg, hp: str.hp, max: str.max, cell, base: p.base, power: p.power, atk: Math.round(p.atk * 10) / 10, def: p.def, siege: p.siege, fire: p.fire, roll: Math.round(roll * 1000) / 1000 });
+  log(st, 'breach', { uid: u.id, unit: u.name, what, dmg, hp: str.hp, max: str.max, cell, base: p.base, power: p.power, atk: Math.round(p.atk * 10) / 10, def: p.def, siege: p.siege, fire: p.fire, roll: Math.round(roll * 1000) / 1000, ...(pct !== 100 ? { pct } : {}) });
   if (str.hp > 0) return;
   st.map.terrain[cell] = str.rubble;
   delete st.structures![cell];

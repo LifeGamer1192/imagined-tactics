@@ -5,7 +5,7 @@ import { D, L, term } from '../data/db';
 import type { StatusId } from '../data/types';
 
 export const STATUS_NAME: Record<StatusId, string> = {
-  poison: '毒', daze: '怯み', silence: '攪乱', defect: '寝返り', stun: '気絶', confuse: '混乱',
+  poison: '毒', daze: '怯み', silence: '攪乱', defect: '寝返り', stun: '気絶', confuse: '捕縛',
   weaken: '攻撃・防御ダウン', atkNext: '次の攻撃アップ', moveUp: '移動アップ', resistUp: '軍略耐性アップ', defUp: '防御アップ',
   atkUp: '攻撃アップ', agiUp: '命中・回避アップ', atkDown: '攻撃ダウン', intDown: '知略ダウン', grounded: '足止め',
   mounted: '騎乗', regen: '毎巡回復', ward: '軍略無効', sureNext: '次の攻撃が必中', extraAct: '再行動', routed: '収容された敗残兵', loaded: '装填済み',

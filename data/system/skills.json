@@ -1033,6 +1033,7 @@
  },
  {
   "id": "k040",
+  "reload": true,
   "name": {
    "jp": "石火矢",
    "cn": "投石"
@@ -1085,6 +1086,7 @@
  },
  {
   "id": "k042",
+  "reload": true,
   "name": {
    "jp": "大筒撃ち",
    "cn": "飛石"
@@ -1405,7 +1407,7 @@
    "jp": "薬湯配り",
    "cn": "施薬"
   },
-  "mp": 68,
+  "mp": 112,
   "power": 198,
   "range": [
    1,
@@ -1419,7 +1421,7 @@
   "basic": false,
   "shape": {
    "type": "around",
-   "n": 2
+   "n": 1
   },
   "targets": "all",
   "effects": [
@@ -1533,36 +1535,6 @@
   "effects": []
  },
  {
-  "id": "k058",
-  "name": {
-   "jp": "蹂躙",
-   "cn": "轢陣"
-  },
-  "mp": 26,
-  "power": 0,
-  "range": [
-   1,
-   1
-  ],
-  "hit": 0,
-  "vsGround": "sure",
-  "vsRider": "sure",
-  "afterMove": false,
-  "counter": false,
-  "basic": false,
-  "shape": {
-   "type": "around",
-   "n": 1
-  },
-  "targets": "all",
-  "effects": [
-   {
-    "type": "mpHalf"
-   }
-  ],
-  "noDamage": true
- },
- {
   "id": "k059",
   "name": {
    "jp": "旗本突撃",
@@ -1610,36 +1582,6 @@
   },
   "targets": "all",
   "effects": []
- },
- {
-  "id": "k061",
-  "name": {
-   "jp": "蹂躙",
-   "cn": "轢陣"
-  },
-  "mp": 26,
-  "power": 0,
-  "range": [
-   1,
-   1
-  ],
-  "hit": 0,
-  "vsGround": "sure",
-  "vsRider": "sure",
-  "afterMove": false,
-  "counter": false,
-  "basic": false,
-  "shape": {
-   "type": "around",
-   "n": 1
-  },
-  "targets": "all",
-  "effects": [
-   {
-    "type": "mpHalf"
-   }
-  ],
-  "noDamage": true
  },
  {
   "id": "k062",

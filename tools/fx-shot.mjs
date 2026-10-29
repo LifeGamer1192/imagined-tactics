@@ -119,6 +119,8 @@ for (let s0 = 0; s0 < scenes.length; s0 += ROWS) {
       for (const u of [T, T2]) if (u) { u.hp = u.maxHp = 3000; }
       st.turn = 0;
       A.mp = A.maxMp = 999; A.int = 90; A.moved = false; A.acted = false; A.statuses = [];
+      // 装填の要る技（鉄砲・弩・投石）は、込めてから撃つ
+      if (sc.skill && (await import('/src/rules/stats.ts')).skillOf(sc.skill).reload) A.statuses.push({ id: 'loaded', turns: -1 });
       if (sc.skill) A.skills = [sc.skill]; else { A.tactics = [sc.tactic]; }
       if (sc.crit) A.critPct = 100; else A.critPct = -100;
       if (sc.miss) A.agi = -9999; else if (!sc.twice) A.agi = 9999;
@@ -141,6 +143,7 @@ for (let s0 = 0; s0 < scenes.length; s0 += ROWS) {
         const n0 = st.log.length;
         a.view.clearFx();
         A.acted = false; A.mp = 999; T.hp = sc.ally ? 1200 : 3000; A.hp = sc.hurtSelf ? Math.round(A.maxHp / 2) : A.maxHp;
+        if (sc.skill && skillOf(sc.skill).reload && !A.statuses.some((x) => x.id === 'loaded')) A.statuses.push({ id: 'loaded', turns: -1 });
         if (sc.skill === 'k037' || sc.wall) {
           // 押し出す技：押された相手を戻し、押す向きの真後ろに、塞ぐマス（入れない）か後ろの駒を置く
           T.pos = line[sc.dist - 1];

@@ -91,14 +91,14 @@ function fieldText(p: { field?: number; fieldNotes?: [string, string, number][] 
 
 /** 攻撃・防御の値の成り立ち。補正が何も無いときは '' */
 function statFormula(label: string, baseLabel: string, p: StatParts, always: boolean): string {
-  if (p.fixed) return `${label}${num(p.value)}（混乱中は決まった値）`;
+  if (p.fixed) return `${label}${num(p.value)}（捕縛中は決まった値）`;
   const supply = p.supply ?? 1;
-  const seat = p.seat ?? 1;
-  if (!always && !p.adds.length && p.out === 1 && supply === 1 && seat === 1) return '';
+  const seat = p.seat ?? 1, low = p.lowland ?? 1;
+  if (!always && !p.adds.length && p.out === 1 && supply === 1 && seat === 1 && low === 1) return '';
   let s = `${label}${num(p.value)} ＝ `;
   // 強化・弱化は％を足し合わせて掛ける（0.8.0）
   const buffs = p.adds.length ? ` × ${num(pctMult(p.adds.map(([, v]) => v)))}（${p.adds.map(([id, v]) => `${STATUS_NAME[id]}${signed(v)}%`).join('・')}）` : '';
-  s += `${baseLabel}${num(p.base)}${p.mult !== 1 ? ` × ${num(p.mult)}` : ''}${buffs}${seat !== 1 ? ` × 天守${num(seat)}` : ''}${p.out !== 1 ? ` × 采配範囲外${num(p.out)}` : ''}${supply !== 1 ? ` × 飛び地${num(supply)}` : ''}`;
+  s += `${baseLabel}${num(p.base)}${p.mult !== 1 ? ` × ${num(p.mult)}` : ''}${buffs}${seat !== 1 ? ` × 天守${num(seat)}` : ''}${low !== 1 ? ` × 平地${num(low)}` : ''}${p.out !== 1 ? ` × 采配範囲外${num(p.out)}` : ''}${supply !== 1 ? ` × 飛び地${num(supply)}` : ''}`;
   return s;
 }
 

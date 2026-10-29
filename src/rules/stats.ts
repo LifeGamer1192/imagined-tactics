@@ -9,7 +9,7 @@ export const has = (u: BUnit, id: StatusId): boolean => u.statuses.some((s) => s
 export const statusOf = (u: BUnit, id: StatusId): BStatus | undefined => u.statuses.find((s) => s.id === id);
 export function removeStatus(u: BUnit, id: StatusId): void { u.statuses = u.statuses.filter((s) => s.id !== id); }
 
-/** 行動できない状態（怯み・気絶・混乱） */
+/** 行動できない状態（怯み・気絶・捕縛） */
 export const disabled = (u: BUnit): boolean => has(u, 'daze') || has(u, 'stun') || has(u, 'confuse');
 /** 反撃できない状態 */
 export const cannotCounter = (u: BUnit): boolean => disabled(u) || has(u, 'defect');
@@ -84,10 +84,23 @@ export function seatDefMult(st: BattleState, u: BUnit): number {
   return st.hold && u.pos === st.hold.cell ? 1 + D.combat.seatDefPct / 100 : 1;
 }
 
+/** 平地（草原・道。0.13.0） */
+export const LOWLAND: ReadonlySet<string> = new Set(['plain', 'road']);
+/** 山岳の兵が平地に立つときの防御の掛け目（無ければ 1） */
+export function lowlandDefMult(st: BattleState, u: BUnit): number {
+  if (!LOWLAND.has(st.map.terrain[u.pos])) return 1;
+  return passive(u, 'lowland').reduce((m, p) => m * (1 - p.defPct / 100), 1);
+}
+/** 山岳の兵が平地に立つときの回避の下がり（正の数。無ければ 0） */
+export function lowlandEvade(st: BattleState, u: BUnit): number {
+  if (!LOWLAND.has(st.map.terrain[u.pos])) return 0;
+  return passive(u, 'lowland').reduce((s, p) => s + p.evadePct, 0);
+}
+
 export function defense(st: BattleState, u: BUnit): number {
   const S = D.status;
   if (has(u, 'confuse')) return S.confuse.def;
-  let v = u.def * pctMult(defPcts(u)) * seatDefMult(st, u);
+  let v = u.def * pctMult(defPcts(u)) * seatDefMult(st, u) * lowlandDefMult(st, u);
   if (outOfCommand(st, u)) v *= 1 + S.outOfCommand.atkDefPct / 100;
   v *= supplyMultOf(st, u);
   return Math.max(1, v);

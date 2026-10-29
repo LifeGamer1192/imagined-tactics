@@ -147,6 +147,23 @@ describe('cavalry charge, shields against missiles, drums, sappers', () => {
   });
 });
 
+describe('mountain troops on flat ground (0.13.0)', () => {
+  it('lose 15% defence and 5 evasion on plain and road, not elsewhere', async () => {
+    const { defense } = await import('../src/rules/stats');
+    const { hitChance } = await import('../src/rules/combat');
+    const st = field('. . . . .\n. ^ . . .'), g = st.map.grid;
+    const m = troop(st, 'u12a', 1, g.idx(1, 0)), a = troop(st, 'u06a', 0, g.idx(3, 0));
+    const flat = defense(st, m), hit = hitChance(st, a, skillOf('k024'), m);
+    expect(flat).toBeCloseTo(m.def * 0.85, 6);
+    m.passives = m.passives.filter((p) => p.type !== 'lowland');
+    expect(hitChance(st, a, skillOf('k024'), m)).toBe(Math.min(D.combat.hitMax, hit - 5));
+    expect(defense(st, m)).toBe(m.def);
+    m.passives = [...D.byUnit.u12a.passives];
+    m.pos = g.idx(1, 1);   // 山
+    expect(defense(st, m)).toBe(m.def);
+  });
+});
+
 describe('recruiting', () => {
   it('no single line takes more than 30% of a pool when there are enough lines', () => {
     const w: Record<string, number> = { u01a: 10, u19a: 1, u20a: 1, u21a: 1, u06a: 1 };
@@ -172,6 +189,29 @@ describe('recruiting', () => {
 });
 
 describe('catapults drop stones on a chosen hex (0.12.0)', () => {
+  it('stones need loading like crossbows (0.13.0): not without loaded, and firing unloads', () => {
+    const st = field(PLAIN), g = st.map.grid;
+    const c = troop(st, 'u10c', 0, g.idx(1, 3)), aim = g.idx(4, 3);
+    expect(skillOf('k042').reload && skillOf('k040').reload).toBe(true);
+    expect(apply(st, { type: 'skill', unit: c.id, skill: 'k042', target: aim })).toBe(false);
+    addStatus(st, c, 'loaded', -1);
+    expect(apply(st, { type: 'skill', unit: c.id, skill: 'k042', target: aim })).toBe(true);
+    expect(has(c, 'loaded')).toBe(false);
+  });
+
+  it('gates and palisades in the blast are hit too (0.13.0)', () => {
+    const st = field(PLAIN), g = st.map.grid;
+    const c = troop(st, 'u10c', 0, g.idx(1, 3)), aim = g.idx(4, 3), side = g.neighbors(aim)[0];
+    st.structures = { [aim]: { kind: 'gate', hp: 150, max: 150, def: 140, closed: true, rubble: 'road' }, [side]: { kind: 'palisade', hp: 1000, max: 1000, def: 80, closed: false, rubble: 'plain' } } as unknown as BattleState['structures'];
+    addStatus(st, c, 'loaded', -1); addStatus(st, c, 'sureNext');
+    apply(st, { type: 'skill', unit: c.id, skill: 'k042', target: aim });
+    expect(st.structures![aim]).toBeUndefined();          // 落ちたマスの門は壊れた
+    expect(st.map.terrain[aim]).toBe('road');
+    const b = st.log.find((e) => e.key === 'breach' && e.vars.cell === side)!;
+    expect(b.vars.pct).toBeGreaterThanOrEqual(10);
+    expect(st.structures![side].hp).toBeLessThan(1000);
+  });
+
   it('the middle and top tiers can aim at any hex in range, even an empty one', () => {
     const st = field(PLAIN), g = st.map.grid;
     for (const id of ['u10b', 'u10c']) {
@@ -194,7 +234,7 @@ describe('catapults drop stones on a chosen hex (0.12.0)', () => {
     const friend = troop(st, 'u01a', 0, n1), foe2 = troop(st, 'u06a', 1, n2);
     for (const u of [foe, friend, foe2]) { u.hp = u.maxHp = 1e5; u.passives = []; }
     c.critPct = -100;
-    addStatus(st, c, 'sureNext');
+    addStatus(st, c, 'sureNext'); addStatus(st, c, 'loaded', -1);
     const base = { foe: skillDamage(st, c, s, foe), friend: skillDamage(st, c, s, friend), foe2: skillDamage(st, c, s, foe2) };
     apply(st, { type: 'skill', unit: c.id, skill: 'k042', target: aim });
     const b = st.log.find((e) => e.key === 'bombard')!;
@@ -211,7 +251,7 @@ describe('catapults drop stones on a chosen hex (0.12.0)', () => {
     expect(st.log.some((e) => e.key === 'strike')).toBe(false);   // 反撃は無い
     // 撃った駒は、隣に落ちても巻き込まない
     const st2 = field(PLAIN), g2 = st2.map.grid;
-    const c2 = troop(st2, 'u10b', 0, g2.idx(2, 3)); addStatus(st2, c2, 'sureNext');
+    const c2 = troop(st2, 'u10b', 0, g2.idx(2, 3)); addStatus(st2, c2, 'sureNext'); addStatus(st2, c2, 'loaded', -1);
     const hp = c2.hp;
     apply(st2, { type: 'skill', unit: c2.id, skill: 'k040', target: g2.idx(3, 3) });
     expect(c2.hp).toBe(hp);
@@ -224,7 +264,7 @@ describe('catapults drop stones on a chosen hex (0.12.0)', () => {
     expect(aimChance(st, c, skillOf('k042'), aim)).toBe(D.combat.hitMin);
     let drifted = 0;
     for (let k = 0; k < 20; k++) {
-      c.acted = false; c.moved = false;
+      c.acted = false; c.moved = false; addStatus(st, c, 'loaded', -1);
       apply(st, { type: 'skill', unit: c.id, skill: 'k042', target: aim });
       const b = [...st.log].reverse().find((e) => e.key === 'bombard')!;
       if (b.vars.land !== aim) { drifted++; expect(blastCells(st, aim)).toContain(b.vars.land); }

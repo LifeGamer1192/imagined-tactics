@@ -107,7 +107,9 @@ export type Passive =
   /** 飛び道具の盾：離れた所（2マス以上）からの攻撃を、chance% で半分にする */
   | { type: 'missileGuard'; chance: number }
   /** 鼓舞：隣の味方の与えるダメージ+pct%（いつも。重ならない） */
-  | { type: 'rally'; pct: number };
+  | { type: 'rally'; pct: number }
+  /** 平地（草原・道）に立つと、防御−defPct%・回避−evadePct（山岳の兵。0.13.0） */
+  | { type: 'lowland'; defPct: number; evadePct: number };
 
 /** 兵種の分類（0.11.0。歩兵・槍・長槍・戟の相性と、騎馬かどうか） */
 export type UnitKind = 'foot' | 'spear' | 'pike' | 'halberd' | 'cavalry';

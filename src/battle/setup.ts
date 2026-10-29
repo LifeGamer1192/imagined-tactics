@@ -23,6 +23,8 @@ function blank(id: number, side: Side): Pick<BUnit, 'id' | 'side' | 'home' | 'st
 
 /** 直伝で教わった技・軍略（P68） */
 const taughtOf = (ts: Taught[] | undefined, kind: 'skill' | 'tactic'): string[] => (ts ?? []).filter((t) => t.kind === kind).map((t) => t.id);
+/** 今のデータにある技だけ（外した技：蹂躙 k058・k061 など。0.13.0） */
+const known = (ids: string[]): string[] => ids.filter((id) => id.startsWith('atk:') || !!D.bySkill[id]);
 /** 駒に付ける直伝の印：教わったもの、まだ身についていない借り物（気力が多くかかる） */
 function taughtFields(ts: Taught[] | undefined): Pick<BUnit, 'taught' | 'borrowed' | 'borrowMult' | 'artUses'> {
   if (!ts?.length) return {};
@@ -38,7 +40,7 @@ export function generalUnit(g: GGeneral, id: number, side: Side): BUnit {
     // 兵から取り立てた武将（P59）：もとの兵種の得意地形のまま。技は、引き継いだ技を通常攻撃の前に置く（弓の兵は弓で反撃する）
     move: c.move, affinity: g.unit && D.byUnit[g.unit] ? D.byUnit[g.unit].affinity : c.affinity, commandRange: g.commandRange,
     // 特性の特技・回復・会心は、戦場で特性から付ける（P56。前の版で変換のときに付けたものは外す）
-    passives: withoutOldTraitPassives(g.passives, g.traits), skills: [...new Set([...(g.skills ?? []), ...taughtOf(g.taught, 'skill'), `atk:${c.id}`])], tactics: [...new Set([...c.tactics, ...g.learned, ...taughtOf(g.taught, 'tactic')])],
+    passives: withoutOldTraitPassives(g.passives, g.traits), skills: known([...new Set([...(g.skills ?? []), ...taughtOf(g.taught, 'skill'), `atk:${c.id}`])]), tactics: [...new Set([...c.tactics, ...g.learned, ...taughtOf(g.taught, 'tactic')])],
     ...taughtFields(g.taught),
     critPct: 0, healPct: 0, persona: personalityOf(g.traits, g.ab),
   };
@@ -53,7 +55,7 @@ export function troopUnits(g: GGeneral, firstId: number, leader: number, side: S
       str: t.stats.str, int: t.stats.int, agi: t.stats.agi, def: u.def,
       move: u.move, affinity: u.affinity, commandRange: 0,
       // 武将から下げた兵（P59）：引き継いだ技・軍略も使える
-      passives: [...u.passives], skills: [...new Set([...u.skills, ...(t.extraSkills ?? []), ...taughtOf(t.taught, 'skill')])], tactics: [...new Set([...u.tactics, ...(t.extraTactics ?? []), ...taughtOf(t.taught, 'tactic')])],
+      passives: [...u.passives], skills: known([...new Set([...u.skills, ...(t.extraSkills ?? []), ...taughtOf(t.taught, 'skill')])]), tactics: [...new Set([...u.tactics, ...(t.extraTactics ?? []), ...taughtOf(t.taught, 'tactic')])],
       ...taughtFields(t.taught),
       critPct: 0, healPct: 0,
     };

@@ -28,3 +28,17 @@ describe('buff and debuff explanations', () => {
     expect(tip).toMatch(/動きやすく|動きにくく|入れなく/);
   });
 });
+
+describe('0.13.0 fixes', () => {
+  it('the herbal brew says it heals enemies too, and the confusion status is now called 捕縛', async () => {
+    const t = skillTip(D.bySkill.k053);
+    expect(t).toMatch(/敵も巻き込む/);
+    expect(t).not.toMatch(/味方も巻き込む/);
+    expect(D.bySkill.k053.shape).toEqual({ type: 'around', n: 1 });
+    const { STATUS_NAME } = await import('../src/ui/text');
+    expect(STATUS_NAME.confuse).toBe('捕縛');
+    expect(D.byTactic.x37.name.jp).toBe('捕縛の計');
+    expect(D.bySkill.k058).toBeUndefined();
+    expect(D.units.some((u) => u.skills.includes('k058') || u.skills.includes('k061'))).toBe(false);
+  });
+});

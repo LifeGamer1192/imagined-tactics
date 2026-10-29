@@ -20,7 +20,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const EXTRA = new Set(['act', 'move', 'strike', 'tactic.on']);
 /** 攻撃・防御の値を、内訳から組み立て直す */
 // 強化・弱化は％を足し合わせて掛ける（0.8.0）
-const stat = (p: StatParts) => (p.fixed ? p.base : Math.max(1, p.base * p.mult * Math.max(0.1, 1 + p.adds.reduce((s, [, v]) => s + v, 0) / 100) * (p.seat ?? 1) * p.out * (p.supply ?? 1)));
+const stat = (p: StatParts) => (p.fixed ? p.base : Math.max(1, p.base * p.mult * Math.max(0.1, 1 + p.adds.reduce((s, [, v]) => s + v, 0) / 100) * (p.seat ?? 1) * (p.lowland ?? 1) * p.out * (p.supply ?? 1)));
 
 /** いろいろな天気で、おまかせどうしの戦いをいくつか終わらせる */
 async function battles(): Promise<BattleState[]> {

@@ -7,7 +7,7 @@ import { BM } from '../battle/map';
 import { unitAt } from './move';
 import {
   affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf, fieldMult, type FieldParts, basicSkill, attackKinds,
-  skillOf, tacticResist, terrainAt, terrainMod, seatDefMult, unitKind, isCavalry, KIND_NAME, ROUGH,
+  skillOf, tacticResist, terrainAt, terrainMod, seatDefMult, unitKind, isCavalry, KIND_NAME, ROUGH, lowlandDefMult, lowlandEvade,
 } from './stats';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -51,7 +51,8 @@ export function hitParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit): 
   p.agiA = agility(a); p.agiT = agility(t); p.terA = terrainMod(st, a); p.terT = terrainMod(st, t);
   let r = C.hitBase + p.agiA - p.agiT + skill.hit + p.terA - p.terT;
   if (mark === 'tri') { p.tri = C.triPenalty; r -= C.triPenalty; }
-  p.passHit = passivePct(a, 'hit'); p.passEvade = passivePct(t, 'evade');
+  // 山岳の兵が平地に立つと、回避が下がる（0.13.0）
+  p.passHit = passivePct(a, 'hit'); p.passEvade = passivePct(t, 'evade') - lowlandEvade(st, t);
   r += p.passHit - p.passEvade;
   const sit = situationHit(st, a, skill, t);
   r += sit;
@@ -157,10 +158,12 @@ export interface StatParts {
   out: number;
   /** 陣営の掛け目（飛び地で戦う側は 1 未満。無ければ 1） */
   supply: number;
-  /** 混乱中の防御のように、決まった値になっている */
+  /** 捕縛中の防御のように、決まった値になっている */
   fixed: boolean;
   /** 天守・本丸・本陣に立つときの防御の掛け目（0.9.0。無ければ 1） */
   seat?: number;
+  /** 山岳の兵が平地に立つときの防御の掛け目（0.13.0。無ければ 1） */
+  lowland?: number;
 }
 
 export function atkParts(st: BattleState, u: BUnit): StatParts {
@@ -176,7 +179,7 @@ export function defParts(st: BattleState, u: BUnit): StatParts {
   if (has(u, 'confuse')) return { value, base: S.confuse.def, mult: 1, adds: [], out: 1, supply: 1, fixed: true };
   const adds: [StatusId, number][] = [];
   for (const id of ['defUp', 'weaken'] as const) if (has(u, id)) adds.push([id, S[id].defPct]);
-  return { value, base: u.def, mult: 1, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, supply: supplyMultOf(st, u), fixed: false, seat: seatDefMult(st, u) };
+  return { value, base: u.def, mult: 1, adds, out: outOfCommand(st, u) ? 1 + S.outOfCommand.atkDefPct / 100 : 1, supply: supplyMultOf(st, u), fixed: false, seat: seatDefMult(st, u), lowland: lowlandDefMult(st, u) };
 }
 
 export function critChance(a: BUnit): number {
@@ -416,8 +419,9 @@ export function breachTargets(st: BattleState, u: BUnit): number[] {
 /** 造りを壊すダメージの内訳：通常攻撃の威力 × 攻撃 ÷ 造りの防御 × 攻城（石火矢・大筒の系統）× 火 */
 export interface BreachParts { base: number; power: number; atk: number; def: number; siege: number; fire: number }
 
-export function breachParts(st: BattleState, u: BUnit, cell: number): BreachParts {
-  const s = basicSkill(u)!, str = st.structures![cell], S = BM.structures;
+export function breachParts(st: BattleState, u: BUnit, cell: number, skill?: SkillDef): BreachParts {
+  // skill：通常攻撃でなく、その技で打つ（投石。0.13.0）
+  const s = skill ?? basicSkill(u)!, str = st.structures![cell], S = BM.structures;
   const line = u.kind === 'troop' ? D.byUnit[u.defId]?.line : undefined;
   const p: BreachParts = {
     base: 0, power: s.power, atk: attackPower(st, u), def: str.def,

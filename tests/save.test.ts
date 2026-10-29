@@ -25,6 +25,17 @@ describe('hex-sim save', () => {
     expect(summaryText(fromJSON(text))).toContain('3か月');
   });
 
+  it('skills removed from the data (0.13.0: 蹂躙) are dropped from old saves', async () => {
+    const c = await start('sengoku_fid5_1575');
+    const g = Object.values(c.gs.generals).find((x) => x.troops.length)!;
+    g.taught = [{ id: 'k058', kind: 'skill', from: 'x', uses: 0 }, { id: 'k001', kind: 'skill', from: 'x', uses: 0 }];
+    g.troops[0].extraSkills = ['k061', 'k002'];
+    const back = restore(fromJSON(toJSON(snapshot(c))));
+    const h = back.gs.generals[g.id];
+    expect(h.taught!.map((t) => t.id)).toEqual(['k001']);
+    expect(h.troops[0].extraSkills).toEqual(['k002']);
+  });
+
   it('continuing from a save gives the same history as playing straight through', async () => {
     const straight = await start('invented_archipelago_y30');
     for (let m = 0; m < 8; m++) autoMonth(straight);

@@ -78,6 +78,7 @@ const PASSIVE_TEXT = (p: Passive): string => {
     case 'charge': return `突撃：その手番で進んだマス数×${p.pct}%、与えるダメージが増える（最大+${p.max}%。反撃では増えない）`;
     case 'missileGuard': return `飛び道具の盾：2マス以上離れた所からの攻撃を、${p.chance}%で半分にする`;
     case 'rally': return `鼓舞：隣の味方の与えるダメージ+${p.pct}%（いつも。重ならない）`;
+    case 'lowland': return `平地（草原・道）に立つと、防御−${p.defPct}%・回避−${p.evadePct}`;
   }
 };
 
@@ -186,7 +187,9 @@ const withEffect = (id: string): string => { const e = statusEffect(id); return 
 export function skillTip(s: SkillDef): string {
   const rng = s.range[0] === s.range[1] ? `${s.range[1]}` : `${s.range[0]}〜${s.range[1]}`;
   const shape = s.bombard ? `射程${rng}のどのマスでも（駒がいなくてもよい）` : s.shape.type === 'around' ? `自分の周り${s.shape.n}マス` : s.shape.type === 'line' ? `向いた方へ直線${s.shape.n}マス` : `1体（射程${rng}）`;
-  const out = [`【${L(s.name)}】`, `対象：${shape}${s.targets === 'all' ? '（味方も巻き込む）' : ''}`];
+  // 回復の技が敵味方を問わないときは、敵も回復してしまう（0.13.0。前は「味方も巻き込む」と逆に書いていた）
+  const heals = s.effects.some((e) => e.type === 'heal');
+  const out = [`【${L(s.name)}】`, `対象：${shape}${s.targets === 'all' ? (heals ? '（敵も巻き込む）' : '（味方も巻き込む）') : ''}`];
   // 狙って石を落とす（0.12.0）
   if (s.bombard) out.push(`命中率の見込みで狙ったマスに石が落ち、外れると隣のどれかのマスにずれる。落ちたマスの駒は100%、その隣の駒は${s.bombard.splashMin}〜${s.bombard.splashMax}%のダメージ（敵味方を問わない。撃った駒は巻き込まない）`);
   if (!s.noDamage) out.push(`威力${s.power}${s.hit ? `、命中${s.hit > 0 ? '+' : ''}${s.hit}` : ''}`);
@@ -206,7 +209,7 @@ export function skillTip(s: SkillDef): string {
     else if (e.type === 'lifesteal') out.push(`与えたダメージの${Math.round(e.rate * 100)}%を回復`);
     else if (e.type === 'weakenStun') out.push(`当たると${e.chance}%で${withEffect('weaken')}と${withEffect('stun')}`);
     else if (e.type === 'mpHalf') out.push('相手の気力を半分にする');
-    else if (e.type === 'heal') out.push('味方の体力を回復する');
+    else if (e.type === 'heal') out.push(s.targets === 'all' ? `範囲の駒の体力を${s.power}回復する（敵も回復してしまう）` : '味方の体力を回復する');
     else if (e.type === 'knockback') out.push(`相手を1マス押し出す（押せないとき：後ろに駒がいれば、その駒にも与えたダメージの${D.combat.knock.collidePct}%。盤の外・入れない地形・閉じた門や柵なら、ダメージ×${D.combat.knock.wallMult}）`);
     else if (e.type === 'critBonus') out.push('会心が出やすい');
   }
@@ -362,7 +365,7 @@ const LINE_ADVICE: Record<number, string> = {
   15: '固まった敵を火で焼く。味方を巻き込まないよう、敵の群れに向ける',
   16: '水の多い戦場の主力。川や海の上から攻める',
   17: '将の近くで味方を支える。軍略で味方を助け、自分は前に出ない',
-  18: '敵の後ろへ近づき、寝返りや混乱で乱す。打たれ弱いので深入りしない',
+  18: '敵の後ろへ近づき、寝返りや捕縛で乱す。打たれ弱いので深入りしない',
 };
 
 function unitAdvice(u: UnitDef, f: ReturnType<typeof unitTraits>): string {

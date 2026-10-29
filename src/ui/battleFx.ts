@@ -314,6 +314,12 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
         // 造りを打つ：マスが光り、ダメージの数字と打つ音
         const cell = num(e.vars.cell);
         if (cell < 0) break;
+        // 投石の巻き込み（0.13.0）は、石の落ちる時刻に
+        if (blastAt !== null) {
+          note(cell, String(num(e.vars.dmg)), OCHRE, false, blastAt, num(e.vars.pct) > 0 ? `巻き込み${num(e.vars.pct)}%` : undefined);
+          lastImpact = Math.max(lastImpact, blastAt);
+          break;
+        }
         push({ kind: 'flash', cells: [cell], color: OCHRE, t0: at(t), dur: 320 * scale });
         note(cell, String(num(e.vars.dmg)), OCHRE, false, t);
         sound('hit', t);
@@ -322,7 +328,7 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
       }
       case 'broken': {
         const cell = num(e.vars.cell);
-        if (cell >= 0) { chip(cell, '打ち破った', VERMILION, t); sound('defeat', t); }
+        if (cell >= 0) { const when = Math.max(t, blastAt ?? 0); chip(cell, '打ち破った', VERMILION, when); sound('defeat', when); }
         break;
       }
       case 'miss': {
