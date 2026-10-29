@@ -9,6 +9,7 @@ import expJson from '../../data/system/exp.json';
 import statusesJson from '../../data/system/statuses.json';
 import combatJson from '../../data/system/combat.json';
 import termsJson from '../../data/system/terms.json';
+import westJson from '../../data/system/west.json';
 import type {
   ClassDef, CombatConfig, ExpData, Loc, SkillDef, StatusConsts, TacticDef, TerrainData, UnitDef, Variant,
 } from './types';
@@ -49,7 +50,11 @@ export type ArtSet = Variant | 'west';
 let artSet: ArtSet = 'jp';
 export function setArtSet(a: ArtSet): void { artSet = a; }
 export function getArtSet(): ArtSet { return artSet; }
-/** 今の版（日本版・中国版）の名前 */
-export function L(name: Loc): string { return name[variant]; }
+/** 西洋版の兵種の名前（P88。west.json）：兵種の名前の入れ物 → 西洋の名前 */
+const westNames = new Map<Loc, string>(Object.entries((westJson as { units: Record<string, string> }).units).filter(([id]) => D.byUnit[id]).map(([id, n]) => [D.byUnit[id].name, n]));
+/** 兵種の西洋の名前（対応表などで使う） */
+export function westName(unitId: string): string | undefined { return D.byUnit[unitId] ? westNames.get(D.byUnit[unitId].name) : undefined; }
+/** 今の版（日本版・中国版）の名前。絵が西洋版の世界（ローマなど）では、兵種は西洋の名前 */
+export function L(name: Loc): string { return (artSet === 'west' && westNames.get(name)) || name[variant]; }
 /** 用語（体力・武力など）の今の版の名前 */
 export function term(key: string): string { return D.terms[key]?.[variant] ?? key; }

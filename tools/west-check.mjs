@@ -28,6 +28,10 @@ await shot('1_campaign');
 // 本拠の欄（武将の後ろ姿・兵の駒）
 const icons = (await page.$$eval('#panel img', (els) => els.map((e) => e.getAttribute('src')))).filter((s) => !s.startsWith('data:'));
 ok('武将の欄の絵は西洋版（兵の駒・後ろ姿）', icons.length > 0 && icons.every((s) => !/\/(jp|cn)\//.test(s)) && icons.some((s) => /\/west\//.test(s)), icons.slice(0, 4).join(' '));
+const panelText = await page.textContent('#panel');
+// 日本版の兵種の名前（役職の「足軽」などは兵種でないので数えない）
+const jpUnits = ['雑兵', '足軽槍組', '鉄砲足軽', '素破', '金瘡医', '竹束衆', '黒鍬衆', '大太刀衆', '騎馬武者', '野伏', '焙烙衆', '安宅船', '使番衆'];
+ok('武将の欄の兵種は西洋の名前', !jpUnits.some((n) => panelText.includes(n)), jpUnits.filter((n) => panelText.includes(n)).join(' '));
 // 外交の窓（よその勢力の領を選んで、同盟の使者の窓を開く）
 await page.evaluate(() => { const s = window.__campaign, c = s.c, me = c.player; const p = c.gs.provinces.find((x) => x.owner && x.owner !== me); s.selected = p.id; s.refresh(); });
 const env = await page.$('[data-envoy]');

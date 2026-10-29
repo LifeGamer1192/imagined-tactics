@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { artUrl } from '../src/art/art';
 import { artSetOf, convert, variantOf } from '../src/convert/convert';
-import { getArtSet, setArtSet } from '../src/data/db';
+import { D, getArtSet, L, setArtSet, westName } from '../src/data/db';
 import { sceneUrl } from '../src/ui/scene';
 import { loadFixture } from './helpers';
 
@@ -21,6 +21,20 @@ describe('art set', () => {
     for (const n of ['setup', 'victory', 'defeat', 'envoy', 'death', 'defect', 'promote', 'succession', 'travel']) expect(sceneUrl(n), n).toMatch(/_west\.webp$/);
     expect(sceneUrl('no_such_scene')).toBeNull();
     expect(artUrl('unit/west/u01a')).toMatch(/unit\/west\/u01a\.webp$/);
+    setArtSet(before);
+  });
+
+  it('in the western world, units go by their western names; other names stay as they are', () => {
+    const before = getArtSet();
+    setArtSet('west');
+    expect(L(D.byUnit.u01b.name)).toBe('重装歩兵');
+    expect(L(D.byUnit.u16a.name)).toBe('三段櫂船');
+    // 兵種でない名前（技など）は変えない
+    expect(L(D.skills[0].name)).toBe(D.skills[0].name.jp);
+    setArtSet('jp');
+    expect(L(D.byUnit.u01b.name)).toBe('足軽槍組');
+    // すべての兵種に西洋の名前がある
+    for (const u of D.units) expect(westName(u.id), u.id).toBeTruthy();
     setArtSet(before);
   });
 });

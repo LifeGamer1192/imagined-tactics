@@ -185,6 +185,15 @@ let focusCache = new Map<number, number>();
 /** 行動を決めている駒の、動く前の位置（最寄り狙いで使う） */
 let planOrigin = -1;
 
+/** 守り手の天守の守りの値（P88）：この駒の強さの割合と、天守が押さえられているときの必死さ */
+function keepCtx(st: BattleState, u: BUnit): { rel: number; retake: number } {
+  const h = st.hold!;
+  const str = (x: BUnit): number => x.hp * attackPower(st, x);
+  const best = Math.max(1, ...st.units.filter((x) => x.alive && x.side === u.side).map(str));
+  const held = st.units.some((x) => x.alive && x.side === 0 && x.pos === h.cell);
+  return { rel: clamp(str(u) / best, 0, 1), retake: held ? clamp((h.count + 1) / h.need, 0, 1) : -1 };
+}
+
 function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: number, w: Record<string, number>, leader: BUnit | null): number {
   const d = Math.min(dmg, t.hp);
   let v = d * chance * w.damage;
@@ -210,6 +219,12 @@ function valueOfHit(st: BattleState, u: BUnit, t: BUnit, dmg: number, chance: nu
       v += w.leaderKill * worth * chance * (dmg >= t.hp ? 1 : 0.25 * d / t.hp);
     }
   } else if (roleOf(t) === 'support' || roleOf(t) === 'caster') v *= w.supportTarget;
+  // 天守を押さえている攻め手を叩く（P88）：押さえられた巡が勝ちに近いほど重く。倒せば天守が空く
+  const h = st.hold;
+  if (h && u.side === 1 && t.side === 0 && t.pos === h.cell) {
+    const urgent = clamp((h.count + 1) / h.need, 0, 1);
+    v += AI.castle.retakeHit * (1 + AI.castle.retakeUrgent * urgent) * chance * (dmg >= t.hp ? 2 : d / t.hp);
+  }
   // 主君のそばにいる敵を優先して叩く
   if (leader && leader.alive && leader.id !== u.id && st.map.grid.distance(t.pos, leader.pos) <= 1) v += w.guardLeader * chance;
   // 最寄り狙い（P50）：動く前の位置から近い敵ほど高く見る
@@ -361,6 +376,11 @@ interface PosCtx {
   seatPath: Float64Array | null;
   /** 難しさによる、天守を守る重みの倍率 */
   guardMult: number;
+  /**
+   * 守り手の天守の守り（P88）。rel：この駒の強さ（味方でいちばん強い駒を1）。
+   * retake：攻め手が天守を押さえているときの必死さ（0〜1。押さえられた巡が勝ちに近いほど大きい）。押さえられていなければ -1
+   */
+  keep?: { rel: number; retake: number };
   /** むずかしいだけの考え方 */
   smart?: SmartConfig;
   /** 先手を取る：いま見ているマスに届く敵の数（scorePosition が書く） */
@@ -502,7 +522,18 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
     if (u.side === 0) {
       if (u.pos === h.cell) s += W.hold * (1 + c.urgent);
       else if (c.seatPath && c.seatPath[u.pos] < Infinity) s -= W.approach * (1 + 2 * c.urgent) * (c.smart?.keepPush ?? 1) * Math.min(c.seatPath[u.pos], 30);
-    } else if (u.pos === h.cell && c.foes.some((f) => g.distance(f.pos, h.cell) <= W.guardRange)) s += W.guard * c.guardMult;
+    } else {
+      if (u.pos === h.cell && c.foes.some((f) => g.distance(f.pos, h.cell) <= W.guardRange)) s += W.guard * c.guardMult;
+      // 天守の守り（P88）：強い駒ほど天守に、そこそこの駒はまわりに。攻め手に押さえられたら、勝ちに近いほど必死に取り返しに行く
+      const k = c.keep;
+      if (k) {
+        // 将は天守に寄らない（兵を向かわせる）。将が討たれると配下の兵がみな退くので、前に出さない
+        const d = g.distance(u.pos, h.cell), gen = isGeneral ? 0 : 1;
+        if (k.retake >= 0) s -= W.retake * (1 + W.retakeUrgent * k.retake) * Math.min(d, 12) * c.guardMult * gen;
+        else if (d === 0) s += W.keep * k.rel * c.guardMult * gen;
+        else if (d === 1) s += W.ring * k.rel * c.guardMult * gen;
+      }
+    }
   }
   parts.stance = s;
   parts.noise = jitter(u.id, u.pos, st.round) * w.noise;
@@ -609,6 +640,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     travel: st.map.siege && foes.length ? travelField(st, u, foes) : null,
     seatPath: st.hold && u.side === 0 ? travelField(st, u, [{ pos: st.hold.cell } as BUnit]) : null,
     guardMult: lv?.weights.guard ?? 1,
+    keep: st.hold && u.side === 1 ? keepCtx(st, u) : undefined,
     smart: lv?.smart,
     threats: threatsTo(st, u, !!lv?.smart?.exactReach),
     // 武将が自ら前に出るか：猛攻・武勇の武将、前衛の役割で時間が押しているとき

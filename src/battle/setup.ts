@@ -7,6 +7,7 @@ import { RNG, codeToSeed } from '../core/rng';
 import { D, L } from '../data/db';
 import { classMod } from '../rules/growth';
 import { stepCost } from '../rules/move';
+import { attackPower } from '../rules/stats';
 import { applyTraitMods, traitMods, withoutOldTraitPassives } from '../rules/traits';
 import { BM, type BattleMap } from './map';
 import type { BUnit, BattleState, Side } from './types';
@@ -134,7 +135,66 @@ export function createBattle(gs: GameStart, map: BattleMap, sides: [string[], st
       }
     });
   }
+  guardKeep(st);
   return st;
+}
+
+/**
+ * 守り手の初めの並び（P88）：天守のある戦場では、いちばん強い兵を持つ部隊を天守に寄せる。
+ * その部隊のいちばん強い兵を天守に、残りの兵をまわりに。2番めに強い部隊の兵を、その外側に置く。
+ * 将は前に出さない（将が倒れると兵がみな退くため）：自分の兵がみな采配の範囲に収まるマスのうち、攻め手からいちばん遠い所。
+ * ほかの部隊は、もとの場所のまま（ふさがっていれば、そばの空いたマス）。最後に、采配の範囲から外れた兵を将のそばへ寄せる。
+ * 手動の守り手は、配置の画面で並べ直せる
+ */
+function guardKeep(st: BattleState): void {
+  const h = st.hold;
+  if (!h) return;
+  const g = st.map.grid;
+  const mine = st.units.filter((u) => u.side === 1);
+  if (!mine.length) return;
+  const all = Array.from({ length: g.n }, (_, i) => i);
+  const foes = st.units.filter((u) => u.side === 0);
+  const strength = (u: BUnit): number => u.hp * attackPower(st, u);
+  // 門・柵などの造りのマスには置かない（門の上に立つと、攻め手が門を壊せなくなる）
+  const ok = (u: BUnit, i: number): boolean => stepCost({ ...st, units: [] } as BattleState, u, i) !== null && st.map.terrain[i] !== 'water' && st.map.terrain[i] !== 'wall' && !st.structures?.[i];
+  const far = (i: number): number => foes.length ? Math.min(...foes.map((f) => g.distance(f.pos, i))) : 0;
+  const taken = new Set<number>(foes.map((f) => f.pos));
+  const origin = new Map(mine.map((u) => [u, u.pos]));
+  const put = (u: BUnit, i: number): void => { u.pos = i; taken.add(i); };
+  const nearestFree = (u: BUnit, from: number, pred: (i: number) => boolean = () => true): number | undefined =>
+    all.filter((i) => !taken.has(i) && ok(u, i) && pred(i)).sort((a, b) => g.distance(a, from) - g.distance(b, from) || far(b) - far(a) || a - b)[0];
+  // 部隊（将とその兵）を、いちばん強い兵の強さで並べる
+  const groups = mine.filter((u) => u.kind === 'general').map((gen) => {
+    const troops = mine.filter((u) => u.leader === gen.id && u.kind === 'troop').sort((a, b) => strength(b) - strength(a) || a.id - b.id);
+    return { gen, troops, top: troops.length ? strength(troops[0]) : 0 };
+  }).sort((a, b) => b.top - a.top);
+  const front = groups.slice(0, 2).filter((x) => x.troops.length);
+  if (!front.length) return;
+  // 1. 強い2部隊の兵を、天守に近いマスから
+  for (const grp of front) for (const t of grp.troops) { const i = nearestFree(t, h.cell); if (i !== undefined) put(t, i); }
+  // 2. その将は、兵がみな采配の範囲に収まるマスのうち、攻め手からいちばん遠い所（収まらなければ、外れる兵がいちばん少ない所）
+  for (const { gen, troops } of front) {
+    const outOf = (i: number): number => troops.filter((t) => g.distance(t.pos, i) > gen.commandRange).length;
+    const i = all.filter((x) => !taken.has(x) && ok(gen, x)).sort((a, b) => outOf(a) - outOf(b) || far(b) - far(a) || a - b)[0];
+    if (i !== undefined) put(gen, i);
+  }
+  // 3. ほかの部隊は、もとの場所のまま（ふさがっていれば、そばの空いたマス）
+  const moved = new Set(front.flatMap((x) => [x.gen, ...x.troops]));
+  for (const u of mine) {
+    if (moved.has(u)) continue;
+    const from = origin.get(u)!;
+    const i = !taken.has(from) && ok(u, from) ? from : nearestFree(u, from);
+    if (i !== undefined) put(u, i);
+  }
+  // 4. 采配の範囲から外れた兵は、将のそばの空いたマスへ（なるべく天守に近い所）
+  for (const t of mine) {
+    if (t.kind !== 'troop') continue;
+    const gen = st.units[t.leader];
+    if (!gen || g.distance(t.pos, gen.pos) <= gen.commandRange) continue;
+    taken.delete(t.pos);
+    const i = nearestFree(t, h.cell, (x) => g.distance(x, gen.pos) <= gen.commandRange) ?? t.pos;
+    put(t, i);
+  }
 }
 
 /** 難しさの名前（駒の能力の変化の原因に書く） */

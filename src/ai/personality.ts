@@ -25,7 +25,8 @@ export interface AiConfig {
   reload: number;
   /** 味方のおまかせの方針（P50）で掛ける重み */
   plan: { generalTarget: number; leaderKill: number; weakTarget: number; weakKill: number; otherWeak: number; nearAim: number; cunningTactics: number; directTactics: number };
-  castle: { hold: number; approach: number; guard: number; guardRange: number; breach: number; breachKill: number; breachClosed: number };
+  /** keep・ring・retake・retakeUrgent・retakeHit は守り手の天守の守り（P88） */
+  castle: { hold: number; approach: number; guard: number; guardRange: number; breach: number; breachKill: number; breachClosed: number; keep: number; ring: number; retake: number; retakeUrgent: number; retakeHit: number };
 }
 export type AiLevel = 'easy' | 'normal' | 'hard' | 'veryHard' | 'oni';
 /**

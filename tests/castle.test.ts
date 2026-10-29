@@ -1,6 +1,8 @@
 // 城を取って勝つ：攻め手が天守（城のマス）を決まった巡だけ押さえ続けるか、時間切れのとき押さえていれば攻め手の勝ち。
 import { describe, expect, it } from 'vitest';
-import { autoBattle } from '../src/ai/ai';
+import { autoBattle, nextAiActions } from '../src/ai/ai';
+import { apply } from '../src/battle/engine';
+import { attackPower } from '../src/rules/stats';
 import { endTurn } from '../src/battle/engine';
 import { mapFromProvince , BM } from '../src/battle/map';
 import { createBattle } from '../src/battle/setup';
@@ -86,4 +88,37 @@ describe('taking the castle', () => {
     }
     expect(fights).toBeGreaterThanOrEqual(1);
   }, 120000);
+
+  // 守り手の天守の守り（P88）
+  it('the defenders start with their strongest troop in the keep and the same company around it', async () => {
+    const st = await castleBattle({ fort: 0.85, walls: true });
+    const h = st.hold!, g = st.map.grid;
+    const troops = st.units.filter((u) => u.side === 1 && u.kind === 'troop').sort((a, b) => b.hp * attackPower(st, b) - a.hp * attackPower(st, a));
+    const keeper = st.units.find((u) => u.pos === h.cell)!;
+    expect(keeper.side).toBe(1);
+    expect(keeper).toBe(troops[0]);
+    const ring = st.units.filter((u) => g.distance(u.pos, h.cell) === 1);
+    expect(ring.length).toBeGreaterThan(0);
+    expect(ring.every((u) => u.side === 1)).toBe(true);
+    // 寄せた兵は、将の采配の範囲から外れない
+    for (const u of [keeper, ...ring.filter((x) => x.kind === 'troop')]) expect(st.map.grid.distance(u.pos, st.units[u.leader].pos)).toBeLessThanOrEqual(st.units[u.leader].commandRange);
+    // 駒が重なっていない
+    expect(new Set(st.units.map((u) => u.pos)).size).toBe(st.units.length);
+  });
+
+  it('when the attackers hold the keep, the defenders go to take it back, harder as they near winning', async () => {
+    const st = await castleBattle({ fort: 0.85, walls: true });
+    const h = st.hold!, g = st.map.grid;
+    occupy(st);
+    const holder = st.units.find((u) => u.pos === h.cell)!;
+    st.turn = 1;
+    const dist0 = st.units.filter((u) => u.side === 1 && u.alive && u.kind === 'troop').reduce((s, u) => s + g.distance(u.pos, h.cell), 0);
+    h.count = h.need - 1;
+    const hp0 = holder.hp;
+    for (let k = 0; k < 40 && st.turn === 1 && st.winner === null; k++) for (const a of nextAiActions(st)) apply(st, a);
+    const dist1 = st.units.filter((u) => u.side === 1 && u.alive && u.kind === 'troop').reduce((s, u) => s + g.distance(u.pos, h.cell), 0);
+    // 守り手の兵は天守へ寄り、天守の上の攻め手を叩く
+    expect(dist1).toBeLessThan(dist0);
+    expect(!holder.alive || holder.hp < hp0 || holder.pos !== h.cell).toBe(true);
+  });
 });
