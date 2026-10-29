@@ -167,6 +167,15 @@
   "hex/water_1.webp",
   "hex/water_2.webp"
  ],
+ "hex/west/castle": [
+  "hex/west/castle_0.webp",
+  "hex/west/castle_1.webp"
+ ],
+ "hex/west/town": [
+  "hex/west/town_0.webp",
+  "hex/west/town_1.webp",
+  "hex/west/town_2.webp"
+ ],
  "map/antique_broadleaf": [
   "map/antique_broadleaf_0.webp",
   "map/antique_broadleaf_1.webp",
@@ -352,6 +361,18 @@
   "map/town_west_walled_0.webp",
   "map/town_west_walled_1.webp",
   "map/town_west_walled_2.webp"
+ ],
+ "map/west/sym_gate": [
+  "map/west/sym_gate.webp"
+ ],
+ "map/west/sym_lookout": [
+  "map/west/sym_lookout.webp"
+ ],
+ "map/west/sym_tower": [
+  "map/west/sym_tower.webp"
+ ],
+ "map/west/sym_wall": [
+  "map/west/sym_wall.webp"
  ],
  "map/wonder_antique_academy": [
   "map/wonder_antique_academy_0.webp"
@@ -931,6 +952,102 @@
  ],
  "unit/west/u08a": [
   "unit/west/u08a.webp"
+ ],
+ "unit/west/u08b": [
+  "unit/west/u08b.webp"
+ ],
+ "unit/west/u08b2": [
+  "unit/west/u08b2.webp"
+ ],
+ "unit/west/u09a": [
+  "unit/west/u09a.webp"
+ ],
+ "unit/west/u09b": [
+  "unit/west/u09b.webp"
+ ],
+ "unit/west/u09c": [
+  "unit/west/u09c.webp"
+ ],
+ "unit/west/u10a": [
+  "unit/west/u10a.webp"
+ ],
+ "unit/west/u10b": [
+  "unit/west/u10b.webp"
+ ],
+ "unit/west/u10c": [
+  "unit/west/u10c.webp"
+ ],
+ "unit/west/u11a": [
+  "unit/west/u11a.webp"
+ ],
+ "unit/west/u11b": [
+  "unit/west/u11b.webp"
+ ],
+ "unit/west/u11c": [
+  "unit/west/u11c.webp"
+ ],
+ "unit/west/u12a": [
+  "unit/west/u12a.webp"
+ ],
+ "unit/west/u12b": [
+  "unit/west/u12b.webp"
+ ],
+ "unit/west/u12b2": [
+  "unit/west/u12b2.webp"
+ ],
+ "unit/west/u13a": [
+  "unit/west/u13a.webp"
+ ],
+ "unit/west/u13b": [
+  "unit/west/u13b.webp"
+ ],
+ "unit/west/u13c": [
+  "unit/west/u13c.webp"
+ ],
+ "unit/west/u14a": [
+  "unit/west/u14a.webp"
+ ],
+ "unit/west/u14b": [
+  "unit/west/u14b.webp"
+ ],
+ "unit/west/u14c": [
+  "unit/west/u14c.webp"
+ ],
+ "unit/west/u15a": [
+  "unit/west/u15a.webp"
+ ],
+ "unit/west/u15b": [
+  "unit/west/u15b.webp"
+ ],
+ "unit/west/u15c": [
+  "unit/west/u15c.webp"
+ ],
+ "unit/west/u16a": [
+  "unit/west/u16a.webp"
+ ],
+ "unit/west/u16b": [
+  "unit/west/u16b.webp"
+ ],
+ "unit/west/u16c": [
+  "unit/west/u16c.webp"
+ ],
+ "unit/west/u17a": [
+  "unit/west/u17a.webp"
+ ],
+ "unit/west/u17b": [
+  "unit/west/u17b.webp"
+ ],
+ "unit/west/u17c": [
+  "unit/west/u17c.webp"
+ ],
+ "unit/west/u18a": [
+  "unit/west/u18a.webp"
+ ],
+ "unit/west/u18b": [
+  "unit/west/u18b.webp"
+ ],
+ "unit/west/u18c": [
+  "unit/west/u18c.webp"
  ],
  "unit/west/u19a": [
   "unit/west/u19a.webp"
