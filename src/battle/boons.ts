@@ -12,6 +12,12 @@ const TIE: Record<string, string> = {
   rival: '宿敵', avenge: '仇', betrayed_by: '裏切られた相手', betrayed: '裏切った相手', sworn: '義兄弟', friend: '友', lord: '家臣', servant: '主君', spouse: '伴侶', mentor: '弟子', pupil: '師', love: '想い人', companion: '生涯の友',
 };
 
+/**
+ * 城の戦いか（要のマスが天守）。砦・本陣の戦いは「城の外の戦い」。
+ * 戦略の領はほとんど城の固さが砦以上なので、天守の無い戦場（野戦）はほぼ起きない。そのため城かどうかで分ける
+ */
+const walled = (st: BattleState): boolean => !!st.hold && st.map.terrain[st.hold.cell] === 'castle';
+
 /** 条件を満たしていれば、その文（満たさなければ null） */
 export function condMet(st: BattleState, u: BUnit, c: BoonCond): string | null {
   const foes = st.units.filter((x) => x.alive && x.side !== u.side);
@@ -29,8 +35,9 @@ export function condMet(st: BattleState, u: BUnit, c: BoonCond): string | null {
       return null;
     }
     case 'lordFoe': { const x = foeGens.find((f) => f.isLord); return x ? `敵の当主：${x.name}` : null; }
-    case 'castle': return st.hold ? '城・砦・陣の戦い' : null;
-    case 'field': return st.hold ? null : '野戦';
+    // 城の戦いと、城の外の戦い（砦・陣）
+    case 'castle': return walled(st) ? '城の戦い' : null;
+    case 'field': return walled(st) ? null : '城の外の戦い（砦・陣）';
     case 'outnumbered': { const mine = st.units.filter((x) => x.alive && x.side === u.side).length; return mine < foes.length ? `寡兵（${mine}対${foes.length}）` : null; }
     case 'night': return st.night ? '夜' : null;
     case 'rain': return st.weather === 'rain' ? '雨' : null;
@@ -45,8 +52,8 @@ export function condText(c: BoonCond): string {
     case 'higherFoe': return '自分よりレベルの高い将が敵にいる';
     case 'tieFoe': return `${c.kinds.map((k) => TIE[k] ?? k).join('・')}の縁のある将が敵にいる`;
     case 'lordFoe': return '敵に当主がいる';
-    case 'castle': return '城・砦・陣の戦い';
-    case 'field': return '野戦（天守の無い戦場）';
+    case 'castle': return '城（天守）の戦い';
+    case 'field': return '城の外の戦い（砦・陣）';
     case 'outnumbered': return '自軍の駒が敵より少ない';
     case 'night': return '夜の戦い';
     case 'rain': return '雨の戦い';
