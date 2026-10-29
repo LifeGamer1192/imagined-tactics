@@ -5,6 +5,9 @@
  "bg/defeat_jp": [
   "bg/defeat_jp.webp"
  ],
+ "bg/defeat_west": [
+  "bg/defeat_west.webp"
+ ],
  "bg/desk": [
   "bg/desk.webp"
  ],
@@ -29,6 +32,9 @@
  "bg/setup_jp": [
   "bg/setup_jp.webp"
  ],
+ "bg/setup_west": [
+  "bg/setup_west.webp"
+ ],
  "bg/title": [
   "bg/title.webp"
  ],
@@ -37,6 +43,9 @@
  ],
  "bg/victory_jp": [
   "bg/victory_jp.webp"
+ ],
+ "bg/victory_west": [
+  "bg/victory_west.webp"
  ],
  "bg/weather_clear": [
   "bg/weather_clear.webp"
@@ -85,6 +94,24 @@
  ],
  "figure/jp/woman": [
   "figure/jp/woman.webp"
+ ],
+ "figure/west/general": [
+  "figure/west/general.webp"
+ ],
+ "figure/west/lord": [
+  "figure/west/lord.webp"
+ ],
+ "figure/west/monk": [
+  "figure/west/monk.webp"
+ ],
+ "figure/west/strategist": [
+  "figure/west/strategist.webp"
+ ],
+ "figure/west/wanderer": [
+  "figure/west/wanderer.webp"
+ ],
+ "figure/west/woman": [
+  "figure/west/woman.webp"
  ],
  "hex/camp": [
   "hex/camp_0.webp"
@@ -425,11 +452,17 @@
  "scene/death_jp": [
   "scene/death_jp.webp"
  ],
+ "scene/death_west": [
+  "scene/death_west.webp"
+ ],
  "scene/defect_cn": [
   "scene/defect_cn.webp"
  ],
  "scene/defect_jp": [
   "scene/defect_jp.webp"
+ ],
+ "scene/defect_west": [
+  "scene/defect_west.webp"
  ],
  "scene/envoy_cn": [
   "scene/envoy_cn.webp"
@@ -437,11 +470,17 @@
  "scene/envoy_jp": [
   "scene/envoy_jp.webp"
  ],
+ "scene/envoy_west": [
+  "scene/envoy_west.webp"
+ ],
  "scene/promote_cn": [
   "scene/promote_cn.webp"
  ],
  "scene/promote_jp": [
   "scene/promote_jp.webp"
+ ],
+ "scene/promote_west": [
+  "scene/promote_west.webp"
  ],
  "scene/succession_cn": [
   "scene/succession_cn.webp"
@@ -449,11 +488,17 @@
  "scene/succession_jp": [
   "scene/succession_jp.webp"
  ],
+ "scene/succession_west": [
+  "scene/succession_west.webp"
+ ],
  "scene/travel_cn": [
   "scene/travel_cn.webp"
  ],
  "scene/travel_jp": [
   "scene/travel_jp.webp"
+ ],
+ "scene/travel_west": [
+  "scene/travel_west.webp"
  ],
  "ui/brush_ink": [
   "ui/brush_ink.webp"
@@ -772,5 +817,59 @@
  ],
  "unit/jp/u18c": [
   "unit/jp/u18c.webp"
+ ],
+ "unit/west/u01a": [
+  "unit/west/u01a.webp"
+ ],
+ "unit/west/u01b": [
+  "unit/west/u01b.webp"
+ ],
+ "unit/west/u01c": [
+  "unit/west/u01c.webp"
+ ],
+ "unit/west/u02a": [
+  "unit/west/u02a.webp"
+ ],
+ "unit/west/u02b": [
+  "unit/west/u02b.webp"
+ ],
+ "unit/west/u03a": [
+  "unit/west/u03a.webp"
+ ],
+ "unit/west/u03b": [
+  "unit/west/u03b.webp"
+ ],
+ "unit/west/u04a": [
+  "unit/west/u04a.webp"
+ ],
+ "unit/west/u04b": [
+  "unit/west/u04b.webp"
+ ],
+ "unit/west/u05a": [
+  "unit/west/u05a.webp"
+ ],
+ "unit/west/u05b": [
+  "unit/west/u05b.webp"
+ ],
+ "unit/west/u05c": [
+  "unit/west/u05c.webp"
+ ],
+ "unit/west/u06a": [
+  "unit/west/u06a.webp"
+ ],
+ "unit/west/u06b": [
+  "unit/west/u06b.webp"
+ ],
+ "unit/west/u07a": [
+  "unit/west/u07a.webp"
+ ],
+ "unit/west/u07b": [
+  "unit/west/u07b.webp"
+ ],
+ "unit/west/u07c": [
+  "unit/west/u07c.webp"
+ ],
+ "unit/west/u08a": [
+  "unit/west/u08a.webp"
  ]
 }

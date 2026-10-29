@@ -3,7 +3,7 @@
 import type { BattleState, Side } from '../battle/types';
 import type { BattleSummary } from '../battle/result';
 import type { GGeneral, GTroop } from '../convert/model';
-import { D, L } from '../data/db';
+import { D, getArtSet, L } from '../data/db';
 import { StrategyView } from '../render/strategyView';
 import {
   autoMonth, autoPlayMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
@@ -225,7 +225,7 @@ export class CampaignScreen {
 
   private mount(): void {
     const gs = this.c.gs;
-    setScene(null, sceneUrl('setup', gs.variant));
+    setScene(null, sceneUrl('setup'));
     initTips();
     this.host.root.innerHTML = `
       <div class="battle">
@@ -350,7 +350,7 @@ export class CampaignScreen {
   private figure(g: GGeneral): string {
     const face = this.c.gs.scenario ? faceFor(this.c.gs.scenario, g.recordName ?? g.name.ja) : null;
     if (face) return `<img class="fig face" src="${import.meta.env.BASE_URL ?? './'}${face}" alt="" draggable="false">`;
-    const v = this.c.gs.variant;
+    const v = getArtSet();
     const role = g.isLord || g.role === 'heir' ? 'lord' : g.sex === 'f' ? 'woman' : !g.faction || g.role === 'hero' ? 'wanderer'
       : g.role === 'minister' ? 'strategist' : g.role === 'scholar' || g.role === 'artist' ? 'monk'
       : g.stats.int > g.stats.str + 10 ? 'strategist' : 'general';
@@ -438,7 +438,7 @@ export class CampaignScreen {
     void confirmBox(this.frame(), {
       title: one ? `今月の知らせ：${TITLE[top]}` : '今月の知らせ',
       // 絵はいちばん大きな知らせに合わせる（合う絵が無い知らせだけなら、季節の絵）
-      banner: SCENE[top] ? sceneUrl(SCENE[top], c.gs.variant) : seasonUrl(c.gs.month),
+      banner: SCENE[top] ? sceneUrl(SCENE[top]) : seasonUrl(c.gs.month),
       body: one ? list(top) : kinds.map((k) => `<h4 class="newshead">${TITLE[k]}</h4>${list(k)}`).join(''),
       ok: '閉じる', single: true,
     });
@@ -466,7 +466,7 @@ export class CampaignScreen {
     const leaf = Array.from({ length: 34 }, (_v, i) => `<span class="leaf" style="left:${(i * 29) % 100}%;animation-delay:${((i * 0.19) % 2.2).toFixed(2)}s;animation-duration:${(2.4 + (i % 5) * 0.35).toFixed(1)}s"></span>`).join('');
     const box = document.createElement('div');
     box.className = 'result victory-box cc-box';
-    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory', this.c.gs.variant))}
+    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory'))}
       <div class="kachidoki">昇格！</div>
       ${img ? `<div class="cc-fig"><img src="${img}" alt=""></div>` : ''}
       <h2 class="wrap">${esc(title)}</h2>
@@ -511,7 +511,7 @@ export class CampaignScreen {
     const leaf = Array.from({ length: 48 }, (_v, i) => `<span class="leaf" style="left:${(i * 23) % 100}%;animation-delay:${((i * 0.17) % 3).toFixed(2)}s;animation-duration:${(2.8 + (i % 6) * 0.4).toFixed(1)}s"></span>`).join('');
     const box = document.createElement('div');
     box.className = 'result victory-box unify';
-    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory', gs.variant))}
+    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory'))}
       <div class="u-title">天下統一</div>
       <p class="u-lead">${factionBadge(me.name.ja, me.color)}　${yr(gs.year)}${gs.month}月、ついに天下をひとつにまとめる</p>
       <p class="u-sub">${start ? `${yr(start.year)}${start.month}月に起ってから、${esc(spanText(c))}。` : ''}${lord ? `当主 <b>${esc(lord.name.ja)}</b> のもと、` : ''}乱世はここに終わりを告げた。</p>
@@ -558,7 +558,7 @@ export class CampaignScreen {
     const left = (c.fallen ?? []).length;
     const box = document.createElement('div');
     box.className = 'result fall';
-    box.innerHTML = `${bannerHtml(sceneUrl('defeat', gs.variant))}
+    box.innerHTML = `${bannerHtml(sceneUrl('defeat'))}
       <div class="fall-title">${esc(r.name)}、滅亡</div>
       <p class="vsub">${esc(yr(r.fell.year))}${r.fell.month}月　${r.fell.why ? esc(r.fell.why) : r.fell.by ? `${esc(r.fell.by)}に滅ぼされる` : '領をすべて失う'}${mine ? '　<b>あなたの家</b>' : ''}</p>
       <div class="u-stats">
@@ -636,7 +636,7 @@ export class CampaignScreen {
 
   /** 兵の名前の横に添える、小さな兵の絵（絵の無い兵種は名前だけ） */
   private icon(unitId: string): string {
-    const url = artUrl(`unit/${this.c.gs.variant}/${unitId}`);
+    const url = artUrl(`unit/${getArtSet()}/${unitId}`);
     return url ? `<img class="uicon" src="${url}" alt="" draggable="false">` : '';
   }
 
@@ -738,7 +738,7 @@ export class CampaignScreen {
     if (owner && relation(c, c.player, owner.id) === 'neutral') {
       const allies = Object.values(gs.factions).filter((x) => x.id !== owner.id && x.id !== c.player && relation(c, x.id, owner.id) === 'ally').map((x) => esc(x.name.ja));
       const ok = await confirmBox(this.frame(), {
-        title: `${esc(owner.name.ja)}と開戦して攻める`, danger: true, banner: sceneUrl('setup', gs.variant),
+        title: `${esc(owner.name.ja)}と開戦して攻める`, danger: true, banner: sceneUrl('setup'),
         body: `<p>${factionBadge(owner.name.ja, owner.color)} とは、いま戦をしていません（中立）。${esc(gs.provinces[prov].name.ja)}へ攻め込むと、<b>${esc(owner.name.ja)}と戦</b>になります。</p>
           <ul class="small"><li>停戦するまで、互いに領を攻め合えるようになる（${esc(owner.name.ja)}からも攻めてくる）</li>
           <li>${esc(owner.name.ja)}の心証が大きく下がる</li>
@@ -770,7 +770,7 @@ export class CampaignScreen {
     const box = document.createElement('div');
     box.className = 'result low';
     const fromName = gs.provinces[pb.from]?.name.ja ?? '';
-    box.innerHTML = `${bannerHtml(sceneUrl('setup', gs.variant))}<h2>${esc(who)}</h2>
+    box.innerHTML = `${bannerHtml(sceneUrl('setup'))}<h2>${esc(who)}</h2>
       <p class="where"><span class="from">${esc(fromName)}</span> から <span class="to">${esc(p.name.ja)}</span> へ${bySea(gs, pb.from, pb.prov) ? '<b>（海路）</b>' : ''} <span class="dim small">（地図に朱と金で示しています）</span></p>
       <p>攻め手：${esc(names(pb.atk))}</p>
       <p>守り手：${garrison ? `守備兵（Lv${g.level}・${g.troops}隊）<span class="dim">　守る武将はいません</span>` : esc(names(pb.def))}</p>
@@ -854,7 +854,7 @@ export class CampaignScreen {
       : [`${p.name.ja}は${defName}のまま`];
     const box = document.createElement('div');
     box.className = `result report ${iWon ? 'won' : 'lost'}`;
-    box.innerHTML = `${bannerHtml(sceneUrl(iWon ? 'victory' : 'defeat', gs.variant))}
+    box.innerHTML = `${bannerHtml(sceneUrl(iWon ? 'victory' : 'defeat'))}
       <h2 class="${iWon ? '' : 'lost'}">${esc(side === 1 ? (iWon ? `${p.name.ja}を守り切った！` : `${p.name.ja}を奪われた`) : `${p.name.ja}攻め：敗れた`)}</h2>
       <p class="vsub">${esc(this.date())}　${atkF ? factionBadge(atkF.name.ja, atkF.color) : esc(atkName)} が ${esc(gs.provinces[pb.from]?.name.ja ?? '')} から ${esc(p.name.ja)} へ（${defF ? factionBadge(defF.name.ja, defF.color) : esc(defName)}）　${sum.rounds}巡で決着</p>
       <div class="sides">${sideBox(0)}${sideBox(1)}</div>
@@ -915,7 +915,7 @@ export class CampaignScreen {
     const leaf = Array.from({ length: 28 }, (_v, i) => `<span class="leaf" style="left:${(i * 37) % 100}%;animation-delay:${((i * 0.23) % 2.4).toFixed(2)}s;animation-duration:${(2.6 + (i % 5) * 0.4).toFixed(1)}s"></span>`).join('');
     const box = document.createElement('div');
     box.className = 'result victory-box';
-    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory', gs.variant))}
+    box.innerHTML = `<div class="leaves">${leaf}</div>${bannerHtml(sceneUrl('victory'))}
       <div class="kachidoki">勝利！</div>
       <h2>${esc(p.name.ja)}を攻め取った！</h2>
       <p class="vsub">${esc(this.date())}　${factionBadge(me.name.ja, me.color)} が ${esc(prevName)} から奪う</p>
@@ -1067,7 +1067,7 @@ export class CampaignScreen {
   private generalHtml(g: GGeneral, own: boolean): string {
     const c = this.c, cls = D.byClass[g.classId];
     // 兵の名前の横に、小さな兵の絵を添える（絵の無い兵種は名前だけ）
-    const icon = (unitId: string): string => { const url = artUrl(`unit/${c.gs.variant}/${unitId}`); return url ? `<img class="uicon" src="${url}" alt="" draggable="false">` : ''; };
+    const icon = (unitId: string): string => { const url = artUrl(`unit/${getArtSet()}/${unitId}`); return url ? `<img class="uicon" src="${url}" alt="" draggable="false">` : ''; };
     // 自分の武将の兵は、つまんで別の武将の欄へ運ぶと渡せる。武将の欄の外へ落とすと、手放すかを聞く。
     // （指で触る画面ではつまんで運べないので、押すと渡す・手放すの欄が開く動きも残してある）
     // 兵種を進める（P52）：進められる兵は、兵の札のすぐ隣に「▲進む先」のボタン
@@ -1381,7 +1381,7 @@ export class CampaignScreen {
       <label>土産 <select id="envGift">${S.envoy.gifts.map((n) => `<option value="${n}" ${n > me.supply ? 'disabled' : ''}>${n ? `兵糧${n}（心証+${giftBonus(n)}）` : 'なし'}</option>`).join('')}</select></label>
       <div id="envPlan" class="small"></div>
       <p class="dim small">使者はその月は行動済みになります。申し込むと、受けてもらえなくても、使者と土産は使い、上がった心証は残ります。</p></div>`;
-    const pending = confirmBox(this.frame(), { title: `${esc(f.name.ja)}へ：${TEXT[kind][0]}`, banner: sceneUrl('envoy', gs.variant), body, ok: kind === 'goodwill' ? '使者を送る' : '申し込む' });
+    const pending = confirmBox(this.frame(), { title: `${esc(f.name.ja)}へ：${TEXT[kind][0]}`, banner: sceneUrl('envoy'), body, ok: kind === 'goodwill' ? '使者を送る' : '申し込む' });
     const box = this.frame().querySelector<HTMLElement>('.confirm')!;
     const who = box.querySelector<HTMLSelectElement>('#envWho'), gift = box.querySelector<HTMLSelectElement>('#envGift')!;
     const okBtn = box.querySelector<HTMLButtonElement>('[data-a="ok"]')!;
@@ -1447,7 +1447,7 @@ export class CampaignScreen {
   /** ほかの勢力からの申し込み（受けるか断るかを選ぶ。放っておくと流れる） */
   private offersHtml(): string {
     const c = this.c, KIND = { truce: '停戦', alliance: '同盟', vassal: '従属' } as const;
-    const envoy = sceneUrl('envoy', c.gs.variant);
+    const envoy = sceneUrl('envoy');
     return this.goalsHtml() + this.histBattlesHtml() + this.omensHtml() + this.choicesHtml() + c.offers.filter((o) => c.gs.factions[o.from]).map((o) => `<div class="card status">
         ${envoy ? `<div class="vignette" style="background-image:url('${envoy}')"></div>` : ''}
         <div>${esc(c.gs.factions[o.from].name.ja)}から${KIND[o.kind]}の申し込み${o.months ? `（${o.months}か月）` : ''} <span class="dim small">${o.hist ? '史実の出来事から・' : ''}あと${o.until - c.gs.tick}か月</span></div>
@@ -1617,7 +1617,7 @@ export class CampaignScreen {
         ${own && me ? awayAt(c, p.id, me.id).map((g) => `<div class="dim">${esc(g.name.ja)}：諸国巡り中（あと${c.away[g.id] - gs.tick}か月）</div>`).join('') : ''}
         `;
     }
-    const over = c.over ? `<div class="card status over">${bannerHtml(sceneUrl(c.over === 'win' ? 'victory' : 'defeat', gs.variant))}${c.over === 'win' ? '天下を取りました' : '自分の勢力は滅びました'}${c.chronicle?.length ? ' <button id="chronBtn">年表を見る</button>' : ''}</div>` : '';
+    const over = c.over ? `<div class="card status over">${bannerHtml(sceneUrl(c.over === 'win' ? 'victory' : 'defeat'))}${c.over === 'win' ? '天下を取りました' : '自分の勢力は滅びました'}${c.chronicle?.length ? ' <button id="chronBtn">年表を見る</button>' : ''}</div>` : '';
     this.host.root.querySelector('#panel')!.innerHTML = `
       <div class="turn" style="background:${seasonBand(me ? me.color : null, gs.month)}">${this.date()} <small>${me ? `${esc(me.name.ja)}　兵糧${me.supply}／${supplyCap(me)}（+${me.income}／月）　領${provincesOf(c, me.id).length}` : '観戦'}</small></div>
       <div class="foot">
@@ -1678,7 +1678,7 @@ export class CampaignScreen {
         // 新しく覚える技・軍略の説明と気力のバー（P85）。祝いの窓では「覚えた」と言い換える
         const arts = generalArtsHtml(g, to), learnt = generalArtsHtml(g, to, '新しく覚えた技・軍略');
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(g.name.ja)}を ${esc(next)} に昇進させる`, banner: sceneUrl('setup', gs.variant),
+          title: `${esc(g.name.ja)}を ${esc(next)} に昇進させる`, banner: sceneUrl('setup'),
           body: `<p><b>${esc(from)}</b> → <b>${esc(next)}</b></p><p class="warn">⚠ 昇進すると、元の役職には戻れません。</p>${changeTable(rows)}${arts}<p class="small">${esc(classTip(to)).replace(/\n/g, '<br>')}</p>`,
           ok: '昇進させる', cancel: 'やめる', btnTop: true,
         });
@@ -1696,13 +1696,13 @@ export class CampaignScreen {
         const rule = D.byUnit[t.unitId].promote.find((p) => p.to === to);
         const useItem = rule?.item ? `昇進の品「${esc(D.items[rule.item]?.jp ?? rule.item)}」を1つ使います。` : rule?.lv && t.level < rule.lv ? '昇進の品を1つ使います（レベルが足りないため）。' : '';
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(name)}を ${esc(next)} に進める`, banner: sceneUrl('setup', gs.variant),
+          title: `${esc(name)}を ${esc(next)} に進める`, banner: sceneUrl('setup'),
           body: `<p>${this.icon(t.unitId)}<b>${esc(from)}</b> → ${this.icon(to)}<b>${esc(next)}</b>（${esc(g.name.ja)}の兵・Lv${t.level}）</p><p class="warn">⚠ 進めると、元の兵種には戻れません。${useItem}</p>${changeTable(rows)}${arts}<p class="small">${esc(unitTip(to)).replace(/\n/g, '<br>')}</p>`,
           ok: '進める', cancel: 'やめる', btnTop: true,
         });
         if (!ok || !upgradeTroop(c, g.id, i, to)) return;
         this.refresh();
-        this.celebrateChange(`${name}、${next}に昇格！`, `${from} → ${next}（${g.name.ja}の兵）`, rows, artUrl(`unit/${gs.variant}/${to}`) ?? null, learnt);
+        this.celebrateChange(`${name}、${next}に昇格！`, `${from} → ${next}（${g.name.ja}の兵）`, rows, artUrl(`unit/${getArtSet()}/${to}`) ?? null, learnt);
       };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-quest]').forEach((b) => {
@@ -1710,7 +1710,7 @@ export class CampaignScreen {
         const gid = b.dataset.quest!, g = gs.generals[gid];
         if (!g) return;
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(g.name.ja)}を諸国巡りに出す`, banner: sceneUrl('travel', gs.variant),
+          title: `${esc(g.name.ja)}を諸国巡りに出す`, banner: sceneUrl('travel'),
           body: `<p>武将がひとりで諸国をめぐる旅に出ます。<b>${S.quest.months}か月</b>のあいだ戻らず、攻めにも守りにも出られません（率いている兵も、そのあいだ戦いには出ません）。</p>
             <p>旅から戻るとき、次のどれかを得ることがあります。</p>
             <ul class="small"><li>浪人を見つけて連れ帰る（新しい武将が加わる）</li><li>昇進の品を持ち帰る（兵の昇格に使う）</li><li>見聞を広めて経験を得る（レベルが上がる）</li><li>何も得られないこともある</li></ul>`,
@@ -1835,7 +1835,7 @@ export class CampaignScreen {
           if (!made) { toast(n.trim() ? raiseProblem(c, m.gid, m.i) ?? '武将にできません' : '名前を入れてください'); return; }
           this.troopMenu = null;
           toast(`${made.name.ja}が武将になりました（特性：${made.traits.map((x) => TRAIT_NAME[x] ?? x).join('・')}）`);
-        }, sceneUrl('promote', gs.variant));
+        }, sceneUrl('promote'));
       };
     });
     root.querySelectorAll<HTMLButtonElement>('[data-troop]').forEach((b) => {
@@ -1856,7 +1856,7 @@ export class CampaignScreen {
         const KIND = { truce: '停戦', alliance: '同盟', vassal: '従属' } as const;
         const what = o.kind === 'alliance' ? '同盟を結ぶと、互いに攻め合えなくなり、相手が攻められたときに加勢を頼まれることがあります。' : o.kind === 'truce' ? `停戦すると、${o.months ? `${o.months}か月` : 'しばらく'}のあいだ互いに攻め合えなくなります。` : '従属を受けると、相手はこちらの下につき、攻め合えなくなります。';
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(f.name.ja)}からの${KIND[o.kind]}の申し込みを${b.dataset.yes ? '受ける' : '断る'}`, banner: sceneUrl('envoy', gs.variant),
+          title: `${esc(f.name.ja)}からの${KIND[o.kind]}の申し込みを${b.dataset.yes ? '受ける' : '断る'}`, banner: sceneUrl('envoy'),
           body: `<p>${what}</p><p class="dim small">${b.dataset.yes ? '受けると、すぐに結ばれます。' : '断ると、相手の心証が少し下がります。'}</p>`,
           ok: b.dataset.yes ? '受ける' : '断る',
         });
@@ -1873,7 +1873,7 @@ export class CampaignScreen {
         const s = fight ? histBattleSetup(c, hb) : null;
         const names = (ids: string[]) => ids.map((id) => gs.generals[id]?.name.ja).filter(Boolean).map(esc).join('・');
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(hb.name)}を${fight ? '戦う' : '見送る'}`, banner: sceneUrl('setup', gs.variant),
+          title: `${esc(hb.name)}を${fight ? '戦う' : '見送る'}`, banner: sceneUrl('setup'),
           body: fight && s
             ? `${hb.deploy ? `<p class="small">${esc(hb.deploy)}</p>` : ''}<p>${esc(gs.provinces[hb.prov]?.name.ja ?? '')}の戦場で、${s.mySide === 0 ? '攻め手' : '守り手'}として戦います。</p><p class="small">自分：${names(s.mySide === 0 ? s.atk : s.def)}<br>相手：${names(s.mySide === 0 ? s.def : s.atk)}</p><p class="small dim">勝てば名声+${S.histBattle.prestige}、相手の軍が減ります。負ければ名声−${S.histBattle.prestigeLoss}。史実と逆の勝ち負けなら、出来事の残りは起きず、史実と違う道になります。</p>`
             : `<p>史実どおり出来事が起きます（自分の家の損耗は起きません）。</p>`,
@@ -1891,7 +1891,7 @@ export class CampaignScreen {
         if (!o) return;
         const guard = b.dataset.c === 'guard';
         const ok = await confirmBox(this.frame(), {
-          title: guard ? `${esc(o.name)}の身に備える` : `${esc(o.name)}の運命を史実に任せる`, banner: sceneUrl('envoy', gs.variant),
+          title: guard ? `${esc(o.name)}の身に備える` : `${esc(o.name)}の運命を史実に任せる`, banner: sceneUrl('envoy'),
           body: `<p class="small">${esc(o.text)}</p><p>${guard
             ? `兵糧${S.omen.cost}を払い、${esc(o.name)}はこの月は行動済みになります。${Math.round(S.omen.avert * 100)}%で難を逃れ、史実と違う道になります（年表に「異」）。`
             : `史実どおり、${esc(o.name)}は${esc(CAUSE_NAME[o.cause] ?? o.cause)}で世を去ります。`}</p>`,
@@ -1905,7 +1905,7 @@ export class CampaignScreen {
         if (!ch) return;
         const yes = !!b.dataset.yes;
         const ok = await confirmBox(this.frame(), {
-          title: `史実の出来事を${yes ? '受ける' : '断る'}`, banner: sceneUrl('envoy', gs.variant),
+          title: `史実の出来事を${yes ? '受ける' : '断る'}`, banner: sceneUrl('envoy'),
           body: `<p>${esc(ch.text)}</p><p>${esc(choiceLine(c, ch))}</p><p class="dim small">${esc(choiceOutcome(c, ch, yes))}</p>`,
           ok: yes ? '受ける' : '断る',
         });
@@ -1931,7 +1931,7 @@ export class CampaignScreen {
         };
         const tx = TEXT[kind];
         if (!f || !tx) return;
-        if (!(await confirmBox(this.frame(), { title: `${esc(f.name.ja)}に${tx[0]}`, body: `<p>${tx[1]}</p>`, ok: tx[0], danger: tx[2], banner: sceneUrl('envoy', gs.variant) }))) return;
+        if (!(await confirmBox(this.frame(), { title: `${esc(f.name.ja)}に${tx[0]}`, body: `<p>${tx[1]}</p>`, ok: tx[0], danger: tx[2], banner: sceneUrl('envoy') }))) return;
         const ok = b.dataset.dip === 'war' ? declareWar(c, a, to) : b.dataset.dip === 'ally' ? proposeAlliance(c, a, to)
           : b.dataset.dip === 'break' ? breakAlliance(c, a, to) : proposeTruce(c, a, to);
         if (ok) this.refresh();

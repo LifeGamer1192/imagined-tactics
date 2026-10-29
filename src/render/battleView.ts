@@ -4,7 +4,7 @@
 import { art, artCount, onArtLoaded } from '../art/art';
 import { seatName } from '../battle/map';
 import type { BUnit, BattleState } from '../battle/types';
-import { getVariant } from '../data/db';
+import { getArtSet } from '../data/db';
 import type { TerrainKind } from '../data/types';
 import { has, outOfCommand } from '../rules/stats';
 import { Camera } from './camera';
@@ -177,8 +177,8 @@ export class BattleView {
   /** そのマスに敷く絵。無ければ null（塗りと記号で描く） */
   private tileFor(k: TerrainKind, i: number): HTMLImageElement | null {
     const v = hash01(i, 43);
-    if (k === 'castle') return art(`hex/${getVariant()}/castle`, v);
-    if (k === 'town') return art(`hex/${getVariant()}/town`, v);
+    if (k === 'castle') return art(`hex/${getArtSet()}/castle`, v);
+    if (k === 'town') return art(`hex/${getArtSet()}/town`, v);
     // 水の3枚目（濃い色）も同じ理由で使わない
     if (k === 'bridge' || k === 'water') return art('hex/water', v * 0.66);
     // 草原の3枚目（枯れ草）は色が大きく違い、まだらに見えるので使わない
@@ -278,7 +278,7 @@ export class BattleView {
     ctx.lineCap = 'butt';
     for (let i = 0; i < g.n; i++) {
       // 門の絵があれば、下の記号のところで絵を描く
-      if (st.map.terrain[i] !== 'gate' || artCount(`map/${getVariant()}/sym_gate`)) continue;
+      if (st.map.terrain[i] !== 'gate' || artCount(`map/${getArtSet()}/sym_gate`)) continue;
       const [x, y] = g.center(i, HEX);
       for (const s of [-1, 1]) {
         ctx.beginPath(); ctx.moveTo(x, y + s * HEX * 0.87); ctx.lineTo(x, y + s * HEX * 0.4);
@@ -296,7 +296,7 @@ export class BattleView {
       // 絵を敷いたマスには、記号を重ねない（橋だけは、水の絵の上に橋の記号を置く）
       if (tiled[i] && k !== 'bridge' && k !== 'gate' && k !== 'fortgate' && k !== 'palisade' && k !== 'lookout') continue;
       // 城壁・門・櫓は、名前の版（日本・中国）ごとの絵があればそれを使う
-      const own = FORT_SYMBOL[k], ownGroup = own ? `map/${getVariant()}/${own.name}` : '';
+      const own = FORT_SYMBOL[k], ownGroup = own ? `map/${getArtSet()}/${own.name}` : '';
       const sym = own && artCount(ownGroup) ? { groups: [ownGroup], w: own.w } : SYMBOL[k];
       const [x, y] = g.center(i, HEX);
       if (sym) {
@@ -391,7 +391,7 @@ export class BattleView {
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fillStyle = '#f4efe2'; ctx.fill();
     // 中身：絵があれば絵、無ければ名前の字
-    const img = general ? null : art(`unit/${getVariant()}/${u.defId}`);
+    const img = general ? null : art(`unit/${getArtSet()}/${u.defId}`);
     if (img) {
       ctx.save();
       ctx.beginPath(); ctx.arc(x, y, r - 1.5, 0, Math.PI * 2); ctx.clip();

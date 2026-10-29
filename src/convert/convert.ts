@@ -7,7 +7,7 @@ import {
   type HNation, type HPerson, type HPersonRec, type HSave, type HWorld, type Name, type NotableRole, offstageCells,
 } from '../bridge/histsim';
 import { RNG, codeToSeed } from '../core/rng';
-import { D } from '../data/db';
+import { D, type ArtSet } from '../data/db';
 import type { ClassDef, Passive, StatBlock, UnitDef, Variant } from '../data/types';
 import { armShares } from '../bridge/arms';
 import { applyStartLevels, fillLowerClasses } from '../rules/growth';
@@ -38,6 +38,8 @@ interface Cfg {
   };
   supply: { treasuryScale: number; perPop: number };
   variantByScenario: Record<string, Variant>;
+  /** 絵の版を名前の版と変える世界（ローマは西洋版。P87） */
+  artByScenario?: Record<string, ArtSet>;
 }
 export const CFG = cfgJson as unknown as Cfg;
 
@@ -54,6 +56,11 @@ const FOREST_BIOMES = new Set([4, 5, 7, 8, 9]);
 export function variantOf(save: HSave, fallback: Variant = 'jp'): Variant {
   const id = save.world.scenario?.id;
   return (id && CFG.variantByScenario[id]) || fallback;
+}
+
+/** 絵の版：シナリオで決まっていればそれ（ローマは西洋版）、無ければ名前の版と同じ */
+export function artSetOf(scenario: string | null | undefined, variant: Variant): ArtSet {
+  return (scenario && CFG.artByScenario?.[scenario]) || variant;
 }
 
 // ---------------------------------------------------------------- 能力値（4-3）

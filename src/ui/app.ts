@@ -17,9 +17,9 @@ import { createBattle, MAX_GENERALS, setAiLevel } from '../battle/setup';
 import type { Action, BUnit, BattleState, Side } from '../battle/types';
 import { normalizeSave, readSaveFile, SaveError, type HSave } from '../bridge/histsim';
 import { applyIma, imaRealm, imaVariant, readImaFile, type ImaFile } from '../bridge/imarpg';
-import { convert, generalsOf, variantOf } from '../convert/convert';
+import { artSetOf, convert, generalsOf, variantOf } from '../convert/convert';
 import type { GGeneral, GameStart } from '../convert/model';
-import { D, L, setVariant } from '../data/db';
+import { D, L, setArtSet, setVariant } from '../data/db';
 import type { SkillDef, TacticDef, TerrainKind, Variant } from '../data/types';
 import { BAD_STATUS, BattleView, generalIndex, genColor, GOOD_STATUS, SIDE_COLOR, TERRAIN_NAME } from '../render/battleView';
 import type { CrestSpec } from '../render/crest';
@@ -274,6 +274,7 @@ export class App {
   /** 読み込んだ世界から作り直して、画面を出す（next：出す画面。名前の版を変えたときは、今の画面のまま） */
   private rebuild(next: 'mode' | 'nation' | 'local' | 'ima' = 'mode'): void {
     setVariant(this.variant);
+    setArtSet(artSetOf(this.save!.world.scenario?.id, this.variant));
     this.gs = convert(this.save!, { variant: this.variant });
     const facs = this.factionsBySize();
     this.setup.attacker = facs[0].id;
@@ -343,7 +344,7 @@ export class App {
   private enterSetupLike(): void {
     document.body.classList.remove('title');
     // 編成の画面には、陣営の絵を暗く敷く（日本版は陣幕、中国版は戦車の陣）
-    setScene(sceneUrl('setup', this.variant));
+    setScene(sceneUrl('setup'));
     bgm('title');
     cancelAnimationFrame(this.aiTimer); clearTimeout(this.aiTimer);
   }
@@ -613,6 +614,7 @@ export class App {
       this.save = { format: 'hist-sim', version: 1, savedAt: s.savedAt, summary: { seed: c.gs.seed, year: c.gs.year, nations: Object.keys(c.gs.factions).length }, world: c.world };
       this.variant = c.gs.variant;
       setVariant(this.variant);
+      setArtSet(artSetOf(c.gs.scenario, this.variant));
       this.gs = c.gs;
       new CampaignScreen(this, c, () => this.rebuild());
     } catch (e) { this.titleScreen(e instanceof Error ? e.message : String(e)); }
@@ -640,7 +642,7 @@ export class App {
    */
   openBattle(st: BattleState, human: Set<Side>, done: (st: BattleState) => BattleSummary | null, back: { label: string; fn: () => void }, allowQuit: boolean, manualSide: Side = 0): void {
     document.body.classList.remove('title');
-    setScene(null, sceneUrl('setup', this.variant));
+    setScene(null, sceneUrl('setup'));
     bgm(`battle_${this.variant}`);
     this.st = st; this.human = human;
     // 味方のおまかせの方針（P50）：自分で動かす陣営は、おまかせのとき方針で動く（国モードの戦いは、戦略の側で付けてある）
@@ -1056,7 +1058,7 @@ export class App {
     // 自分が動かしていた陣営が負けたときだけ、負けの絵にする（観戦は勝った側の絵）
     const lost = !this.watching && !this.manual.has(winner);
     box.innerHTML = `
-      ${bannerHtml(sceneUrl(lost ? 'defeat' : 'victory', this.variant))}
+      ${bannerHtml(sceneUrl(lost ? 'defeat' : 'victory'))}
       <h2 class="brushed ${lost ? 'lost' : ''}">${esc(st.sideNames[winner])}の勝ち</h2>
       <p>${st.round > st.maxRounds ? `${st.maxRounds}巡を守り切った（時間切れ）` : `${st.round}巡で決着`}</p>
       ${sum ? `<div class="sides">${([0, 1] as const).map((s) => this.sideResult(sum, s)).join('')}</div>` : ''}

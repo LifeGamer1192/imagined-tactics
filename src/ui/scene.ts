@@ -1,12 +1,12 @@
 // 画面の背景や見出しに敷く絵（public/art/bg）。絵が無ければ null を返し、地の色のままにする。
 // 日本版・中国版で描き分けた絵は「名前_jp」「名前_cn」、どちらにも使う絵は「名前」で置いてある。
+// 西洋版（ローマなど。P87）は「名前_west」。西洋版の絵が無ければ、ほかの版の絵では代えない（共通の絵だけ）。
 import { art, artUrl } from '../art/art';
+import { getArtSet, type ArtSet } from '../data/db';
 
-type Variant = 'jp' | 'cn';
-
-/** 版に合った絵（その版の絵が無ければ、共通の絵） */
-export function sceneUrl(name: string, variant: Variant): string | null {
-  return artUrl(`bg/${name}_${variant}`) ?? artUrl(`scene/${name}_${variant}`) ?? artUrl(`bg/${name}`);
+/** 今の絵の版に合った絵（その版の絵が無ければ、共通の絵） */
+export function sceneUrl(name: string, set: ArtSet = getArtSet()): string | null {
+  return artUrl(`bg/${name}_${set}`) ?? artUrl(`scene/${name}_${set}`) ?? artUrl(`bg/${name}`);
 }
 
 /** 月 → 季節の帯の絵（3〜5月が春、6〜8月が夏、9〜11月が秋、12〜2月が冬） */

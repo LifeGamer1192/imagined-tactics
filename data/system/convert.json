@@ -93,5 +93,6 @@
     }
   },
   "supply": { "treasuryScale": 1.0, "perPop": 0.002, "recruitCostMult": 3 },
-  "variantByScenario": { "sengoku": "jp", "shunju": "cn", "sangoku": "cn", "sokan": "cn" }
+  "variantByScenario": { "sengoku": "jp", "shunju": "cn", "sangoku": "cn", "sokan": "cn" },
+  "artByScenario": { "rome": "west" }
 }

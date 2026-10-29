@@ -41,6 +41,14 @@ export const D = {
 let variant: Variant = 'jp';
 export function setVariant(v: Variant): void { variant = v; }
 export function getVariant(): Variant { return variant; }
+/**
+ * 絵の版（P87）：日本版・中国版に加え、西洋の世界（ローマなど）は西洋版。名前の版（variant）とは別に持つ。
+ * 西洋版の絵が無い所は、ほかの版の絵で代えない（ちょんまげの人物が出ないように。無ければ絵を出さない・コードの形で描く）
+ */
+export type ArtSet = Variant | 'west';
+let artSet: ArtSet = 'jp';
+export function setArtSet(a: ArtSet): void { artSet = a; }
+export function getArtSet(): ArtSet { return artSet; }
 /** 今の版（日本版・中国版）の名前 */
 export function L(name: Loc): string { return name[variant]; }
 /** 用語（体力・武力など）の今の版の名前 */
