@@ -60,7 +60,7 @@ function unitsPage(): string {
   for (const line of lines) {
     const us = D.units.filter((u) => u.line === line && hit(u.name.jp, u.name.cn, westName(u.id) ?? '', u.id));
     if (!us.length) continue;
-    out.push(`<h3>系統${line}：${esc(LINE[line] ?? '')}</h3><div class="scroll"><table class="zk-units">
+    out.push(`<h3>${esc(LINE[line] ?? `系統${line}`)}</h3><div class="scroll"><table class="zk-units">
       <tr><th>番号</th><th>格</th><th>日本版</th><th>中国版</th><th>西洋版</th><th>体力</th><th>気力</th><th>武力</th><th>知略</th><th>機敏</th><th>防御</th><th>移動</th><th>得意</th><th>采配</th><th>技・軍略（1回の気力）</th><th>昇格先</th></tr>
       ${us.map((u) => `<tr id="${rowId('units', u.id)}">
         <td>${u.id}${u.kind ? `<br><span class="dim small">${KIND_NAME[u.kind]}</span>` : ''}</td><td>${TIER[u.tier] ?? u.tier}</td>
@@ -178,7 +178,7 @@ function treePage(): string {
     if (query && !us.some((u) => hit(u.name.jp, u.name.cn, westName(u.id) ?? ''))) return '';
     const roots = us.filter((u) => !us.some((o) => (o.promote ?? []).some((p) => p.to === u.id)));
     const seen = new Set<string>();
-    return `<div class="zk-tree"><div class="zk-line">系統${line}：${esc(LINE[line] ?? '')}</div>${roots.map((r) => unitNode(r, seen)).join('')}</div>`;
+    return `<div class="zk-tree"><div class="zk-line">${esc(LINE[line] ?? `系統${line}`)}</div>${roots.map((r) => unitNode(r, seen)).join('')}</div>`;
   }).filter(Boolean);
   if (unitParts.length) out.push('<h3>兵の昇格</h3>', ...unitParts);
   // 武将：下級の役職から昇進をたどる

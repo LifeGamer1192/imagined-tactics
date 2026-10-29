@@ -90,7 +90,7 @@
   },
   "reload": 0.6,
   "plan": { "generalTarget": 2.5, "leaderKill": 0.5, "weakTarget": 4, "weakKill": 1.5, "otherWeak": 0.4, "nearAim": 0.35, "cunningTactics": 1.6, "directTactics": 0.4 },
-  "castle": { "hold": 90, "approach": 1.0, "guard": 30, "guardRange": 4, "breach": 25, "breachKill": 45, "breachClosed": 1.5, "keep": 40, "ring": 12, "retake": 6, "retakeUrgent": 3, "retakeHit": 60, "retakeCounterCut": 0.8 },
+  "castle": { "hold": 90, "approach": 1.0, "guard": 30, "guardRange": 4, "breach": 25, "breachKill": 45, "breachClosed": 1.5, "keep": 40, "ring": 12, "retake": 6, "retakeUrgent": 4, "retakeHit": 60, "retakeCounterCut": 0.8 },
   "stance": {
     "retreatHp": 0.3,
     "retreatHpCaution": 0.25,

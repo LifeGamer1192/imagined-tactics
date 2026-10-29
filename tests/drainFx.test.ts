@@ -27,8 +27,8 @@ describe('drain effect', () => {
     for (let seed = 1; seed < 40; seed++) {
       const st: BattleState = { map: parseMap(Array.from({ length: 5 }, () => '. . . . .').join('\n')), units: [], turn: 0, round: 1, maxRounds: 20, winner: null, rng: new RNG(seed), log: [], sideNames: ['攻', '守'] };
       const g = st.map.grid;
-      // 長柄足軽（長柄叩き：与えたダメージの21%を回復）が、傷ついた状態で雑兵を叩く
-      const a = troop(st, 'u01c', 0, g.idx(1, 2)), t = troop(st, 'u01a', 1, g.idx(2, 2));
+      // 足軽槍組（血吸い槍：与えたダメージの21%を回復）が、傷ついた状態で雑兵を叩く
+      const a = troop(st, 'u01b', 0, g.idx(1, 2)), t = troop(st, 'u01a', 1, g.idx(2, 2));
       a.hp = Math.round(a.maxHp / 2);
       const b = before(st);
       apply(st, { type: 'skill', unit: a.id, skill: 'k003', target: t.pos });
