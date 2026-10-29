@@ -527,6 +527,12 @@
  "unit/cn/u01c": [
   "unit/cn/u01c.webp"
  ],
+ "unit/cn/u01d": [
+  "unit/cn/u01d.webp"
+ ],
+ "unit/cn/u01e": [
+  "unit/cn/u01e.webp"
+ ],
  "unit/cn/u02a": [
   "unit/cn/u02a.webp"
  ],
@@ -667,6 +673,27 @@
  ],
  "unit/cn/u18c": [
   "unit/cn/u18c.webp"
+ ],
+ "unit/cn/u19a": [
+  "unit/cn/u19a.webp"
+ ],
+ "unit/cn/u19c": [
+  "unit/cn/u19c.webp"
+ ],
+ "unit/cn/u20a": [
+  "unit/cn/u20a.webp"
+ ],
+ "unit/cn/u20b": [
+  "unit/cn/u20b.webp"
+ ],
+ "unit/cn/u21a": [
+  "unit/cn/u21a.webp"
+ ],
+ "unit/cn/u21b": [
+  "unit/cn/u21b.webp"
+ ],
+ "unit/cn/u21c": [
+  "unit/cn/u21c.webp"
  ],
  "unit/jp/u01a": [
   "unit/jp/u01a.webp"
@@ -854,6 +881,12 @@
  "unit/west/u01c": [
   "unit/west/u01c.webp"
  ],
+ "unit/west/u01d": [
+  "unit/west/u01d.webp"
+ ],
+ "unit/west/u01e": [
+  "unit/west/u01e.webp"
+ ],
  "unit/west/u02a": [
   "unit/west/u02a.webp"
  ],
@@ -898,5 +931,26 @@
  ],
  "unit/west/u08a": [
   "unit/west/u08a.webp"
+ ],
+ "unit/west/u19a": [
+  "unit/west/u19a.webp"
+ ],
+ "unit/west/u19c": [
+  "unit/west/u19c.webp"
+ ],
+ "unit/west/u20a": [
+  "unit/west/u20a.webp"
+ ],
+ "unit/west/u20b": [
+  "unit/west/u20b.webp"
+ ],
+ "unit/west/u21a": [
+  "unit/west/u21a.webp"
+ ],
+ "unit/west/u21b": [
+  "unit/west/u21b.webp"
+ ],
+ "unit/west/u21c": [
+  "unit/west/u21c.webp"
  ]
 }
