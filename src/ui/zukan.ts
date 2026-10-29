@@ -1,16 +1,17 @@
-// 図鑑（P90）：兵種の対応表・技表・軍略表・レベル表。タイトル画面の「図鑑」から開く（遊び方の案内と同じ重ね表示）。
+// 図鑑（P90・P91）：兵種の対応表・役職・昇格の系図・技・軍略・地形と天気・特性・レベル。タイトル画面の「図鑑」から開く（遊び方の案内と同じ重ね表示）。
 // 数はすべて data/system の正本から作る（データを変えれば図鑑も変わる。手で直す所は無い）。名前に乗せると、遊び方と同じ説明の小窓が出る。
 
 import { artUrl } from '../art/art';
 import { busy } from './busy';
 import { D, westName } from '../data/db';
-import type { Loc, SkillDef, TacticDef } from '../data/types';
-import { generalExpToNext, troopExpToNext } from '../rules/growth';
-import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticTip, unitTip, classTip } from './describe';
-import { AFFINITY_NAME, STATUS_NAME } from './text';
+import type { ClassDef, Loc, SkillDef, TacticDef, UnitDef } from '../data/types';
+import { classMod, generalExpToNext, troopExpToNext } from '../rules/growth';
+import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticTip, traitTip, unitTip, classTip } from './describe';
+import { fieldTable, terrainTable } from './help';
+import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
 
-type Tab = 'units' | 'skills' | 'tactics' | 'levels';
-const TABS: [Tab, string][] = [['units', '兵種の対応表'], ['skills', '技'], ['tactics', '軍略'], ['levels', 'レベル']];
+type Tab = 'units' | 'classes' | 'tree' | 'skills' | 'tactics' | 'terrain' | 'traits' | 'levels';
+const TABS: [Tab, string][] = [['units', '兵種の対応表'], ['classes', '役職'], ['tree', '昇格の系図'], ['skills', '技'], ['tactics', '軍略'], ['terrain', '地形・天気'], ['traits', '特性'], ['levels', 'レベル']];
 type Ver = 'jp' | 'cn';
 
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
@@ -104,6 +105,112 @@ function tacticsPage(): string {
     <div class="scroll"><table><tr><th>名前</th><th>種類</th><th>気力</th><th>威力</th><th>対象</th><th>効き目</th><th>使える役職・兵種</th></tr>${list.map(row).join('')}</table></div>`;
 }
 
+// ------------------------------------------------------------ 役職表（P91）
+
+const sg = (v: number): string => `${v > 0 ? '+' : ''}${v}`;
+const UNIQUE: Record<string, string> = { lord: '当主だけ', feature: '特別' };
+
+/** なる条件（どの役職から、何が要るか） */
+function reqText(c: ClassDef): string {
+  const req = Object.entries(c.req).filter(([, v]) => v).map(([k, v]) => `${k === 'lv' ? 'Lv' : k === 'mastery' ? '熟練' : T[k as 'str' | 'int' | 'agi']()}${v}`);
+  if (!c.from) return c.unique === 'lord' ? '当主になると' : '始めから';
+  return `${esc(nm(D.byClass[c.from]?.name ?? { jp: c.from, cn: c.from }))}から${req.length ? `（${req.join('・')}）` : ''}`;
+}
+
+function classesPage(): string {
+  const groups: [string, ClassDef[]][] = [['一般の役職', D.classes.filter((c) => !c.unique)], ['当主の役職', D.classes.filter((c) => c.unique === 'lord')], ['特別な役職', D.classes.filter((c) => c.unique === 'feature')]];
+  const out = ['<p class="small">武将の役職。通常攻撃・防御・移動・得意な地形は役職で決まり、能力（体力・気力・武力・知略・機敏）には役職の加減が足される（上の格ほど体力・気力が多い）。軍略は、その役職でいるあいだ使える（熟練度が上限になると、役職を変えても持ち越せる）。名前に乗せると説明が出る。</p>'];
+  for (const [title, cs0] of groups) {
+    const cs = cs0.filter((c) => hit(c.name.jp, c.name.cn, c.id));
+    if (!cs.length) continue;
+    out.push(`<h3>${title}</h3><div class="scroll"><table><tr><th>名前</th><th>格</th><th>通常攻撃</th><th>防御</th><th>移動</th><th>得意</th><th>${T.hp()}</th><th>${T.mp()}</th><th>${T.str()}</th><th>${T.int()}</th><th>${T.agi()}</th><th>軍略</th><th>なる条件</th></tr>
+      ${cs.map((c) => { const m = classMod(c); const a = c.attack; return `<tr>
+        <td class="zk-left" data-tip="${esc(classTip(c.id))}">${esc(nm(c.name))}${c.sex === 'f' ? '<span class="dim small">（女）</span>' : ''}</td><td>${TIER[c.tier] ?? c.tier}${c.unique ? `<br><span class="dim small">${UNIQUE[c.unique] ?? ''}</span>` : ''}</td>
+        <td>${a.kind === 'bow' ? '飛び道具' : '近接'} 威${a.power}<br><span class="dim small">射程${a.range[0] === a.range[1] ? a.range[1] : `${a.range[0]}〜${a.range[1]}`}</span></td><td>${c.def}</td><td>${c.move}</td><td>${AFFINITY_NAME[c.affinity] ?? c.affinity}</td>
+        ${(['hp', 'mp', 'str', 'int', 'agi'] as const).map((k) => `<td>${m[k] ? sg(m[k]) : '±0'}</td>`).join('')}
+        <td class="zk-left zk-fx">${c.tactics.map((id) => D.byTactic[id] ? `<span data-tip="${esc(tacticTip(D.byTactic[id]))}">${esc(nm(D.byTactic[id].name))}</span>` : esc(id)).join('・') || '—'}</td>
+        <td class="zk-left">${reqText(c)}</td></tr>`; }).join('')}</table></div>`);
+  }
+  return out.length > 1 ? out.join('') : `${out[0]}<p>当てはまる役職がありません。</p>`;
+}
+
+// ------------------------------------------------------------ 昇格の系図（P91）
+
+function treePage(): string {
+  const out = ['<p class="small">左から右へ、昇格（兵）・昇進（武将）の道すじ。矢印の上は要るもの（レベル・品・熟練）。枝分かれは、どちらか1つを選ぶ。名前に乗せると説明が出る。</p>'];
+  // 兵：系統ごとに、下級の兵種から木をたどる
+  const unitNode = (u: UnitDef, seen: Set<string>): string => {
+    if (seen.has(u.id)) return '';
+    seen.add(u.id);
+    const kids = (u.promote ?? []).filter((p) => D.byUnit[p.to]);
+    const me = `<span class="zk-node" data-tip="${esc(unitTip(u.id))}">${pic('jp', u.id)}<b>${esc(nm(u.name))}</b><span class="dim small">${TIER[u.tier]}</span></span>`;
+    if (!kids.length) return `<div class="zk-branch">${me}</div>`;
+    return `<div class="zk-branch">${me}<div class="zk-kids">${kids.map((p) => `<div class="zk-kid"><span class="zk-arrow">→<small>${[p.lv ? `Lv${p.lv}` : '', p.item ? `品「${esc(D.items[p.item]?.[ver] ?? p.item)}」` : ''].filter(Boolean).join('・') || ''}</small></span>${unitNode(D.byUnit[p.to], seen)}</div>`).join('')}</div></div>`;
+  };
+  const lines = [...new Set(D.units.map((u) => u.line))].sort((a, b) => a - b);
+  const unitParts = lines.map((line) => {
+    const us = D.units.filter((u) => u.line === line);
+    if (query && !us.some((u) => hit(u.name.jp, u.name.cn, westName(u.id) ?? ''))) return '';
+    const roots = us.filter((u) => !us.some((o) => (o.promote ?? []).some((p) => p.to === u.id)));
+    const seen = new Set<string>();
+    return `<div class="zk-tree"><div class="zk-line">系統${line}：${esc(LINE[line] ?? '')}</div>${roots.map((r) => unitNode(r, seen)).join('')}</div>`;
+  }).filter(Boolean);
+  if (unitParts.length) out.push('<h3>兵の昇格</h3>', ...unitParts);
+  // 武将：下級の役職から昇進をたどる
+  const classNode = (c: ClassDef): string => {
+    const kids = D.classes.filter((k) => k.from === c.id);
+    const me = `<span class="zk-node" data-tip="${esc(classTip(c.id))}"><b>${esc(nm(c.name))}</b><span class="dim small">${TIER[c.tier]}</span></span>`;
+    if (!kids.length) return `<div class="zk-branch">${me}</div>`;
+    return `<div class="zk-branch">${me}<div class="zk-kids">${kids.map((k) => { const req = Object.entries(k.req).filter(([, v]) => v).map(([n, v]) => `${n === 'lv' ? 'Lv' : n === 'mastery' ? '熟練' : T[n as 'str' | 'int' | 'agi']()}${v}`).join('・'); return `<div class="zk-kid"><span class="zk-arrow">→<small>${req}</small></span>${classNode(k)}</div>`; }).join('')}</div></div>`;
+  };
+  for (const [title, pick] of [['武将の昇進（一般の役職）', (c: ClassDef) => !c.unique], ['当主の役職', (c: ClassDef) => c.unique === 'lord'], ['特別な役職', (c: ClassDef) => c.unique === 'feature']] as const) {
+    const roots = D.classes.filter((c) => pick(c) && (!c.from || !D.byClass[c.from]) && (!query || D.classes.some((k) => k.line === c.line && hit(k.name.jp, k.name.cn))));
+    if (roots.length) out.push(`<h3>${title}</h3>`, `<div class="zk-tree">${roots.map(classNode).join('')}</div>`);
+  }
+  return out.length > 1 ? out.join('') : `${out[0]}<p>当てはまるものがありません。</p>`;
+}
+
+// ------------------------------------------------------------ 地形・天気（P91）
+
+function terrainPage(): string {
+  const W = D.combat.weather, sgn = (v: number): string => `${v > 0 ? '+' : ''}${v}`;
+  const reg = Object.entries(D.terrain.regen).map(([k, v]) => `${k === 'camp' ? '陣' : k}：番の始めに最大${T.hp()}の${v}%を回復`);
+  const perch = Object.entries(D.terrain.ranged).map(([k, v]) => `${k === 'tower' ? '櫓' : k === 'lookout' ? '物見櫓' : k}：射程2以上の技の命中${sgn(v.hit)}・射程+${v.range}`);
+  const SEASON: Record<string, string> = { spring: '春', summer: '夏', autumn: '秋', winter: '冬' };
+  const SKY: Record<string, string> = { clear: '晴れ', rain: '雨', fog: '霧', snow: '雪' };
+  return `<p class="small">得意な地形（平地・森・山・湿地・水上・騎）ごとの数。兵種と役職の得意な地形は、兵種の対応表・役職のタブにある。</p>
+    <h3>移動の手間</h3><p class="small">1マス進むのに使う移動力。×は入れない。</p>
+    ${terrainTable((k, a) => { const v = D.terrain.moveCost[k][a]; return v === null ? '×' : String(v); })}
+    <h3>命中・回避の補正</h3><p class="small">その地形に立つ駒の命中と回避（％ポイント。受ける側の回避は、攻める側の命中から引く）。</p>
+    ${terrainTable((k, a) => sgn(D.terrain.hitMod[k][a]))}
+    <h3>地形と天気で強まる・弱まる攻撃</h3><p class="small">ダメージの倍率。「相手がいる」は攻撃を受ける側のいる地形、「自分がいる」は攻める側のいる地形。</p>
+    ${fieldTable()}
+    <h3>特別なマス</h3><ul class="small">
+      <li>要のマス（天守・砦の本丸・本陣）：立つ駒は防御+${D.combat.seatDefPct}%（攻め手でも守り手でも）。攻め手が押さえ続けると攻め手の勝ち。</li>
+      ${reg.map((x) => `<li>${esc(x)}</li>`).join('')}${perch.map((x) => `<li>${esc(x)}</li>`).join('')}
+      <li>門・柵：壊すまで通れない（攻め手は「壊す」で壊せる）。城壁：登るのに移動力が要り、騎馬は入れない。</li></ul>
+    <h3>天気と夜</h3><ul class="small">
+      <li>雨：射程2以上の技の命中${sgn(W.rainRangedHit)}、火の技・軍略の威力×${W.rainFireMult}</li>
+      <li>霧：2マス以上離れた相手への命中${sgn(W.fogFarHit)}</li>
+      <li>雪：移動の手間+${W.snowMoveCost}（雪に強い地形を除く）、戦いの巡の上限+${W.snowExtraRounds}</li>
+      <li>夜：命中${sgn(W.nightHit)}（戦いの${Math.round(W.nightChance * 100)}%が夜）</li></ul>
+    <h3>季節ごとの天気の出やすさ</h3><div class="scroll"><table><tr><th>季節</th>${Object.values(SKY).map((n) => `<th>${n}</th>`).join('')}</tr>
+      ${Object.entries(W.odds).map(([s, o]) => { const sum = Object.values(o).reduce((a, b) => a + b, 0) || 1; return `<tr><th>${SEASON[s] ?? s}</th>${Object.keys(SKY).map((k) => `<td>${Math.round(((o as Record<string, number>)[k] ?? 0) / sum * 100)}%</td>`).join('')}</tr>`; }).join('')}</table></div>`;
+}
+
+// ------------------------------------------------------------ 特性（P91）
+
+function traitsPage(): string {
+  const ids = Object.keys(TRAIT_NAME).filter((t) => hit(TRAIT_NAME[t], t));
+  if (!ids.length) return '<p>当てはまる特性がありません。</p>';
+  const part = (lines: string[], head: string): string => lines.find((l) => l.startsWith(head))?.slice(head.length) ?? '';
+  return `<p class="small">武将の人柄。戦場の効き目は、その将と配下のすべての兵に効く。「将だけ」は将本人に、「領の仕事」は国モードで効く。「戦い方」はコンピュータが動かすときの傾向。名前に乗せると説明が出る。</p>
+    <div class="scroll"><table><tr><th>名前</th><th>あらまし</th><th>戦場（将と兵）</th><th>将だけ</th><th>領の仕事</th><th>戦い方</th></tr>
+    ${ids.map((t) => { const ls = traitTip(t).split('\n'); return `<tr><td class="zk-left" data-tip="${esc(traitTip(t))}">${esc(TRAIT_NAME[t])}</td>
+      <td class="zk-left zk-fx">${esc(ls[1] ?? '')}</td><td class="zk-left">${esc(part(ls, '戦場（将と配下のすべての兵に効く）：')) || '—'}</td><td class="zk-left">${esc(part(ls, '将だけ：')) || '—'}</td>
+      <td class="zk-left">${esc(part(ls, '領の仕事：')) || '—'}</td><td class="zk-left">${esc(part(ls, '戦い方：').replace(/（敵の武将.*$/, '')) || '—'}</td></tr>`; }).join('')}</table></div>`;
+}
+
 // ------------------------------------------------------------ レベル表
 
 function levelsPage(): string {
@@ -126,7 +233,7 @@ function levelsPage(): string {
     <div class="scroll"><table class="zk-levels"><tr><th>Lv</th><th>倍率</th><th data-tip="${esc(classTip(c.id))}">${esc(nm(c.name))}：次まで</th><th>累計</th><th data-tip="${esc(unitTip(u.id))}">${esc(nm(u.name))}：次まで</th><th>累計</th></tr>${rows.join('')}</table></div>`;
 }
 
-const PAGES: Record<Tab, () => string> = { units: unitsPage, skills: skillsPage, tactics: tacticsPage, levels: levelsPage };
+const PAGES: Record<Tab, () => string> = { units: unitsPage, classes: classesPage, tree: treePage, skills: skillsPage, tactics: tacticsPage, terrain: terrainPage, traits: traitsPage, levels: levelsPage };
 
 // ------------------------------------------------------------ 表示
 

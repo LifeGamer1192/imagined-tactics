@@ -325,7 +325,7 @@ function statusRows(): [string, string][] {
 }
 
 /** 地形 × 得意地形の表 */
-function terrainTable(cell: (k: TerrainKind, a: Affinity) => string): string {
+export function terrainTable(cell: (k: TerrainKind, a: Affinity) => string): string {
   const affs = D.terrain.affinities;
   return `<div class="scroll"><table>
     <tr><th>地形＼得意</th>${affs.map((a) => `<th>${AFFINITY_NAME[a]}</th>`).join('')}</tr>
@@ -334,7 +334,7 @@ function terrainTable(cell: (k: TerrainKind, a: Affinity) => string): string {
 }
 
 /** 地形・天気ごとの、攻撃の種類の倍率（field.json から作る） */
-function fieldTable(): string {
+export function fieldTable(): string {
   const kinds = Object.keys(FIELD.kinds);
   const fmt = (t?: Record<string, number>) => kinds.filter((k) => t?.[k] !== undefined).map((k) => `<span class="${t![k] > 1 ? 'up' : 'down'}">${L(FIELD.kinds[k])}×${t![k]}</span>`).join(' ');
   const rows = D.terrain.kinds.filter((k) => k !== 'void' && FIELD.terrain[k]).map((k) => {

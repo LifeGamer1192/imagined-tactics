@@ -23,18 +23,28 @@ for (const [tag, opts] of [['pc', { viewport: { width: 1366, height: 800 } }], [
   await press('[data-zukan]');
   await page.waitForSelector('.zukan:not([hidden]) .zk-units');
   const units = await page.$$eval('.zukan .zk-units tr', (r) => r.length);
+  ok(`[${tag}] タブが8つ`, (await page.$$eval('[data-ztab]', (b) => b.length)) === 8);
   ok(`[${tag}] 兵種の対応表：50種と見出し`, units >= 50 + 18, `${units}行`);
   ok(`[${tag}] 兵種の対応表に3つの版の名前（雑兵・徒卒・民兵）`, /雑兵[\s\S]*徒卒[\s\S]*民兵/.test(await page.textContent('.zukan .help-body')));
   ok(`[${tag}] 窓が横にはみ出さない`, await fits());
   await shot('1_units');
-  for (const [t, want, min] of [['skills', '通常攻撃', 10], ['tactics', '気力', 10], ['levels', '累計', 49]]) {
+  for (const [t, want, min] of [['classes', '侍大将', 30], ['skills', '通常攻撃', 10], ['tactics', '気力', 10], ['terrain', '天気', 10], ['traits', '戦場', 10], ['levels', '累計', 49]]) {
     await press(`[data-ztab="${t}"]`);
-    await page.waitForTimeout(150);
+    await page.waitForFunction(() => !document.querySelector('.busy'));
     const rows = await page.$$eval('.zukan .help-body table tr', (r) => r.length);
     ok(`[${tag}] ${t} のタブ`, rows > min && (await page.textContent('.zukan .help-body')).includes(want), `${rows}行`);
     ok(`[${tag}] ${t}：窓が横にはみ出さない`, await fits());
     await shot(`2_${t}`);
   }
+  // 昇格の系図：兵と武将の木が出る
+  await press('[data-ztab="tree"]');
+  await page.waitForFunction(() => !document.querySelector('.busy'));
+  const nodes = await page.$$eval('.zukan .zk-node', (n) => n.length);
+  ok(`[${tag}] 昇格の系図：兵と武将の木`, nodes >= 50 + 30 && /長柄足軽/.test(await page.textContent('.zukan .help-body')) && /侍大将/.test(await page.textContent('.zukan .help-body')), `${nodes}個`);
+  ok(`[${tag}] 昇格の系図：窓が横にはみ出さない`, await fits());
+  await shot('3_tree');
+  await press('[data-ztab="levels"]');
+  await page.waitForFunction(() => !document.querySelector('.busy'));
   // レベル表：役職・兵種を選び直すと数が変わる
   const before = await page.textContent('.zk-levels');
   await page.selectOption('[data-zk="unit"]', 'u15c');
