@@ -100,13 +100,18 @@ describe('movement', () => {
   it('terrain cost depends on affinity', () => {
     const st = field('. T T T . .\n. . . . . .\n. ^ ^ ^ . .');
     const g = st.map.grid;
-    const plain = troop(st, 'u01a', 0, g.idx(0, 0));     // 平地が得意、移動4
+    const plain = troop(st, 'u07a', 0, g.idx(0, 0));     // 平地が得意、移動6
     const forest = troop(st, 'u05a', 0, g.idx(0, 2));    // 森が得意
     expect(reach(st, plain).dist[g.idx(2, 0)]).toBe(4);  // 森2マス = 2+2
-    expect(reach(st, plain).dist[g.idx(3, 0)]).toBeGreaterThan(4);
+    expect(reach(st, plain).dist[g.idx(3, 0)]).toBe(5);  // 森2マスのあとの平地1
     forest.pos = g.idx(0, 0);
     plain.pos = g.idx(5, 2);
     expect(reach(st, forest).dist[g.idx(3, 0)]).toBe(2.25);
+    // 歩兵（0.11.0）：森の重さは半分（2 → 1.5）
+    const foot = troop(st, 'u01a', 0, g.idx(5, 0));
+    forest.pos = g.idx(5, 1);
+    foot.pos = g.idx(0, 0);
+    expect(reach(st, foot).dist[g.idx(2, 0)]).toBe(3);
   });
 
   it('riders cannot enter water; enemies block, allies do not', () => {

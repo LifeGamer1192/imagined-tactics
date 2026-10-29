@@ -4,12 +4,16 @@
 import cfgJson from '../../data/system/convert.json';
 import { AI, AXES, type Axis, type Personality } from '../ai/personality';
 import { D, L } from '../data/db';
-import type { Passive, SkillDef, StatusId, TacticDef, UnitDef } from '../data/types';
+import type { Passive, SkillDef, StatusId, TacticDef, UnitDef, UnitKind } from '../data/types';
 import { AILMENTS, DISPELLABLE } from '../battle/engine';
-import { FIELD } from '../rules/stats';
+import { FIELD, KIND_NAME } from '../rules/stats';
 import { S } from '../strategy/config';
 import { classMod } from '../rules/growth';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
+import bmJson from '../../data/system/battlemap.json';
+
+/** 門・柵を壊すのが得意な系統（黒鍬・石火矢・大筒）と倍率 */
+const BM_SIEGE = (() => { const s = (bmJson as unknown as { structures: { siegeLines: number[]; siegeMult: number } }).structures; return { lines: s.siegeLines, mult: s.siegeMult }; })();
 
 const CFG = cfgJson as unknown as { traits: Record<string, Record<string, number | string>> };
 
@@ -64,8 +68,27 @@ const PASSIVE_TEXT = (p: Passive): string => {
     case 'baneOnTerrain': return `${p.terrain}で威力+${p.pct}%`;
     case 'remove': return '倒されても戦場から下がるだけ（失われにくい）';
     case 'doubleAct': return '1巡に2回動けることがある';
+    case 'mass': return `数の利：隣の味方の歩兵1体ごとに与えるダメージ+${p.pct}%（最大+${p.max}%）`;
+    case 'rugged': return '森・山・沼でも動きやすい（移動の重さと、命中・回避の下がりが半分）';
+    case 'brace': return `迎え撃ち：騎馬に攻められたときの反撃が${p.mult}倍`;
+    case 'formation': return `隊列：隣に長槍の味方がいると、受けるダメージ−${Math.round((1 - 1 / (1 + p.pct / 100)) * 100)}%（防御+${p.pct}%）`;
+    case 'cramped': return `森・山・沼に立つと、与えるダメージ−${p.pct}%（長い槍を振るえない）`;
+    case 'hook': return '鉤で崩す：相手の盾（受け止め・飛び道具の盾）が効かない';
+    case 'unhorse': return `落馬：騎馬に当てると、${p.turns}巡のあいだ下馬させる`;
+    case 'charge': return `突撃：その手番で進んだマス数×${p.pct}%、与えるダメージが増える（最大+${p.max}%。反撃では増えない）`;
+    case 'missileGuard': return `飛び道具の盾：2マス以上離れた所からの攻撃を、${p.chance}%で半分にする`;
+    case 'rally': return `鼓舞：隣の味方の与えるダメージ+${p.pct}%（いつも。重ならない）`;
   }
 };
+
+/** 兵種の分類の相性の文（0.11.0）。分類が無ければ空 */
+export function kindText(kind: UnitKind | undefined): string {
+  if (!kind) return '';
+  const K = D.combat.kindBane, name = KIND_NAME;
+  const strong = Object.entries(K[kind] ?? {}).map(([k, v]) => `${name[k as UnitKind]}に強い（+${v}%）`);
+  const weak = (Object.entries(K) as [UnitKind, Partial<Record<UnitKind, number>>][]).filter(([, m]) => m[kind]).map(([k, m]) => `${name[k]}に弱い（相手が+${m[kind]}%）`);
+  return [`分類：${name[kind]}`, ...strong, ...weak].join('・');
+}
 
 /** 特性の説明（人柄・能力への効き目・戦い方・深手の長さ） */
 export function traitTip(t: string): string {
@@ -266,6 +289,9 @@ export function unitTip(unitId: string, level?: number): string {
   if (skills.length) out.push(`技：${skills.join('・')}`);
   if (u.tactics.length) out.push(`軍略：${u.tactics.map((id) => (D.byTactic[id] ? L(D.byTactic[id].name) : id)).join('・')}`);
   if (u.passives.length) out.push(`特技：${u.passives.map(PASSIVE_TEXT).join('、')}`);
+  const kt = kindText(u.kind);
+  if (kt) out.push(kt);
+  if (BM_SIEGE.lines.includes(u.line)) out.push(`門・柵を打つ力×${BM_SIEGE.mult}（ほとんど一撃で壊す）`);
   for (const p of u.promote ?? []) {
     if (!D.byUnit[p.to]) continue;
     // 品の要る昇進は、品とレベルの両方（練兵の書ではレベルを飛ばせない）

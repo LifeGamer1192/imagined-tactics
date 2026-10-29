@@ -10,7 +10,7 @@ import {
 import { killExp } from '../rules/growth';
 import { reach, unitAt } from '../rules/move';
 import {
-  basicSkill, disabled, has, immune, moveOf, passive, removeStatus, skillOf, statusOf, terrainAt,
+  basicSkill, disabled, has, immune, moveOf, passive, removeStatus, skillOf, statusOf, terrainAt, isCavalry,
 } from '../rules/stats';
 import type { Action, BUnit, BattleState, Side, StrikeDetail, TacticDetail } from './types';
 
@@ -159,10 +159,18 @@ function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: bo
     if (crit) dmg *= D.combat.critMult;
     const critBonus = crit && skill.effects.some((e) => e.type === 'critBonus') ? 1.25 : 1;
     if (critBonus !== 1) dmg *= critBonus;
-    let shield: { chance: number; roll: number; ok: boolean } | undefined;
-    if (single) for (const p of passive(t, 'shield')) {
+    let shield: { chance: number; roll: number; ok: boolean; missile?: boolean } | undefined;
+    // 鉤で崩す（戟。0.11.0）：相手の盾が効かない
+    const hook = passive(a, 'hook').length > 0;
+    if (single && !hook) for (const p of passive(t, 'shield')) {
       const r = rng.float() * 100;
       shield = { chance: p.chance, roll: r, ok: r < p.chance };
+      if (shield.ok) { dmg /= 2; log(st, 'shield', { unit: t.name, sid: t.id }); break; }
+    }
+    // 飛び道具の盾（竹束・盾・鉄盾。0.11.0）：2マス以上離れた所からの攻撃。受け止めで半分になっていなければ
+    if (!hook && !shield?.ok && st.map.grid.distance(a.pos, t.pos) >= 2) for (const p of passive(t, 'missileGuard')) {
+      const r = rng.float() * 100;
+      shield = { chance: p.chance, roll: r, ok: r < p.chance, missile: true };
       if (shield.ok) { dmg /= 2; log(st, 'shield', { unit: t.name, sid: t.id }); break; }
     }
     const raw = dmg;
@@ -172,6 +180,11 @@ function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: bo
     const from = t.hp;
     damage(st, t, dmg, a);
     d.hp = [from, t.hp];
+    // 落馬（戟の上の格。0.11.0）：騎馬に当てたら、下馬させる
+    if (t.alive && isCavalry(t)) for (const p of passive(a, 'unhorse')) {
+      if (addStatus(st, t, 'grounded', p.turns, a)) { d.unhorse = p.turns; log(st, 'unhorse', { unit: t.name, turns: p.turns, uid: a.id, tid: t.id }); }
+      break;
+    }
   }
   for (const e of skill.effects) {
     if (e.type === 'lifesteal' && dmg > 0 && a.alive) { const from = a.hp; heal(a, Math.round(dmg * e.rate)); d.steal = [from, a.hp]; }
@@ -350,7 +363,7 @@ function afterAction(st: BattleState, u: BUnit): void {
   if (u.alive && extra && !u.extraUsed) {
     u.extraUsed = true;
     removeStatus(u, 'extraAct');
-    u.acted = false; u.moved = false; u.postMoved = false; u.moveSpent = 0;
+    u.acted = false; u.moved = false; u.postMoved = false; u.moveSpent = 0; u.moveSteps = 0;
   }
 }
 
@@ -373,7 +386,7 @@ export function startTurn(st: BattleState, side: Side): void {
       }
     }
     if (u.side !== side) continue;
-    u.moved = false; u.postMoved = false; u.acted = false; u.extraUsed = false; u.moveSpent = 0;
+    u.moved = false; u.postMoved = false; u.acted = false; u.extraUsed = false; u.moveSpent = 0; u.moveSteps = 0;
     if (has(u, 'poison')) {
       const d = Math.round(u.maxHp * D.status.poison.pct / 100);
       log(st, 'poison', { unit: u.name, dmg: d, tid: u.id, hp: u.hp, pct: D.status.poison.pct, max: u.maxHp });
@@ -444,6 +457,8 @@ export function apply(st: BattleState, a: Action): boolean {
       if (a.to === u.pos || !r.cells.includes(a.to)) return false;
       log(st, 'move', { uid: u.id, side: u.side, from: u.pos, to: a.to, cost: r.dist[a.to] });
       u.moveSpent += r.dist[a.to];
+      // 突撃（0.11.0）：行動する前に進んだマス数
+      if (!u.acted) u.moveSteps = (u.moveSteps ?? 0) + st.map.grid.distance(u.pos, a.to);
       u.pos = a.to;
       if (u.acted) u.postMoved = true; else u.moved = true;
       return true;

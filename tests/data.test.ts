@@ -6,8 +6,8 @@ import { RNG } from '../src/core/rng';
 describe('system data', () => {
   it('counts', () => {
     expect(D.classes.length).toBe(63);
-    expect(D.units.length).toBe(50);
-    expect(D.skills.length).toBe(92);
+    expect(D.units.length).toBe(59);
+    expect(D.skills.length).toBe(105);
     expect(D.tactics.length).toBe(39);
   });
 
@@ -75,14 +75,16 @@ describe('rng', () => {
 describe('shared IDs (ima-rpg uses the same IDs; never renumber)', () => {
   it('skills k001-k092, tactics x01-x39, units u01a-u18c stay as they are', () => {
     const pad = (n: number, w: number) => String(n).padStart(w, '0');
-    expect(D.skills.map((s) => s.id)).toEqual(Array.from({ length: 92 }, (_, i) => `k${pad(i + 1, 3)}`));
+    // 0.11.0：技 k093〜k105 と、兵種 u01d・u01e・u19a・u19c・u20a・u20b・u21a・u21b・u21c を足した（前の ID はそのまま）
+    expect(D.skills.map((s) => s.id)).toEqual(Array.from({ length: 105 }, (_, i) => `k${pad(i + 1, 3)}`));
     expect(D.tactics.map((t) => t.id)).toEqual(Array.from({ length: 39 }, (_, i) => `x${pad(i + 1, 2)}`));
     expect(D.units.map((u) => u.id).sort()).toEqual([
       'u01a', 'u01b', 'u01c', 'u02a', 'u02b', 'u03a', 'u03b', 'u04a', 'u04b', 'u05a', 'u05b', 'u05c', 'u06a', 'u06b',
       'u07a', 'u07b', 'u07c', 'u08a', 'u08b', 'u08b2', 'u09a', 'u09b', 'u09c', 'u10a', 'u10b', 'u10c', 'u11a', 'u11b', 'u11c',
       'u12a', 'u12b', 'u12b2', 'u13a', 'u13b', 'u13c', 'u14a', 'u14b', 'u14c', 'u15a', 'u15b', 'u15c', 'u16a', 'u16b', 'u16c',
       'u17a', 'u17b', 'u17c', 'u18a', 'u18b', 'u18c',
-    ]);
+      'u01d', 'u01e', 'u19a', 'u19c', 'u20a', 'u20b', 'u21a', 'u21b', 'u21c',
+    ].sort());
     for (const x of [...D.skills, ...D.tactics, ...D.units]) { expect(x.name.jp, x.id).toBeTruthy(); expect(x.name.cn, x.id).toBeTruthy(); }
   });
 });

@@ -40,16 +40,211 @@
    ]
   },
   "skills": [
+   "k093"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "mass",
+    "pct": 5,
+    "max": 15,
+    "rank": null
+   },
+   {
+    "type": "rugged",
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u01d",
+    "lv": 10
+   }
+  ],
+  "kind": "foot"
+ },
+ {
+  "id": "u01d",
+  "name": {
+   "jp": "徒士組",
+   "cn": "甲士"
+  },
+  "line": 1,
+  "tier": 2,
+  "cost": 30,
+  "hp": 505,
+  "mp": 53,
+  "str": 56,
+  "int": 20,
+  "agi": 55,
+  "def": 100,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k094"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "mass",
+    "pct": 5,
+    "max": 15,
+    "rank": null
+   },
+   {
+    "type": "rugged",
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u01e",
+    "lv": 20
+   }
+  ],
+  "kind": "foot"
+ },
+ {
+  "id": "u01e",
+  "name": {
+   "jp": "侍衆",
+   "cn": "虎賁"
+  },
+  "line": 1,
+  "tier": 3,
+  "cost": 60,
+  "hp": 590,
+  "mp": 90,
+  "str": 70,
+  "int": 35,
+  "agi": 68,
+  "def": 110,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k095",
+   "k096"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "mass",
+    "pct": 5,
+    "max": 15,
+    "rank": null
+   },
+   {
+    "type": "rugged",
+    "rank": null
+   }
+  ],
+  "promote": [],
+  "kind": "foot"
+ },
+ {
+  "id": "u19a",
+  "name": {
+   "jp": "素槍足軽",
+   "cn": "矛兵"
+  },
+  "line": 19,
+  "tier": 1,
+  "cost": 24,
+  "hp": 450,
+  "mp": 46,
+  "str": 50,
+  "int": 15,
+  "agi": 42,
+  "def": 95,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "S",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    1
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
    "k001"
   ],
   "tactics": [],
-  "passives": [],
+  "passives": [
+   {
+    "type": "brace",
+    "mult": 1.5,
+    "rank": null
+   }
+  ],
   "promote": [
    {
     "to": "u01b",
     "lv": 10
    }
-  ]
+  ],
+  "kind": "spear"
  },
  {
   "id": "u01b",
@@ -57,7 +252,7 @@
    "jp": "足軽槍組",
    "cn": "戈兵"
   },
-  "line": 1,
+  "line": 19,
   "tier": 2,
   "cost": 31,
   "hp": 505,
@@ -100,6 +295,200 @@
     "type": "regen",
     "pct": 5,
     "rank": "A"
+   },
+   {
+    "type": "brace",
+    "mult": 1.5,
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u19c",
+    "lv": 20
+   }
+  ],
+  "kind": "spear"
+ },
+ {
+  "id": "u19c",
+  "name": {
+   "jp": "鑓衆",
+   "cn": "虎矛士"
+  },
+  "line": 19,
+  "tier": 3,
+  "cost": 70,
+  "hp": 600,
+  "mp": 100,
+  "str": 72,
+  "int": 30,
+  "agi": 62,
+  "def": 115,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k097",
+   "k004"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "brace",
+    "mult": 1.5,
+    "rank": null
+   },
+   {
+    "type": "regen",
+    "pct": 10,
+    "rank": "S"
+   }
+  ],
+  "promote": [],
+  "kind": "spear"
+ },
+ {
+  "id": "u20a",
+  "name": {
+   "jp": "長柄組",
+   "cn": "長矛兵"
+  },
+  "line": 20,
+  "tier": 1,
+  "cost": 28,
+  "hp": 470,
+  "mp": 46,
+  "str": 52,
+  "int": 15,
+  "agi": 32,
+  "def": 100,
+  "move": 3,
+  "affinity": "plain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k098"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "formation",
+    "pct": 10,
+    "rank": null
+   },
+   {
+    "type": "cramped",
+    "pct": 30,
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u20b",
+    "lv": 10
+   }
+  ],
+  "kind": "pike"
+ },
+ {
+  "id": "u20b",
+  "name": {
+   "jp": "三間槍衆",
+   "cn": "長矛陣"
+  },
+  "line": 20,
+  "tier": 2,
+  "cost": 46,
+  "hp": 540,
+  "mp": 80,
+  "str": 60,
+  "int": 20,
+  "agi": 38,
+  "def": 108,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    1
+   ]
+  },
+  "skills": [
+   "k099",
+   "k100"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "formation",
+    "pct": 10,
+    "rank": null
+   },
+   {
+    "type": "cramped",
+    "pct": 30,
+    "rank": null
    }
   ],
   "promote": [
@@ -107,7 +496,8 @@
     "to": "u01c",
     "lv": 20
    }
-  ]
+  ],
+  "kind": "pike"
  },
  {
   "id": "u01c",
@@ -115,7 +505,7 @@
    "jp": "長柄足軽",
    "cn": "戟兵"
   },
-  "line": 1,
+  "line": 20,
   "tier": 3,
   "cost": 68,
   "hp": 571,
@@ -150,8 +540,9 @@
    ]
   },
   "skills": [
+   "k101",
    "k003",
-   "k004"
+   "k100"
   ],
   "tactics": [
    "x01",
@@ -162,9 +553,200 @@
     "type": "regen",
     "pct": 10,
     "rank": "S"
+   },
+   {
+    "type": "formation",
+    "pct": 10,
+    "rank": null
+   },
+   {
+    "type": "cramped",
+    "pct": 30,
+    "rank": null
    }
   ],
-  "promote": []
+  "promote": [],
+  "kind": "pike"
+ },
+ {
+  "id": "u21a",
+  "name": {
+   "jp": "薙刀衆",
+   "cn": "戟兵"
+  },
+  "line": 21,
+  "tier": 1,
+  "cost": 30,
+  "hp": 450,
+  "mp": 46,
+  "str": 58,
+  "int": 20,
+  "agi": 50,
+  "def": 90,
+  "move": 4,
+  "affinity": "plain",
+  "speed": "A",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    0,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k102"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "hook",
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u21b",
+    "lv": 10
+   }
+  ],
+  "kind": "halberd"
+ },
+ {
+  "id": "u21b",
+  "name": {
+   "jp": "僧兵衆",
+   "cn": "戈戟手"
+  },
+  "line": 21,
+  "tier": 2,
+  "cost": 48,
+  "hp": 540,
+  "mp": 90,
+  "str": 70,
+  "int": 30,
+  "agi": 58,
+  "def": 102,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k103"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "hook",
+    "rank": null
+   },
+   {
+    "type": "unhorse",
+    "turns": 2,
+    "rank": null
+   }
+  ],
+  "promote": [
+   {
+    "to": "u21c",
+    "lv": 20
+   }
+  ],
+  "kind": "halberd"
+ },
+ {
+  "id": "u21c",
+  "name": {
+   "jp": "大薙刀衆",
+   "cn": "大戟士"
+  },
+  "line": 21,
+  "tier": 3,
+  "cost": 75,
+  "hp": 640,
+  "mp": 120,
+  "str": 86,
+  "int": 35,
+  "agi": 66,
+  "def": 110,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "C",
+  "growth": {
+   "hp": [
+    3,
+    10
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    3
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    0,
+    2
+   ]
+  },
+  "skills": [
+   "k104",
+   "k105"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "hook",
+    "rank": null
+   },
+   {
+    "type": "unhorse",
+    "turns": 2,
+    "rank": null
+   }
+  ],
+  "promote": [],
+  "kind": "halberd"
  },
  {
   "id": "u02a",
@@ -213,7 +795,13 @@
    "x25",
    "x31"
   ],
-  "passives": [],
+  "passives": [
+   {
+    "type": "rally",
+    "pct": 10,
+    "rank": null
+   }
+  ],
   "promote": [
    {
     "to": "u02b",
@@ -271,7 +859,13 @@
    "x04",
    "x30"
   ],
-  "passives": [],
+  "passives": [
+   {
+    "type": "rally",
+    "pct": 10,
+    "rank": null
+   }
+  ],
   "promote": []
  },
  {
@@ -815,7 +1409,8 @@
     "to": "u07b",
     "lv": 10
    }
-  ]
+  ],
+  "kind": "cavalry"
  },
  {
   "id": "u07b",
@@ -878,7 +1473,8 @@
     "to": "u07c",
     "lv": 20
    }
-  ]
+  ],
+  "kind": "cavalry"
  },
  {
   "id": "u07c",
@@ -937,7 +1533,8 @@
     "rank": "B"
    }
   ],
-  "promote": []
+  "promote": [],
+  "kind": "cavalry"
  },
  {
   "id": "u08a",
@@ -1150,6 +1747,11 @@
     "type": "shield",
     "chance": 21,
     "rank": "A"
+   },
+   {
+    "type": "missileGuard",
+    "chance": 40,
+    "rank": null
    }
   ],
   "promote": [
@@ -1208,6 +1810,11 @@
     "type": "shield",
     "chance": 21,
     "rank": "A"
+   },
+   {
+    "type": "missileGuard",
+    "chance": 40,
+    "rank": null
    }
   ],
   "promote": [
@@ -1270,6 +1877,11 @@
    },
    {
     "type": "doubleAct",
+    "rank": null
+   },
+   {
+    "type": "missileGuard",
+    "chance": 40,
     "rank": null
    }
   ],
@@ -1877,13 +2489,21 @@
    "k056"
   ],
   "tactics": [],
-  "passives": [],
+  "passives": [
+   {
+    "type": "charge",
+    "pct": 5,
+    "max": 20,
+    "rank": null
+   }
+  ],
   "promote": [
    {
     "to": "u13b",
     "lv": 10
    }
-  ]
+  ],
+  "kind": "cavalry"
  },
  {
   "id": "u13b",
@@ -1930,13 +2550,21 @@
    "k058"
   ],
   "tactics": [],
-  "passives": [],
+  "passives": [
+   {
+    "type": "charge",
+    "pct": 5,
+    "max": 20,
+    "rank": null
+   }
+  ],
   "promote": [
    {
     "to": "u13c",
     "lv": 20
    }
-  ]
+  ],
+  "kind": "cavalry"
  },
  {
   "id": "u13c",
@@ -1988,9 +2616,16 @@
    {
     "type": "remove",
     "rank": null
+   },
+   {
+    "type": "charge",
+    "pct": 5,
+    "max": 20,
+    "rank": null
    }
   ],
-  "promote": []
+  "promote": [],
+  "kind": "cavalry"
  },
  {
   "id": "u14a",

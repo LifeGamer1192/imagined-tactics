@@ -78,6 +78,8 @@ const scenes = [
   ['押し出し k037', { skill: 'k037', dist: 1 }, [130, 260, 420, 700, 1000]],
   ['押し付け k037（後ろが塞がる）', { skill: 'k037', dist: 1, wall: true }, [130, 260, 420, 700, 1000]],
   ['ぶつかる k037（後ろに駒）', { skill: 'k037', dist: 1, second: true }, [130, 300, 450, 650, 1000]],
+  ['飛び道具の盾 k025（0.11.0）', { skill: 'k025', dist: 3, tPass: [{ type: 'missileGuard', chance: 100 }] }, [60, 240, 330, 520, 900]],
+  ['落馬 k103（0.11.0）', { skill: 'k103', dist: 1, aPass: [{ type: 'unhorse', turns: 2 }], tRider: true }, [130, 300, 420, 620, 1000]],
 ];
 const FW = 400, FH = 250, ROWS = 4;
 await page.evaluate(() => { window.__t = 100000; performance.now = () => window.__t; });
@@ -119,6 +121,9 @@ for (let s0 = 0; s0 < scenes.length; s0 += ROWS) {
       if (sc.crit) A.critPct = 100; else A.critPct = -100;
       if (sc.miss) A.agi = -9999; else if (!sc.twice) A.agi = 9999;
       if (sc.ally) T.hp = 1200;
+      if (sc.aPass) A.passives = sc.aPass;
+      if (sc.tPass) T.passives = sc.tPass;
+      if (sc.tRider) { T.affinity = 'rider'; T.statuses = []; }
       const [ax, ay] = g.center(A.pos, 34), [tx, ty] = g.center(T.pos, 34);
       const cam = a.view.cam;
       cam.zoom = 1.9; cam.centerOn((ax + tx) / 2, (ay + ty) / 2);

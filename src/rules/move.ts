@@ -3,7 +3,7 @@
 import type { BUnit, BattleState } from '../battle/types';
 import { MinHeap } from '../core/heap';
 import { D } from '../data/db';
-import { affinityOf, moveOf } from './stats';
+import { affinityOf, moveOf, ROUGH, rugged } from './stats';
 
 export interface Reach {
   /** 各マスまでの移動コスト（届かないマスは Infinity） */
@@ -23,7 +23,9 @@ export function stepCost(st: BattleState, u: BUnit, pos: number): number | null 
   // 閉じた造り（門・砦の門）は、壊れるまで攻め手は通れない（守り手は通れる）
   const s = st.structures?.[pos];
   if (s && s.closed && u.side === 0) return null;
-  const c = D.terrain.moveCost[k][affinityOf(u)];
+  let c = D.terrain.moveCost[k][affinityOf(u)];
+  // 歩兵（0.11.0）：森・山・沼の重さは半分
+  if (c !== null && c > 1 && ROUGH.has(k) && rugged(u)) c = 1 + (c - 1) / 2;
   // 雪：道と建物のほかは、少し重くなる
   if (c !== null && st.weather === 'snow' && !D.terrain.snowFree.includes(k)) return c + D.combat.weather.snowMoveCost;
   return c;

@@ -8,6 +8,7 @@ import type { ClassDef, Loc, SkillDef, StatusId, TacticDef, UnitDef } from '../d
 import { AILMENTS, DISPELLABLE } from '../battle/engine';
 import { BAD_STATUS, GOOD_STATUS } from '../render/battleView';
 import { classMod, generalExpToNext, troopExpToNext } from '../rules/growth';
+import { KIND_NAME } from '../rules/stats';
 import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticEffects, tacticTip, traitTip, unitTip, classTip } from './describe';
 import { fieldTable, terrainTable } from './help';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
@@ -19,8 +20,8 @@ type Ver = 'jp' | 'cn' | 'west';
 const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]!);
 /** 系統の呼び名（docs/20 と同じ） */
 const LINE: Record<number, string> = {
-  1: '槍の歩兵', 2: '鼓舞（楽隊）', 3: '小舟', 4: '鉄砲・弩・投石', 5: '忍び・刺客', 6: '弓', 7: '軽騎兵', 8: '回復',
-  9: '盾', 10: '城攻め', 11: '大刀・斧', 12: '山岳', 13: '騎馬武者・戦車・重騎兵', 14: '伏兵', 15: '火攻め', 16: '大船', 17: '指揮', 18: '調略',
+  1: '歩兵', 2: '鼓舞（楽隊）', 3: '小舟', 4: '鉄砲・弩・投石', 5: '忍び・刺客', 6: '弓', 7: '軽騎兵', 8: '回復',
+  9: '盾', 10: '城攻め', 11: '大刀・斧', 12: '山岳', 13: '騎馬武者・戦車・重騎兵', 14: '伏兵', 15: '火攻め', 16: '大船', 17: '指揮', 18: '調略', 19: '槍', 20: '長槍', 21: '戟・薙刀',
 };
 const TIER = ['', '下級', '中級', '上級'];
 /** 軍略の種類の短い呼び名（表の欄が細いので） */
@@ -50,14 +51,19 @@ const classLink = (id: string): string => D.byClass[id] ? go('classes', id, esc(
 
 function unitsPage(): string {
   const out = ['<p class="small">同じ番号の兵種は、名前と絵が違うだけで、能力・技・軍略・昇格はすべて同じ。どの名前で出るかは世界で決まる（日本の戦国は日本版、中国の世界は中国版、ローマは西洋版）。名前に乗せる（指なら押す）と説明が出る。</p>'];
-  const lines = [...new Set(D.units.map((u) => u.line))].sort((a, b) => a - b);
+  // 歩兵・槍・長槍・戟の相性（0.11.0）：攻める側 × 相手。強い向きに +％
+  const kinds = ['foot', 'spear', 'pike', 'halberd'] as const;
+  out.push(`<h3>歩兵・槍・長槍・戟の相性</h3><div class="scroll"><table class="zk-kinds"><tr><th>攻める側＼相手</th>${kinds.map((k) => `<th>${KIND_NAME[k]}</th>`).join('')}</tr>
+    ${kinds.map((a) => `<tr><th>${KIND_NAME[a]}</th>${kinds.map((b) => { const v = D.combat.kindBane[a]?.[b], r = D.combat.kindBane[b]?.[a]; return `<td>${v ? `<b class="ok">◎ +${v}%</b>` : r ? '<span class="ng">△</span>' : a === b ? '―' : ''}</td>`; }).join('')}</tr>`).join('')}
+    </table></div><p class="dim small">◎：与えるダメージが増える（反撃でも）。△：相手の◎。ほかに、槍は騎馬の反撃に強く（迎え撃ち）、長槍は2マス先まで届き、戟は盾を崩して騎馬を落とす（兵種の説明に書いてある）。</p>`);
+  const lines = [...new Set(D.units.map((u) => u.line))];
   for (const line of lines) {
     const us = D.units.filter((u) => u.line === line && hit(u.name.jp, u.name.cn, westName(u.id) ?? '', u.id));
     if (!us.length) continue;
     out.push(`<h3>系統${line}：${esc(LINE[line] ?? '')}</h3><div class="scroll"><table class="zk-units">
       <tr><th>番号</th><th>格</th><th>日本版</th><th>中国版</th><th>西洋版</th><th>体力</th><th>気力</th><th>武力</th><th>知略</th><th>機敏</th><th>防御</th><th>移動</th><th>得意</th><th>采配</th><th>技・軍略（1回の気力）</th><th>昇格先</th></tr>
       ${us.map((u) => `<tr id="${rowId('units', u.id)}">
-        <td>${u.id}</td><td>${TIER[u.tier] ?? u.tier}</td>
+        <td>${u.id}${u.kind ? `<br><span class="dim small">${KIND_NAME[u.kind]}</span>` : ''}</td><td>${TIER[u.tier] ?? u.tier}</td>
         ${(['jp', 'cn', 'west'] as const).map((s) => `<td class="zk-pic" data-tip="${esc(unitTip(u.id))}">${pic(s, u.id)}<br>${esc(s === 'west' ? westName(u.id) ?? '' : u.name[s])}</td>`).join('')}
         <td>${u.hp}</td><td>${u.mp || '—'}</td><td>${u.str}</td><td>${u.int}</td><td>${u.agi}</td><td>${u.def}</td><td>${u.move}</td><td>${AFFINITY_NAME[u.affinity] ?? u.affinity}</td><td>${u.cost}</td>
         <td class="zk-left zk-arts">${[...u.skills.map(skillLink), ...u.tactics.map(tacticLink)].join(' ') || '—'}</td>
@@ -166,7 +172,7 @@ function treePage(): string {
     if (!kids.length) return `<div class="zk-branch">${me}</div>`;
     return `<div class="zk-branch">${me}<div class="zk-kids">${kids.map((p) => `<div class="zk-kid"><span class="zk-arrow">→<small>${[p.lv ? `Lv${p.lv}` : '', p.item ? `品「${esc(D.items[p.item]?.[ver === 'west' ? 'jp' : ver] ?? p.item)}」` : ''].filter(Boolean).join('・') || ''}</small></span>${unitNode(D.byUnit[p.to], seen)}</div>`).join('')}</div></div>`;
   };
-  const lines = [...new Set(D.units.map((u) => u.line))].sort((a, b) => a - b);
+  const lines = [...new Set(D.units.map((u) => u.line))];
   const unitParts = lines.map((line) => {
     const us = D.units.filter((u) => u.line === line);
     if (query && !us.some((u) => hit(u.name.jp, u.name.cn, westName(u.id) ?? ''))) return '';

@@ -32,6 +32,8 @@ interface Cfg {
     maxPerGeneral: number; fillNoArmy: number; fillMin: number; base: Weights; economy: Record<string, Weights>;
     /** hist-sim の兵種の見た目の種類 → hex-sim の兵種。割合に掛ける重み、拾う最小の割合、ほかの決まりを混ぜる割合 */
     glyph: Record<string, string>; armsScale: number; armsMinShare: number; armsOtherMult: number;
+    /** 記録の「歩兵」の分け方と、1つの系統の重みの上限（0.11.0） */
+    footSplit: Record<string, number>; lineCap: number;
     armyRole: Record<string, Weights>; theocracy: Weights; rich: Weights; richTreasury: number; mountainBiome: Weights; forestBiome: Weights;
     levelFromTech: { base: number; techOrigin: number; techScale: number; prestigeDiv: number; max: number };
     unlock: Record<Variant, Record<string, { fromYear?: number; untilYear?: number }>>;
@@ -255,19 +257,55 @@ function promotedUnit(unit: UnitDef, level: number, variant: Variant, year: numb
   }
 }
 
+/**
+ * 1つの系統の重みを、全体の cap の割合までにする（0.11.0）。削ったぶんは配らない（ほかの系統の割合がそのぶん上がる）。
+ * 系統が少なくて守れない（系統の数 × cap < 1）ときは掛けない
+ */
+export function capLines(w: Weights, cap: number): void {
+  const lineOf = (id: string): number => D.byUnit[id]?.line ?? -1;
+  const lines = new Set(Object.keys(w).filter((id) => w[id] > 0).map(lineOf));
+  if (!cap || lines.size * cap < 1) return;
+  for (let k = 0; k < 8; k++) {
+    const total = Object.values(w).reduce((s, v) => s + v, 0), sum = new Map<number, number>();
+    for (const [id, v] of Object.entries(w)) sum.set(lineOf(id), (sum.get(lineOf(id)) ?? 0) + v);
+    let changed = false;
+    for (const [line, v] of sum) {
+      if (v <= cap * total * 1.0001) continue;
+      // ほかの系統の合計に対して cap になるように：x ÷（x ＋ 残り）＝ cap
+      const rest = total - v, to = rest * cap / (1 - cap), m = to / v;
+      for (const id of Object.keys(w)) if (lineOf(id) === line) w[id] *= m;
+      changed = true;
+    }
+    if (!changed) return;
+  }
+}
+
+/**
+ * 始めの兵を選ぶ。重みで先に兵種を選び、残りの兵糧（采配）で雇えなければそこで止める（0.11.0。
+ * 前は雇える兵種の中から選んだので、残りが少なくなると安い雑兵ばかりになっていた）。上の格が入らなければ同じ系統の下の格。1隊目だけは雇える兵種から
+ */
 function pickTroops(weights: Weights, budget: number, level: number, variant: Variant, year: number, rng: RNG): GTroop[] {
   const out: GTroop[] = [];
   let left = budget;
   while (out.length < CFG.troops.maxPerGeneral) {
+    // 1隊目だけは、雇える兵種の中から選ぶ（兵の無い武将を出さない）
     const cands = Object.entries(weights)
       .map(([id, w]) => ({ u: promotedUnit(D.byUnit[id], level, variant, year, rng.fork(`p:${id}:${out.length}`)), w }))
-      .filter((x) => x.w > 0 && x.u.cost <= left);
+      .filter((x) => x.w > 0 && (out.length > 0 || x.u.cost <= left));
     if (!cands.length) break;
     let r = rng.float() * cands.reduce((s, x) => s + x.w, 0);
     let pick = cands[cands.length - 1];
     for (const x of cands) { r -= x.w; if (r < 0) { pick = x; break; } }
-    out.push(makeTroop(pick.u, level));
-    left -= pick.u.cost;
+    // 上の格に上がった兵が入らなければ、同じ系統の下の格で雇う（兵種の割合は崩さない）。いちばん下の格でも入らなければ止める
+    let u = pick.u;
+    while (u.cost > left) {
+      const down = D.units.find((x) => x.promote.some((p) => p.to === u.id));
+      if (!down) break;
+      u = down;
+    }
+    if (u.cost > left) break;
+    out.push(makeTroop(u, level));
+    left -= u.cost;
   }
   return out;
 }
@@ -340,9 +378,13 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
     if (land.some((p) => MOUNTAIN_BIOMES.has(p.biome))) addWeights(other, CFG.troops.mountainBiome);
     if (perProvince ? land.some((p) => FOREST_BIOMES.has(p.biome)) : land.filter((p) => FOREST_BIOMES.has(p.biome)).length * 2 >= Math.max(1, land.length)) addWeights(other, CFG.troops.forestBiome);
     if (shares) {
+      // 記録の「歩兵」は、歩兵・槍・長柄の兵に分ける（長柄は、その国の記録で多いほうの長槍か戟。0.11.0）
+      const polearm = (shares.pike ?? 0) > (shares.halberd ?? 0) ? CFG.troops.glyph.pike : (shares.halberd ?? 0) > 0 ? CFG.troops.glyph.halberd
+        : variant === 'cn' ? CFG.troops.glyph.halberd : CFG.troops.glyph.pike;
       for (const [glyph, share] of Object.entries(shares)) {
-        const id = CFG.troops.glyph[glyph];
-        if (id && share >= CFG.troops.armsMinShare) recruit[id] = (recruit[id] ?? 0) + share * CFG.troops.armsScale;
+        if (share < CFG.troops.armsMinShare) continue;
+        const parts = glyph === 'foot' ? Object.entries(CFG.troops.footSplit).map(([id, r]) => [id === 'polearm' ? polearm : id, r] as const) : [[CFG.troops.glyph[glyph], 1] as const];
+        for (const [id, r] of parts) if (id) recruit[id] = (recruit[id] ?? 0) + share * r * CFG.troops.armsScale;
       }
       for (const [id, v] of Object.entries(other)) recruit[id] = (recruit[id] ?? 0) + v * CFG.troops.armsOtherMult;
     } else addWeights(recruit, other);
@@ -351,6 +393,7 @@ export function convert(save: HSave, opts: { variant?: Variant } = {}): GameStar
       const fromArms = !!shares && Object.entries(shares).some(([g, sh]) => CFG.troops.glyph[g] === id && sh >= CFG.troops.armsMinShare);
       if (!D.byUnit[id] || (!fromArms && !unlocked(id, variant, year))) delete recruit[id];
     }
+    capLines(recruit, CFG.troops.lineCap);
     return recruit;
   };
   // 領ごとの雇える兵種（P37）：はじめの持ち主の国の土台に、その領の土地の兵を足す。領を奪えば、その領の兵種も雇える

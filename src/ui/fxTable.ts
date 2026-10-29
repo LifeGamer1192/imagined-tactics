@@ -18,9 +18,9 @@ export type StrikeFx = 'slash' | 'thrust' | 'blow' | 'arrow' | 'javelin' | 'dart
 /** エフェクトの種類 → 技の番号（空白区切り） */
 const GROUPS: Record<StrikeFx, string> = {
   // 刀・太刀・鉈で斬る
-  slash: 'k017 k019 k021 k032 k033 k044 k045 k046 k047 k048 k049 k050 k052 k056 k057 k067 k077 k079 k085',
-  // 槍・懐の刃で突く、騎馬で突っ込む
-  thrust: 'k001 k002 k010 k026 k027 k028 k029 k030 k031 k054 k059 k060 k062 k064 k089 k090 k091',
+  slash: 'k017 k019 k021 k032 k033 k044 k045 k046 k047 k048 k049 k050 k052 k056 k057 k067 k077 k079 k085 k093 k094 k095 k096 k102 k103 k104 k105',
+  // 槍・懐の刃で突く、騎馬で突っ込む（長槍の2マス先を突く技も。0.11.0）
+  thrust: 'k001 k002 k010 k026 k027 k028 k029 k030 k031 k054 k059 k060 k062 k064 k089 k090 k091 k097 k098 k099 k100 k101',
   // 柄・盾・槌で打つ、体当たり、踏み荒らす
   blow: 'k003 k005 k006 k008 k013 k015 k034 k035 k036 k037 k038 k039 k041 k058 k061 k074 k082 k086 k087',
   arrow: 'k024 k025',

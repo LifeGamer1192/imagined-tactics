@@ -14,8 +14,8 @@
   "exclave": { "incomeMult": 0.4, "garrisonLevel": -2, "garrisonTroops": -1, "recruitCostMult": 1.5, "battleAtkDefPct": -10 },
   "_officerMap": "P59：兵を武将に取り立てるときの、兵種の系統（line）→ 役職の系統の下級役職（raiseClass）。武将を兵に下げるときの、役職の系統の下級役職 → 兵種の系統（lowerLine）。もとの兵種を覚えている武将は、その兵種に戻る",
   "officerMap": {
-    "raiseClass": { "1": "ashigaru", "2": "gunbaisha", "3": "nobushi", "4": "teppo_gashira1", "5": "rappa", "6": "ashigaru", "7": "ashigaru", "8": "so", "9": "ashigaru", "10": "ozutsu1", "11": "sohei", "12": "nobushi", "13": "ashigaru", "14": "nobushi", "15": "ozutsu1", "16": "nobushi", "17": "gunbaisha", "18": "rappa" },
-    "lowerLine": { "ashigaru": 1, "nobushi": 14, "rappa": 5, "sohei": 11, "gunbaisha": 17, "so": 8, "naginata": 1, "yumime": 6, "shirabyoshi": 2, "aruki_miko": 18, "onna_gunbaisha": 17, "ama": 8, "teppo_gashira1": 4, "ozutsu1": 15, "kokujin": 1, "karakuri1": 10 }
+    "raiseClass": { "1": "ashigaru", "2": "gunbaisha", "3": "nobushi", "4": "teppo_gashira1", "5": "rappa", "6": "ashigaru", "7": "ashigaru", "8": "so", "9": "ashigaru", "10": "ozutsu1", "11": "sohei", "12": "nobushi", "13": "ashigaru", "14": "nobushi", "15": "ozutsu1", "16": "nobushi", "17": "gunbaisha", "18": "rappa", "19": "ashigaru", "20": "ashigaru", "21": "sohei" },
+    "lowerLine": { "ashigaru": 1, "nobushi": 14, "rappa": 5, "sohei": 11, "gunbaisha": 17, "so": 8, "naginata": 21, "yumime": 6, "shirabyoshi": 2, "aruki_miko": 18, "onna_gunbaisha": 17, "ama": 8, "teppo_gashira1": 4, "ozutsu1": 15, "kokujin": 1, "karakuri1": 10 }
   },
   "officer": { "minTroopLevel": 10, "nameMax": 100, "unit": "u01a", "raiseCostBase": 100, "raiseCostPerLevel": 10, "lowerRefund": 0.6667, "leaderTraits": ["brave", "warrior", "charismatic", "wise", "scholar", "pious"] },
   "reserve": { "max": 12 },
@@ -58,7 +58,7 @@
     "ai": { "executeCruelty": 0.3, "executeChance": 0.5, "retry": 0.1, "release": 0.05, "releaseCare": 0.2 } },
   "office": { "incomePerAdmin": 0.01, "envoyPerDip": 2, "driftFrom": 4, "driftDiv": 2, "driftCap": 20, "defectPerCha": 0.05, "recruitPerDip": 0.01, "trainPerMil": 0.03, "localIncomePerAdmin": 0.02, "localTrainPerMil": 0.03 },
   "capitalBonus": { "incomeBonus": 0.5, "recruitLevel": 1 },
-  "auto": { "roles": { "front": 0.4, "ranged": 0.3, "cavalry": 0.15, "support": 0.15 }, "lines": { "front": [1, 9, 11, 12, 14], "ranged": [6, 4, 15], "cavalry": [7, 13, 5], "support": [8, 2, 17, 18] }, "skipLines": [3, 10, 16], "attackRatio": 1.0, "attackRatioPeace": 2.0, "build": true, "train": true, "move": true },
+  "auto": { "roles": { "front": 0.4, "ranged": 0.3, "cavalry": 0.15, "support": 0.15 }, "lines": { "front": [1, 19, 20, 21, 9, 11, 12, 14], "ranged": [6, 4, 15], "cavalry": [7, 13, 5], "support": [8, 2, 17, 18] }, "skipLines": [3, 10, 16], "attackRatio": 1.0, "attackRatioPeace": 2.0, "build": true, "train": true, "move": true },
   "histGoal": { "months": 12, "prestige": 20, "supply": 200 },
   "histBattle": { "prestige": 15, "prestigeLoss": 10, "foeKeep": 0.7, "months": 1 },
   "omen": { "lead": 2, "avert": 0.7, "cost": 60, "violent": ["assassination", "battle_wound", "suicide", "executed"] },
@@ -66,7 +66,7 @@
   "tactical": { "lines": [17, 18], "capPerGeneral": 1 },
   "traits": {
     "economy": {
-      "agrarian": { "name": "農耕", "text": "収入+10%、槍の兵が安い", "incomeMult": 1.1, "cost": { "lines": [1], "mult": 0.85 } },
+      "agrarian": { "name": "農耕", "text": "収入+10%、歩兵・槍・長槍の兵が安い", "incomeMult": 1.1, "cost": { "lines": [1, 19, 20], "mult": 0.85 } },
       "pastoral": { "name": "牧畜", "text": "騎馬の兵が安く、練度+1", "cost": { "lines": [7, 13], "mult": 0.8 }, "level": { "lines": [7, 13], "add": 1 } },
       "trade": { "name": "交易", "text": "収入+20%", "incomeMult": 1.2 },
       "mining": { "name": "鉱山", "text": "飛び道具・工兵・火の兵が安い", "cost": { "lines": [4, 10, 15], "mult": 0.8 } },

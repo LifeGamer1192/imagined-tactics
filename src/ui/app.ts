@@ -35,7 +35,7 @@ import { NationMap } from '../render/nationMap';
 
 import {
   canUseSkill, canUseTactic, forecastSkill, needsReload, skillCost, tacticCost, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
-  tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets,
+  tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets, unitFx,
 } from '../rules/combat';
 import { reach, stepCost, unitAt } from '../rules/move';
 import { statRows } from '../rules/statNotes';
@@ -1379,7 +1379,9 @@ export class App {
       const cards = vs.map((t) => {
         const f = forecastSkill(st, u, s, t, basicSkill(t));
         if (s.noDamage) return this.fcCard(`${t.name}${t.side === u.side ? '（味方）' : ''}`, t, 0, f.hit, '効果のみ');
-        return this.fcCard(`${t.name}${t.side === u.side ? '（味方）' : ''}`, t, f.damage, f.hit, '', f.counter ? { who: u, damage: f.counter.damage, hit: f.counter.hit } : null);
+        // 兵種の特徴で効く倍率（0.11.0）：相性・数の利・突撃・鼓舞・隊列など
+        const fx = unitFx(st, u, t, false).map(([n, m]) => `${n}×${Math.round(m * 100) / 100}`).join('・');
+        return this.fcCard(`${t.name}${t.side === u.side ? '（味方）' : ''}`, t, f.damage, f.hit, fx, f.counter ? { who: u, damage: f.counter.damage, hit: f.counter.hit } : null);
       });
       return { text: cards.join('') || '対象なし', area: new Set(vs.map((t) => t.pos)) };
     }

@@ -81,7 +81,31 @@ export type Passive =
   | { type: 'tacticResist'; pct: number }
   | { type: 'counterDamage'; pct: number } | { type: 'crit'; pct: number }
   | { type: 'bane'; vs: Affinity; pct: number }
-  | { type: 'baneOnTerrain'; terrain: TerrainKind; pct: number };
+  | { type: 'baneOnTerrain'; terrain: TerrainKind; pct: number }
+  // 0.11.0：歩兵・槍・長槍・戟と、騎馬武者・盾・陣太鼓の特徴
+  /** 数の利：隣の味方の歩兵1体ごとに与えるダメージ+pct%（max% まで） */
+  | { type: 'mass'; pct: number; max: number }
+  /** 森・山・沼での不利（移動の重さ・命中と回避の下がり）が半分 */
+  | { type: 'rugged' }
+  /** 迎え撃ち：騎馬に攻められたときの反撃のダメージ×mult */
+  | { type: 'brace'; mult: number }
+  /** 隊列：隣に同じ長槍の味方がいると、受けるダメージが pct% 減る（防御+pct%） */
+  | { type: 'formation'; pct: number }
+  /** 森・山・沼に立つと、与えるダメージ−pct% */
+  | { type: 'cramped'; pct: number }
+  /** 鉤で崩す：相手の盾（受け止め・飛び道具の盾）が効かない */
+  | { type: 'hook' }
+  /** 落馬：騎馬に当てると、turns 巡のあいだ下馬させる */
+  | { type: 'unhorse'; turns: number }
+  /** 突撃：その手番で進んだマス数×pct%、与えるダメージが増える（max% まで。反撃では増えない） */
+  | { type: 'charge'; pct: number; max: number }
+  /** 飛び道具の盾：離れた所（2マス以上）からの攻撃を、chance% で半分にする */
+  | { type: 'missileGuard'; chance: number }
+  /** 鼓舞：隣の味方の与えるダメージ+pct%（いつも。重ならない） */
+  | { type: 'rally'; pct: number };
+
+/** 兵種の分類（0.11.0。歩兵・槍・長槍・戟の相性と、騎馬かどうか） */
+export type UnitKind = 'foot' | 'spear' | 'pike' | 'halberd' | 'cavalry';
 
 export interface UnitDef extends StatBlock {
   id: string;
@@ -98,6 +122,8 @@ export interface UnitDef extends StatBlock {
   tactics: string[];
   passives: (Passive & { rank?: string | null })[];
   promote: { to: string; lv?: number; item?: string }[];
+  /** 分類（無ければ相性なし） */
+  kind?: UnitKind;
 }
 
 export type TacticKind = 'damage' | 'heal' | 'cure' | 'mpRestore' | 'buff' | 'debuff' | 'status' | 'dispel' | 'pull' | 'revive' | 'displace';
@@ -175,6 +201,8 @@ export interface CombatConfig {
   counterMult: number; healIntScale: number; useExp: number; healExp: number; expGain: number;
   /** 押し出す技で、押す先が塞がっているとき（0.10.0） */
   knock: { wallMult: number; collidePct: number };
+  /** 歩兵・槍・長槍・戟の相性（0.11.0）：攻める側の分類 → 相手の分類 → 与えるダメージ+％ */
+  kindBane: Partial<Record<UnitKind, Partial<Record<UnitKind, number>>>>;
   /** 反撃した駒が得る経験値（0.9.1） */
   counterExp: number;
   /** 勝った側の駒すべてに足す経験値（0.9.0） */

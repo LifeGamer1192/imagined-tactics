@@ -25,7 +25,7 @@ export function saveLogLevel(v: number): void { try { localStorage.setItem(KEY, 
 /** 細かい記録用に足したキー。簡易の記録には出さない */
 const EXTRA = new Set(['act', 'move', 'strike', 'tactic.on']);
 /** 行動のまとまりの中では、strike・tactic.on の行が代わりに伝えるので出さないキー */
-const COVERED = new Set(['hit', 'hit.crit', 'miss', 'shield', 'tactic', 'tactic.hit', 'heal', 'resist', 'ward', 'collide']);
+const COVERED = new Set(['hit', 'hit.crit', 'miss', 'shield', 'tactic', 'tactic.hit', 'heal', 'resist', 'ward', 'collide', 'unhorse']);
 /** 残す件数：簡易は記録の件数、通常・詳細は行動のまとまりの数 */
 const KEEP = [60, 40, 24];
 const SIDE_MARK = ['攻', '守'];
@@ -119,19 +119,19 @@ function strikeLines(st: BattleState, e: BattleLogEntry, detail: boolean): strin
   const cexp = d.counter && n(e.vars.exp) > 0 ? `<span class="dim">（${who(st, uid)}に経験 +${num(n(e.vars.exp) * D.combat.expGain)}）</span>` : '';
   if (!d.landed) out.push(ln(`${head}${T}：<span class="miss">外れ</span>${cexp}`));
   else if (d.dmg && d.hp) {
-    out.push(ln(`${head}${T}に${d.dmg.crit ? '<b class="crit">会心！</b> ' : '命中 '}<b class="dmg">${d.dmg.final}</b>（${term('hp')} ${d.hp[0]}→${d.hp[1]}）${d.dmg.shield?.ok ? '　盾で受けて半分' : ''}${cexp}`));
+    out.push(ln(`${head}${T}に${d.dmg.crit ? '<b class="crit">会心！</b> ' : '命中 '}<b class="dmg">${d.dmg.final}</b>（${term('hp')} ${d.hp[0]}→${d.hp[1]}）${d.dmg.shield?.ok ? (d.dmg.shield.missile ? '　飛び道具を盾で受けて半分' : '　盾で受けて半分') : ''}${cexp}`));
   } else out.push(ln(`${head}${T}に命中（ダメージなし）${cexp}`));
   if (detail) {
     out.push(fm(hitFormula(d.hit, d.roll, d.landed)));
     const g = d.dmg;
     if (g) {
       const p = g.parts;
-      out.push(fm(`基準 ${p.base} ＝ 威力${num(p.power)} × 攻撃${num(p.atk)} ÷ 防御${num(p.def)}${p.bane !== 1 ? ` × 特効${num(p.bane)}` : ''}${p.counter !== 1 ? ` × 反撃${num(p.counter)}` : ''}${p.fire !== 1 ? ` × 雨の日の火${num(p.fire)}` : ''}${fieldText(p)}${p.wall && p.wall !== 1 ? ` × 押し付け${num(p.wall)}` : ''}（切り捨て）`));
+      out.push(fm(`基準 ${p.base} ＝ 威力${num(p.power)} × 攻撃${num(p.atk)} ÷ 防御${num(p.def)}${p.bane !== 1 ? ` × 特効${num(p.bane)}` : ''}${p.counter !== 1 ? ` × 反撃${num(p.counter)}` : ''}${p.fire !== 1 ? ` × 雨の日の火${num(p.fire)}` : ''}${fieldText(p)}${p.wall && p.wall !== 1 ? ` × 押し付け${num(p.wall)}` : ''}${(p.fx ?? []).map(([n, m]) => ` × ${n}${num(m)}`).join('')}（切り捨て）`));
       out.push(fm(statFormula('攻撃', term('str'), g.atk, true)));
       const def = statFormula('防御', '防御', g.def, false);
       if (def) out.push(fm(def));
       out.push(fm(`会心率 ${num(g.critPct)}%：出目 ${roll(g.critRoll)} → ${g.crit ? '会心' : '会心せず'}`));
-      if (g.shield) out.push(fm(`盾 ${num(g.shield.chance)}%：出目 ${roll(g.shield.roll)} → ${g.shield.ok ? '受けた' : '受けられず'}`));
+      if (g.shield) out.push(fm(`${g.shield.missile ? '飛び道具の盾' : '盾'} ${num(g.shield.chance)}%：出目 ${roll(g.shield.roll)} → ${g.shield.ok ? '受けた' : '受けられず'}`));
       out.push(fm(`ダメージ ${g.final} ＝ 基準${p.base} × 乱数${g.rnd.toFixed(3)}${g.crit ? ` × 会心${num(g.critMult)}` : ''}${g.critBonus !== 1 ? ` × 会心に強い技${num(g.critBonus)}` : ''}${g.shield?.ok ? ' × 盾0.5' : ''} ＝ ${g.raw.toFixed(2)} → ${g.final}`));
     }
     for (const t of d.tries) out.push(fm(tryLine(t)));
@@ -142,6 +142,7 @@ function strikeLines(st: BattleState, e: BattleLogEntry, detail: boolean): strin
   if (d.knock) out.push(ln(`${T}を押し出した（${cellName(st, d.knock[0])} → ${cellName(st, d.knock[1])}）`));
   // 押せなかったとき（0.10.0）
   if (d.knockWall) out.push(ln(`押す先が塞がっていて、${T}を押し付けた（ダメージ×${num(d.knockWall.mult)}）`));
+  if (d.unhorse) out.push(ln(`${T}が落馬した（${d.unhorse}巡のあいだ下馬：騎馬でなくなり、機敏が下がる）`));
   if (d.collide) out.push(ln(`${T}が押されて${who(st, d.collide.uid)}にぶつかった：<b class="dmg">${d.collide.dmg}</b>（${term('hp')} ${d.collide.hp[0]}→${d.collide.hp[1]}。与えたダメージの${num(D.combat.knock.collidePct)}%）`));
   return out.join('');
 }

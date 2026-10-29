@@ -74,7 +74,8 @@ describe('battle log detail', () => {
             expect(stat(g.def)).toBeCloseTo(p.def, 9);
             expect(g.atk.value).toBe(p.atk);
             expect(g.def.value).toBe(p.def);
-            expect(Math.abs(Math.max(1, Math.floor(p.power * p.atk / p.def * p.bane * p.counter * p.fire * (p.field ?? 1) * (p.wall ?? 1))) - p.base)).toBeLessThanOrEqual(p.bane === 1 ? 0 : 1);
+            const fx = (p.fx ?? []).reduce((m, [, v]) => m * v, 1);
+            expect(Math.abs(Math.max(1, Math.floor(p.power * p.atk / p.def * p.bane * fx * p.counter * p.fire * (p.field ?? 1) * (p.wall ?? 1))) - p.base)).toBeLessThanOrEqual(p.bane === 1 && fx === 1 ? 0 : 1);
             expect(g.crit).toBe(g.critRoll < g.critPct);
             const raw = p.base * g.rnd * (g.crit ? g.critMult : 1) * g.critBonus * (g.shield?.ok ? 0.5 : 1);
             expect(raw).toBeCloseTo(g.raw, 6);
@@ -159,13 +160,16 @@ describe('battle log detail', () => {
   }, 180000);
 });
 
+/** 長槍の、2マス先まで届く突き（飛ばない） */
+const LONG_THRUST = new Set(['k098', 'k099', 'k101']);
+
 describe('attack effects', () => {
   it('every skill has an effect, and ranged single-target skills show something flying', () => {
     for (const s of D.skills) {
       expect(inSkillTable(s.id), `${s.id} ${s.name.jp}`).toBe(true);
       const fx = skillFx(s);
-      // 射程2以上で単体を狙う技は、飛び道具か、声
-      if (s.shape.type === 'single' && s.range[1] >= 2) expect(isProjectile(fx) || fx === 'shout', `${s.id} ${s.name.jp} → ${fx}`).toBe(true);
+      // 射程2以上で単体を狙う技は、飛び道具か、声。長槍の2マス先を突く技（0.11.0）は突く
+      if (s.shape.type === 'single' && s.range[1] >= 2) expect(isProjectile(fx) || fx === 'shout' || (fx === 'thrust' && LONG_THRUST.has(s.id)), `${s.id} ${s.name.jp} → ${fx}`).toBe(true);
     }
     // 表に無い技は、射程で決める。武将の通常攻撃も同じ
     for (const c of D.classes) expect(skillFx(skillOf(`atk:${c.id}`))).toBe(c.attack.range[1] >= 2 ? 'arrow' : 'slash');

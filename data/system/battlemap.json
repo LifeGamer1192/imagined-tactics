@@ -9,7 +9,7 @@
     "gate": { "hp": 150, "def": 140, "rubble": "road", "closed": true },
     "fortgate": { "hp": 90, "def": 110, "rubble": "road", "closed": true },
     "palisade": { "hp": 60, "def": 80, "rubble": "plain", "closed": false },
-    "siegeLines": [10], "siegeMult": 2.0, "fireMult": 1.5
+    "siegeLines": [10], "siegeMult": 10, "fireMult": 1.5
   },
   "lookout": { "fortFrom": 0.35 },
   "unrest": { "from": 0.2, "swamp": 0.25, "forest": 0.15 },

@@ -252,8 +252,10 @@ function scoreSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number, 
         const dmg = skillDamage(st, t, basic!, u, true) * hitChance(st, t, basic!, u) / 100;
         // 倒しきれるなら反撃は来ない（当たる確率ぶんだけ減らす）
         const survive = skillDamage(st, u, skill, t) >= t.hp ? 1 - chance : 1;
-        counter += Math.min(u.hp, dmg) * survive;
-        if (dmg * survive >= u.hp) counter += w.deathRisk / w.counter;
+        // 天守を押さえた攻め手を叩くとき（0.11.0）：負けが迫るほど、反撃を気にせず攻める
+        const h = st.hold, cut = h && u.side === 1 && t.pos === h.cell ? 1 - AI.castle.retakeCounterCut * clamp((h.count + 1) / h.need, 0, 1) : 1;
+        counter += Math.min(u.hp, dmg) * survive * cut;
+        if (dmg * survive * cut >= u.hp) counter += w.deathRisk / w.counter;
       }
     }
   }

@@ -238,9 +238,16 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
         hurt(tid, dmg, when);
         push({ kind: 'shake', unit: tid, amp: crit || wall ? 8 : 4.5, t0: at(when), dur: T.shake * scale });
         if (wall && wall.cell >= 0) push({ kind: 'flash', cells: [wall.cell], color: VERMILION, t0: at(when), dur: 320 * scale });
-        note(posOf(tid), String(dmg), VERMILION, crit || !!wall, when, crit ? '会心' : wall ? `押し付け×${wall.mult}` : undefined);
+        const shielded = !!d?.dmg?.shield?.ok;
+        note(posOf(tid), String(dmg), VERMILION, crit || !!wall, when, crit ? '会心' : wall ? `押し付け×${wall.mult}` : shielded ? '盾で半減' : undefined);
         sound(crit || wall ? 'crit' : 'hit', when);
-        if (d?.dmg?.shield?.ok) chip(posOf(tid), '盾', OCHRE, when);
+        // 盾で受けた（受け止め・飛び道具の盾。0.11.0）：マスを金に光らせ、「盾」の札と、受ける音
+        if (shielded) {
+          push({ kind: 'flash', cells: [posOf(tid)], color: OCHRE, t0: at(when - 40), dur: 360 * scale });
+          chip(posOf(tid), '盾', OCHRE, when);
+          sound('thud', when);
+        }
+        if (d?.unhorse) chip(posOf(tid), '落馬', VERMILION, when + 90);
         if (d?.mpHalf) chip(posOf(tid), '気力半減', PURPLE, when + 60);
         // 押し出し：当たるまでは、もとのマスにいる
         if (d?.knock) push({ kind: 'slide', unit: tid, pts: [xy(d.knock[0]), xy(d.knock[1])], t0: at(when), dur: T.knock * scale });

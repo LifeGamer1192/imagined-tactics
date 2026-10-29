@@ -348,6 +348,7 @@ export const troopLoad = (g: GGeneral): number => g.troops.reduce((s, t) => s + 
 
 // ---------------------------------------------------------------- 行動
 
+const NO_SUPPLY = '兵糧が足りません';
 /** 兵を徴兵できるか。できないときは理由を返す */
 export function recruitProblem(c: Campaign, g: GGeneral, unitId: string): string | null {
   const f = c.gs.factions[g.faction];
@@ -359,7 +360,7 @@ export function recruitProblem(c: Campaign, g: GGeneral, unitId: string): string
   // 軍略の兵（伝令・間者の系統）は本陣付きの少数の役なので、武将1人につき1隊まで
   if (isTactical(unitId) && g.troops.filter((t) => isTactical(t.unitId)).length >= S.tactical.capPerGeneral) return `軍略の兵は${S.tactical.capPerGeneral}隊までです`;
   if (g.id in c.away) return '諸国巡りに出ています';
-  if (f.supply < recruitCostFor(c, g, unitId)) return '兵糧が足りません';
+  if (f.supply < recruitCostFor(c, g, unitId)) return NO_SUPPLY;
   return null;
 }
 
@@ -970,11 +971,13 @@ function aiRecruit(c: Campaign, f: GFaction): void {
     if (!ids.length) continue;
     for (let guard = 0; guard < MAX_TROOPS; guard++) {
       if (f.supply < S.ai.reserveSupply) return;        // 兵糧は少し残す
-      const ok = ids.filter((u) => !recruitProblem(c, g, u));
+      // 重みで先に兵種を選び、兵糧が足りなければ、その月はもう雇わない（0.11.0。前は足りる兵種から選んだので、安い雑兵に偏っていた）
+      const ok = ids.filter((u) => { const p = recruitProblem(c, g, u); return !p || p === NO_SUPPLY; });
       if (!ok.length) break;
       let r = c.rng.float() * ok.reduce((s, u) => s + pool[u], 0);
       let pick = ok[ok.length - 1];
       for (const u of ok) { r -= pool[u]; if (r < 0) { pick = u; break; } }
+      if (recruitProblem(c, g, pick) === NO_SUPPLY) return;
       recruit(c, g.id, pick);
     }
   }

@@ -6,8 +6,8 @@ const units = JSON.parse(readFileSync('data/system/units.json', 'utf8'));
 const west = JSON.parse(readFileSync('data/system/west.json', 'utf8')).units;
 const list = Array.isArray(units) ? units : units.units;
 const LINE = {
-  1: '槍の歩兵', 2: '鼓舞（楽隊）', 3: '小舟', 4: '鉄砲・弩・投石', 5: '忍び・刺客', 6: '弓', 7: '軽騎兵', 8: '回復',
-  9: '盾', 10: '城攻め（工兵・攻城兵器）', 11: '大刀・斧', 12: '山岳', 13: '騎馬武者・戦車・重騎兵', 14: '伏兵', 15: '火攻め', 16: '大船', 17: '指揮', 18: '調略',
+  1: '歩兵', 2: '鼓舞（楽隊）', 3: '小舟', 4: '鉄砲・弩・投石', 5: '忍び・刺客', 6: '弓', 7: '軽騎兵', 8: '回復',
+  9: '盾', 10: '城攻め（工兵・攻城兵器）', 11: '大刀・斧', 12: '山岳', 13: '騎馬武者・戦車・重騎兵', 14: '伏兵', 15: '火攻め', 16: '大船', 17: '指揮', 18: '調略', 19: '槍', 20: '長槍', 21: '戟・薙刀',
 };
 const TIER = { 1: '下級', 2: '中級', 3: '上級' };
 const pic = (set, id) => (existsSync(`public/art/unit/${set}/${id}.webp`) ? `<img src="../public/art/unit/${set}/${id}.webp" width="56" alt="">` : '（絵なし）');
@@ -22,7 +22,7 @@ const out = [
   `西洋版の絵：${list.filter((u) => existsSync(`public/art/unit/west/${u.id}.webp`)).length}／${list.length}種。絵の無い兵種は、戦場では名前の字の駒で描く。`,
   '',
 ];
-for (const line of [...new Set(list.map((u) => u.line))].sort((a, b) => a - b)) {
+for (const line of [...new Set(list.map((u) => u.line))]) {
   out.push(`## 系統${line}：${LINE[line] ?? ''}`, '', '| 番号 | 格 | 日本版 | 中国版 | 西洋版 | 昇格先 |', '|---|---|:-:|:-:|:-:|---|');
   for (const u of list.filter((x) => x.line === line)) {
     const up = (u.promote ?? []).map((p) => `${p.to}（${byId[p.to]?.name.jp ?? ''}／${byId[p.to]?.name.cn ?? ''}／${west[p.to] ?? ''}）`).join('<br>') || '—';

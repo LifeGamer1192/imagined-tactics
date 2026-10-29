@@ -2452,5 +2452,320 @@
     "chance": 26
    }
   ]
+ },
+ {
+  "id": "k093",
+  "name": {
+   "jp": "打ち物",
+   "cn": "短兵撃"
+  },
+  "mp": 0,
+  "power": 93,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k094",
+  "name": {
+   "jp": "斬り込み",
+   "cn": "突入"
+  },
+  "mp": 0,
+  "power": 115,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 8,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k095",
+  "name": {
+   "jp": "太刀打ち",
+   "cn": "劈斬"
+  },
+  "mp": 0,
+  "power": 130,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 10,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k096",
+  "name": {
+   "jp": "乱れ斬り",
+   "cn": "乱斬"
+  },
+  "mp": 30,
+  "power": 100,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 0,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 1
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k097",
+  "name": {
+   "jp": "鑓突き",
+   "cn": "矛刺"
+  },
+  "mp": 0,
+  "power": 135,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k098",
+  "name": {
+   "jp": "長柄突き",
+   "cn": "長矛刺"
+  },
+  "mp": 0,
+  "power": 95,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k099",
+  "name": {
+   "jp": "三間突き",
+   "cn": "長矛撃"
+  },
+  "mp": 0,
+  "power": 110,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 8,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k100",
+  "name": {
+   "jp": "槍襖",
+   "cn": "矛林"
+  },
+  "mp": 25,
+  "power": 100,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 0,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "line",
+   "n": 2
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k101",
+  "name": {
+   "jp": "長柄大叩き",
+   "cn": "大矛撃"
+  },
+  "mp": 0,
+  "power": 140,
+  "range": [
+   1,
+   2
+  ],
+  "hit": 12,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k102",
+  "name": {
+   "jp": "薙ぎ",
+   "cn": "揮戟"
+  },
+  "mp": 0,
+  "power": 105,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k103",
+  "name": {
+   "jp": "引き落とし",
+   "cn": "鉤落"
+  },
+  "mp": 0,
+  "power": 115,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 8,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k104",
+  "name": {
+   "jp": "大薙刀",
+   "cn": "大戟撃"
+  },
+  "mp": 0,
+  "power": 135,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 10,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k105",
+  "name": {
+   "jp": "大薙ぎ",
+   "cn": "横掃"
+  },
+  "mp": 30,
+  "power": 110,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 0,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "around",
+   "n": 1
+  },
+  "targets": "enemy",
+  "effects": []
  }
 ]

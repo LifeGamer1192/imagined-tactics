@@ -3,7 +3,7 @@
 import fieldJson from '../../data/system/field.json';
 import type { BStatus, BUnit, BattleState } from '../battle/types';
 import { D } from '../data/db';
-import type { Affinity, Passive, SkillDef, StatusId, TerrainKind } from '../data/types';
+import type { Affinity, Passive, SkillDef, StatusId, TerrainKind, UnitKind } from '../data/types';
 
 export const has = (u: BUnit, id: StatusId): boolean => u.statuses.some((s) => s.id === id);
 export const statusOf = (u: BUnit, id: StatusId): BStatus | undefined => u.statuses.find((s) => s.id === id);
@@ -117,8 +117,26 @@ export function terrainAt(st: BattleState, pos: number): TerrainKind { return st
 
 /** 地形による命中・回避の補正 */
 export function terrainMod(st: BattleState, u: BUnit): number {
-  return D.terrain.hitMod[terrainAt(st, u.pos)][affinityOf(u)] ?? 0;
+  const k = terrainAt(st, u.pos), v = D.terrain.hitMod[k][affinityOf(u)] ?? 0;
+  // 歩兵（0.11.0）：森・山・沼での下がりは半分
+  return v < 0 && ROUGH.has(k) && rugged(u) ? v / 2 : v;
 }
+
+// ---- 兵種の分類（0.11.0）
+/** 森・山・沼（足場の悪い地形） */
+export const ROUGH: ReadonlySet<string> = new Set(['forest', 'mountain', 'swamp']);
+/** 森・山・沼での不利が半分の駒（歩兵） */
+export const rugged = (u: BUnit): boolean => u.passives.some((p) => p.type === 'rugged');
+/** 兵の分類（武将は無し） */
+export function unitKind(u: BUnit): UnitKind | undefined {
+  return u.kind === 'troop' ? D.byUnit[u.defId]?.kind : undefined;
+}
+/** 騎馬か（騎馬の兵、または騎の駒。下馬・落馬していれば違う） */
+export function isCavalry(u: BUnit): boolean {
+  if (has(u, 'grounded')) return false;
+  return unitKind(u) === 'cavalry' || affinityOf(u) === 'rider';
+}
+export const KIND_NAME: Record<UnitKind, string> = { foot: '歩兵', spear: '槍', pike: '長槍', halberd: '戟', cavalry: '騎馬' };
 
 /** その地形から射程2以上の技を使うときの補正（櫓）。無ければ null */
 function rangedPerch(st: BattleState, u: BUnit, skill: SkillDef): { hit: number; range: number } | null {

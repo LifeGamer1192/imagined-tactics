@@ -7,7 +7,7 @@ import { BM } from '../battle/map';
 import { unitAt } from './move';
 import {
   affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf, fieldMult, type FieldParts, basicSkill, attackKinds,
-  skillOf, tacticResist, terrainAt, terrainMod, seatDefMult,
+  skillOf, tacticResist, terrainAt, terrainMod, seatDefMult, unitKind, isCavalry, KIND_NAME, ROUGH,
 } from './stats';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -81,6 +81,26 @@ export interface DamageParts {
   field: number; fieldNotes: FieldParts['notes'];
   /** 押し出す技で、押す先が塞がっていて押し付けたときの倍率（0.10.0。無ければ 1） */
   wall?: number;
+  /** 兵種の特徴の倍率（0.11.0）：相性・数の利・足場・迎え撃ち・突撃・鼓舞・隊列。[名前, 倍率] */
+  fx?: [string, number][];
+}
+
+/** 兵種の特徴で、与えるダメージに掛ける倍率（0.11.0）。[名前, 倍率] の並び */
+export function unitFx(st: BattleState, a: BUnit, t: BUnit, isCounter: boolean): [string, number][] {
+  const out: [string, number][] = [];
+  const ka = unitKind(a), kt = unitKind(t);
+  const kb = ka && kt ? D.combat.kindBane[ka]?.[kt] : undefined;
+  if (kb) out.push([`相性（${KIND_NAME[ka!]}→${KIND_NAME[kt!]}）`, 1 + kb / 100]);
+  const friends = (u: BUnit, f: (x: BUnit) => boolean): BUnit[] =>
+    st.map.grid.neighbors(u.pos).map((i) => unitAt(st, i)).filter((x): x is BUnit => !!x && x.side === u.side && x.id !== u.id && f(x));
+  for (const m of passive(a, 'mass')) { const n = friends(a, (x) => unitKind(x) === 'foot').length; if (n) out.push([`数の利（${n}）`, 1 + Math.min(m.max, n * m.pct) / 100]); }
+  for (const c of passive(a, 'cramped')) if (ROUGH.has(terrainAt(st, a.pos))) out.push(['足場が悪い', 1 - c.pct / 100]);
+  if (isCounter) for (const b of passive(a, 'brace')) if (isCavalry(t)) out.push(['迎え撃ち', b.mult]);
+  if (!isCounter) for (const c of passive(a, 'charge')) { const n = a.moveSteps ?? 0; if (n) out.push([`突撃（${n}マス）`, 1 + Math.min(c.max, n * c.pct) / 100]); }
+  const rally = Math.max(0, ...friends(a, () => true).flatMap((x) => passive(x, 'rally').map((r) => r.pct)));
+  if (rally) out.push(['鼓舞', 1 + rally / 100]);
+  for (const f of passive(t, 'formation')) if (friends(t, (x) => unitKind(x) === 'pike').length) out.push(['隊列', 1 / (1 + f.pct / 100)]);
+  return out;
 }
 
 /**
@@ -107,6 +127,8 @@ export function damageParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit
   let dmg = skill.power * p.atk / p.def;
   for (const b of passive(a, 'bane')) if (affinityOf(t) === b.vs) { dmg *= 1 + b.pct / 100; p.bane *= 1 + b.pct / 100; }
   for (const b of passive(a, 'baneOnTerrain')) if (terrainAt(st, t.pos) === b.terrain) { dmg *= 1 + b.pct / 100; p.bane *= 1 + b.pct / 100; }
+  const fx = unitFx(st, a, t, isCounter);
+  if (fx.length) { p.fx = fx; for (const [, m] of fx) dmg *= m; }
   if (isCounter) { p.counter = D.combat.counterMult * (1 + passivePct(a, 'counterDamage') / 100); dmg *= p.counter; }
   p.fire = fireMult(st, skill.id);
   dmg *= p.fire;

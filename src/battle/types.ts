@@ -65,6 +65,8 @@ export interface BUnit {
   statuses: BStatus[];
   /** この番、移動に使った移動力（再移動の残りの計算用） */
   moveSpent: number;
+  /** その手番に動く前の位置から進んだマス数（突撃。0.11.0。動いてから行動する前まで数える） */
+  moveSteps?: number;
   moved: boolean;
   /** 行動のあとの再移動を済ませたか */
   postMoved: boolean;
@@ -97,7 +99,8 @@ export interface StrikeDetail {
     /** 会心のときに威力が増す技の倍率（無ければ 1） */
     critBonus: number;
     /** 盾で受けたか（確率、出目）。判定しなかったら無し */
-    shield?: { chance: number; roll: number; ok: boolean };
+    /** 盾で受けたか。missile：飛び道具の盾（0.11.0） */
+    shield?: { chance: number; roll: number; ok: boolean; missile?: boolean };
     /** 丸める前の値と、与えたダメージ */
     raw: number; final: number;
   };
@@ -110,6 +113,8 @@ export interface StrikeDetail {
   knockWall?: { cell: number; mult: number };
   /** 押し出す技で、後ろの駒にぶつけた（0.10.0）：その駒と、与えたダメージ・体力（前 → 後） */
   collide?: { uid: number; dmg: number; hp: [number, number] };
+  /** 落馬させた（0.11.0）：何巡 */
+  unhorse?: number;
 }
 
 /** 軍略の、相手ひとりぶんの内訳（記録のキー 'tactic.on'） */
