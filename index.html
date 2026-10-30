@@ -393,6 +393,17 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .plan .pgrp button { border-radius: 0; margin: 0; border: none; border-right: 1px solid rgba(201,162,39,0.25); padding: 3px 8px; }
     .plan .pgrp button:last-child { border-right: none; }
     .planbox .plan { justify-content: center; margin: 8px 0; }
+    /* 5段階の方針（P104）：1行に 名前・1の呼び名・1〜5・5の呼び名 */
+    .plan > .dim:first-child { flex-basis: 100%; }
+    .plan .prow { display: grid; grid-template-columns: 3.2em 4.6em max-content 4.6em; justify-content: start; align-items: center; gap: 4px; flex-basis: 100%; }
+    .planbox .plan .prow { justify-content: center; }
+    .plan .prow .pname { font-weight: bold; color: #e7d6a8; cursor: help; }
+    .plan .prow .pend { font-size: 11.5px; color: #b9ae98; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .plan .prow .pgrp.lv button { min-width: 2.2em; padding: 3px 0; }
+    .plan .prow:not(:has(.lv)) { grid-template-columns: 3.2em auto; }
+    .plan .prow .pgrp { justify-self: start; }
+    .plan .pgrp button.on { background: linear-gradient(#e2c26a, #b8902c); color: #1c1a17; font-weight: bold; outline: none; }
+    #planBtn { white-space: normal; text-align: left; line-height: 1.3; }
     .upbtn { font-size: 11.5px; padding: 1px 6px; margin: 0 4px 0 1px; border-color: rgba(120,200,150,0.7); color: #a8f0c4; background: rgba(60,140,90,0.22); animation: upglow 1.8s ease-in-out infinite; }
     @keyframes upglow { 0%, 100% { box-shadow: 0 0 0 rgba(120,220,160,0); } 50% { box-shadow: 0 0 8px rgba(120,220,160,0.8); } }
     .cc-table { border-collapse: collapse; margin: 6px auto; font-size: 13.5px; }
@@ -532,12 +543,12 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     /* 観戦・速さ・音の並びは情報欄の上に置く（情報欄の高さが変わっても動かず、速い観戦でも押しやすい） */
     #ctl { padding-top: 6px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
     /* 観戦・速さ・設定は1行に収める */
-    .speed { padding-bottom: 6px; gap: 3px; flex-wrap: nowrap; }
-    .speed #watch { margin-right: 3px; padding: 4px 8px; }
-    .speed [data-speed] { min-width: 27px; }
+    .speed { padding: 0 6px 6px; gap: 3px; flex-wrap: nowrap; }
+    .speed #watch { margin-right: 2px; padding: 4px 6px; }
+    .speed [data-speed] { width: 26px; min-width: 0; padding-left: 0; padding-right: 0; }
     .speed > * { flex-shrink: 0; white-space: nowrap; }
     .ctlbox { max-height: 45vh; overflow: auto; }
-    .speed #ctlMore { margin-left: auto; padding: 4px 8px; }
+    .speed #ctlMore { margin-left: auto; padding: 4px 6px; }
     /* 「設定」を押すと開く：音・曲・記録の細かさ・おまかせの方針 */
     .ctlbox { display: flex; flex-direction: column; gap: 4px; padding: 0 10px 8px; font-size: 13px; }
     .ctlbox .vol, .ctlbox .lvl { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
@@ -728,9 +739,9 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-CdsdQbmc.js"></script>
+  <script type="module" crossorigin src="./assets/index-Dke0JpVw.js"></script>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app"></div>
 </body>
 </html>
