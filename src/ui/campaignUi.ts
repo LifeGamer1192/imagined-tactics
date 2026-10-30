@@ -41,7 +41,7 @@ import { captiveOf, executeCaptive, myCaptives, myCaptured, ransomCaptive, ranso
 import { artMp, artName, forgetArt, learnerName, learnersOf, lessonLearner, lessonMonths, maxMpOf, slotsLeft, slotsOfLearner, startLesson, teachableArts, teacherProblem, teachProblem } from '../strategy/teach';
 import { classTip, commandTip, heroLabel, heroTip, personalityTip, strengthRank, strengthTip, traitTip, unitTip } from './describe';
 import { initTips } from './tip';
-import { personalityLabel, personalityOf, planLabel, PLAN_LABEL, PLAN_TIP } from '../ai/personality';
+import { personalityLabel, personalityOf, planLabel, PLAN_AXES, PLAN_LABEL, PLAN_LEVEL_AXES, PLAN_TIP } from '../ai/personality';
 import { bindPlan, getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
 import { spanText, startChronicle } from '../strategy/chronicle';
 import { artUrl } from '../art/art';
@@ -593,7 +593,7 @@ export class CampaignScreen {
       box.innerHTML = `<h2>おまかせの方針</h2>
         <p class="small">味方をおまかせで戦わせるとき（攻め・守りの「おまかせ」「観戦」、1か月オート、戦闘中の一部だけおまかせ）は、武将の性格ではなく、ここで選んだ方針で動きます。敵は今までどおり武将の性格で動きます。戦闘の画面でも、いつでも切り替えられます。</p>
         ${planPickerHtml(getPlan())}
-        <ul class="small dim">${(['push', 'aim', 'mind'] as const).map((k) => `<li>${PLAN_LABEL[k][getPlan()[k] as never]}：${PLAN_TIP[k][getPlan()[k] as never]}</li>`).join('')}</ul>
+        <ul class="small dim"><li>${PLAN_LABEL.aim[getPlan().aim]}：${PLAN_TIP.aim[getPlan().aim]}</li>${PLAN_LEVEL_AXES.map((k) => `<li>${PLAN_AXES[k].name} ${getPlan()[k]}：${PLAN_AXES[k].tip}</li>`).join('')}</ul>
         <button class="primary" data-a="ok">閉じる</button>`;
       wirePlanPicker(box, () => draw());
       box.querySelector<HTMLButtonElement>('[data-a="ok"]')!.onclick = () => { box.remove(); this.refresh(); };

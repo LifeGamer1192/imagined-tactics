@@ -24,7 +24,9 @@ export interface AiConfig {
   /** 装填：込めていない弩・鉄砲の待機の値打ち（撃てるようになる技の威力に掛ける） */
   reload: number;
   /** 味方のおまかせの方針（P50）で掛ける重み */
-  plan: { generalTarget: number; leaderKill: number; weakTarget: number; weakKill: number; otherWeak: number; nearAim: number; cunningTactics: number; directTactics: number };
+  plan: { generalTarget: number; leaderKill: number; weakTarget: number; weakKill: number; otherWeak: number; nearAim: number; cunningTactics: number; directTactics: number;
+    /** P104：統制の段階ごとの、采配範囲・将からの離れの重みの掛け目（1〜5）。密集：隣の味方1体ごとの点・いちばん近い味方から1マス離れるごとの点。包囲：敵の裏に立つ点・その敵の隣の味方1体ごとの点（どれも5段階の5のとき） */
+    commandMult: number[]; tightAdj: number; tightGap: number; envelopBack: number; envelopMates: number };
   /** keep・ring・retake・retakeUrgent・retakeHit は守り手の天守の守り（P88） */
   castle: { hold: number; approach: number; guard: number; guardRange: number; breach: number; breachKill: number; breachClosed: number; keep: number; ring: number; retake: number; retakeUrgent: number; retakeHit: number; /** 天守の上の攻め手を叩くとき、勝ちが迫るほど反撃を気にしない割合（0.11.0） */ retakeCounterCut: number };
   /** 発動中の天佑の持ち主を狙う倍率（P102。倒せば天佑が消える） */
@@ -63,42 +65,62 @@ export const AI = aiJson as unknown as AiConfig;
 export const NEUTRAL: Personality = { aggression: 0, caution: 0, discipline: 0, cunning: 0, cruelty: 0, care: 0, honor: 0 };
 
 /**
- * 味方のおまかせの方針（P50）。自分の陣営のおまかせは、武将の性格を使わず、これで動く（敵は今までどおり性格で動く）。
- * push：猛攻⇔消極、aim：最寄り狙い⇔将狙い⇔弱った敵狙い、mind：直情⇔知略
+ * 味方のおまかせの方針（P50。P104 で5段階に）。自分の陣営のおまかせは、武将の性格を使わず、これで動く（敵は今までどおり性格で動く）。
+ * push：消極1〜猛攻5、aim：最寄り狙い・将狙い・弱った敵狙い（3つから選ぶ）、mind：直情1〜知略5、
+ * tight：密集（1 気にしない〜5 できるだけ味方の隣）、command：統制（1 気にしない〜5 兵は将の采配範囲から出ない）、
+ * envelop：包囲（1 気にしない〜5 敵の裏へ回り込んで囲む）
  */
-export interface AutoPlan { push: 'push' | 'wait'; aim: 'near' | 'general' | 'weak'; mind: 'direct' | 'cunning' }
-export const DEFAULT_PLAN: AutoPlan = { push: 'push', aim: 'near', mind: 'direct' };
+export type PlanLevel = 1 | 2 | 3 | 4 | 5;
+export interface AutoPlan { push: PlanLevel; aim: 'near' | 'general' | 'weak'; mind: PlanLevel; tight: PlanLevel; command: PlanLevel; envelop: PlanLevel }
+export const DEFAULT_PLAN: AutoPlan = { push: 5, aim: 'near', mind: 1, tight: 3, command: 3, envelop: 3 };
+/** 5段階の軸：名前、1と5の呼び名、説明 */
+export const PLAN_AXES = {
+  push: { name: '攻め', low: '消極', high: '猛攻', tip: '5に近いほど前へ出て攻め、傷ついても退きにくい。1に近いほど無理に前へ出ず、守りを固めて待ち、傷つくと早めに退く' },
+  mind: { name: '策', low: '直情', high: '知略', tip: '5に近いほど軍略（補助・妨害・状態）を進んで使う。1に近いほど技でまっすぐ攻め、軍略はあまり使わない' },
+  tight: { name: '密集', low: '散開', high: '密集', tip: '5に近いほど味方の駒の近くへ寄る（5ならできるだけ隣り合う）。とどめを刺せるときなどは離れる。1は気にしない' },
+  command: { name: '統制', low: '自由', high: '統制', tip: '5に近いほど、兵は率いる将の采配範囲の中にとどまり、将は兵を範囲に収める。とどめを刺せるときなどは出る。1はあまり気にしない' },
+  envelop: { name: '包囲', low: '気にしない', high: '包囲優先', tip: '5に近いほど、敵の裏側へ回り込み、味方と挟んで囲む動きを優先する。1は包囲を気にしない' },
+} as const;
+export type PlanAxis = keyof typeof PLAN_AXES;
+export const PLAN_LEVEL_AXES: PlanAxis[] = ['push', 'mind', 'tight', 'command', 'envelop'];
 export const PLAN_LABEL = {
-  push: { push: '猛攻', wait: '消極' },
   aim: { near: '最寄り狙い', general: '将狙い', weak: '弱った敵狙い' },
-  mind: { direct: '直情', cunning: '知略' },
 } as const;
 export const PLAN_TIP = {
-  push: { push: '前へ出て攻める。傷ついても退きにくい', wait: '無理に前へ出ず、守りを固めて待つ。傷つくと早めに退く' },
   aim: { near: 'いちばん近い敵から叩く', general: '敵の将を優先して狙う（将を倒すと配下の兵がみな退く）', weak: '弱った敵・倒せる敵を優先して狙う' },
-  mind: { direct: '技でまっすぐ攻める。軍略（補助・妨害）はあまり使わない', cunning: '軍略（補助・妨害・状態）を進んで使い、策で戦う' },
 } as const;
-/** 方針の名前（「猛攻・最寄り狙い・直情」） */
-export const planLabel = (p: AutoPlan): string => `${PLAN_LABEL.push[p.push]}・${PLAN_LABEL.aim[p.aim]}・${PLAN_LABEL.mind[p.mind]}`;
-/** 方針を、動き方の軸（性格と同じ形）にする */
+/** 方針の名前（「猛攻5・最寄り狙い・直情1・密集3・統制3・包囲3」） */
+export const planLabel = (p: AutoPlan): string => {
+  const lv = (k: PlanAxis): string => `${p[k] >= 3 ? PLAN_AXES[k].high : PLAN_AXES[k].low}${p[k]}`;
+  return `${lv('push')}・${PLAN_LABEL.aim[p.aim]}・${lv('mind')}・密集${p.tight}・統制${p.command}・包囲${p.envelop}`;
+};
+/** 1〜5 を 0〜1 に */
+export const planT = (v: PlanLevel): number => (v - 1) / 4;
+const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
+/** 方針を、動き方の軸（性格と同じ形）にする。1と5は、前の2段階の「消極・猛攻」「直情・知略」と同じ */
 export function planPersona(p: AutoPlan): Personality {
+  const push = planT(p.push), mind = planT(p.mind);
   return {
     ...NEUTRAL,
-    aggression: p.push === 'push' ? 0.8 : -0.7,
-    caution: p.push === 'push' ? -0.5 : 0.6,
+    aggression: mix(-0.7, 0.8, push),
+    caution: mix(0.6, -0.5, push),
     discipline: 0.4,
-    cunning: p.mind === 'cunning' ? 0.8 : -0.6,
+    cunning: mix(-0.6, 0.8, mind),
     cruelty: p.aim === 'weak' ? 0.8 : p.aim === 'near' ? -0.5 : 0,
     honor: p.aim === 'general' ? 0.8 : 0,
     care: 0.3,
   };
 }
+const level = (v: unknown, dflt: PlanLevel): PlanLevel => (typeof v === 'number' && v >= 1 && v <= 5 ? Math.round(v) as PlanLevel : dflt);
+/** 覚えていた方針を、今の形に直す（前の2段階の形：push 'push'→5・'wait'→1、mind 'direct'→1・'cunning'→5） */
 export function validPlan(p: unknown): AutoPlan {
-  const q = (p ?? {}) as Partial<AutoPlan>;
+  const q = (p ?? {}) as Record<string, unknown>;
+  const push = q.push === 'wait' ? 1 : q.push === 'push' ? 5 : level(q.push, DEFAULT_PLAN.push);
+  const mind = q.mind === 'cunning' ? 5 : q.mind === 'direct' ? 1 : level(q.mind, DEFAULT_PLAN.mind);
   return {
-    push: q.push === 'wait' ? 'wait' : 'push',
+    push, mind,
     aim: q.aim === 'general' || q.aim === 'weak' ? q.aim : 'near',
-    mind: q.mind === 'cunning' ? 'cunning' : 'direct',
+    tight: level(q.tight, DEFAULT_PLAN.tight), command: level(q.command, DEFAULT_PLAN.command), envelop: level(q.envelop, DEFAULT_PLAN.envelop),
   };
 }
 const clamp = (v: number): number => Math.max(-1, Math.min(1, v));

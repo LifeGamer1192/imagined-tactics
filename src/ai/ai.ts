@@ -20,7 +20,7 @@ import { MinHeap } from '../core/heap';
 import { RNG, codeToSeed } from '../core/rng';
 import { reach, stepCost } from '../rules/move';
 import { attackPower, basicSkill, disabled, has, moveOf, outOfCommand, skillOf, skillRange, terrainMod } from '../rules/stats';
-import { AI, NEUTRAL, planPersona, weightsFor, type Personality, type SmartConfig } from './personality';
+import { AI, NEUTRAL, planPersona, planT, weightsFor, type Personality, type SmartConfig } from './personality';
 
 export type Stance = 'advance' | 'engage' | 'hold' | 'retreat';
 export type Role = 'front' | 'ranged' | 'caster' | 'support';
@@ -392,6 +392,8 @@ function jitter(a: number, b: number, c: number): number {
 
 interface PosCtx {
   stance: Stance; role: Role; w: Record<string, number>; persona: Personality;
+  /** 味方のおまかせの方針の、密集・包囲の強さ（P104。0〜1。方針で動く駒だけ） */
+  shape?: { tight: number; envelop: number };
   leader: BUnit | null; foes: BUnit[]; threats: Threat[]; origin: number; urgent: number; joins: boolean;
   /** 城壁のある戦場だけ：各マスから一番近い敵までの道のり（歩数） */
   travel: Float64Array | null;
@@ -460,6 +462,15 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
     const peers = st.units.filter((x) => x.alive && x.kind === 'general' && x.side === u.side && x.id !== u.id);
     if (peers.length) coh -= w.cohesion * Math.max(0, nearestDist(st, u.pos, peers) - AI.stance.generalSpread);
   }
+  // 密集（P104）：味方の駒の隣に寄る。5に近いほど強く、隣が多いほど良く、いちばん近い味方から離れるほど悪い。
+  // とどめ（倒す値打ち）のほうがずっと大きいので、倒せるときは離れてでも攻める
+  if (c.shape?.tight) {
+    const P = AI.plan, mates = st.units.filter((x) => x.alive && x.side === u.side && x.id !== u.id);
+    if (mates.length) {
+      const adj = mates.filter((x) => g.distance(x.pos, u.pos) === 1).length;
+      coh += c.shape.tight * (P.tightAdj * Math.min(adj, 3) - P.tightGap * Math.max(0, nearestDist(st, u.pos, mates) - 1));
+    }
+  }
   parts.cohesion = coh;
 
   // 脅威：次の敵の番に受けそうなダメージ。攻め手は時間切れが近いほど気にしない
@@ -516,6 +527,28 @@ function scorePosition(st: BattleState, u: BUnit, c: PosCtx, parts: ScoreParts):
     if (sm.buddy && exp > 0) {
       const mates = st.units.filter((x) => x.alive && x.side === u.side && x.id !== u.id && g.distance(x.pos, u.pos) === 1).length;
       sp += sm.buddy * Math.min(mates, 2);
+    }
+  }
+  // 包囲（P104）：隣の敵の、味方の多い側と反対（裏）に立つと良い。その敵の隣にいる味方が多いほど良い。弱った敵ほど良い
+  if (c.shape?.envelop) {
+    const P = AI.plan, mates = st.units.filter((x) => x.alive && x.side === u.side && x.id !== u.id);
+    if (mates.length) {
+      const [mx, my] = mates.reduce(([ax, ay], x) => { const [cx, cy] = g.center(x.pos, 1); return [ax + cx / mates.length, ay + cy / mates.length]; }, [0, 0]);
+      const [ux, uy] = g.center(u.pos, 1);
+      for (const f of c.foes) {
+        if (g.distance(f.pos, u.pos) !== 1) continue;
+        const [fx, fy] = g.center(f.pos, 1);
+        const back = (ux - fx) * (mx - fx) + (uy - fy) * (my - fy) < 0;
+        const ring = mates.filter((x) => g.distance(x.pos, f.pos) === 1).length;
+        sp += c.shape.envelop * (1.3 - f.hp / f.maxHp) * ((back ? P.envelopBack : 0) + P.envelopMates * Math.min(ring, 3));
+      }
+      // 裏へ回る途中：隣でなくても、敵の裏側の2マス以内に近づくのを少し良く見る
+      for (const f of c.foes) {
+        const d = g.distance(f.pos, u.pos);
+        if (d !== 2) continue;
+        const [fx, fy] = g.center(f.pos, 1);
+        if ((ux - fx) * (mx - fx) + (uy - fy) * (my - fy) < 0) sp += c.shape.envelop * P.envelopBack * 0.3;
+      }
     }
   }
   parts.spacing = sp;
@@ -638,9 +671,12 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     if (plan.aim === 'general') { w.generalTarget *= P.generalTarget; w.leaderKill = Math.max(w.leaderKill, P.leaderKill); w.weakTarget *= P.otherWeak; }
     else if (plan.aim === 'weak') { w.weakTarget *= P.weakTarget; w.kill *= P.weakKill; w.generalTarget = 1; }
     else { w.nearAim = P.nearAim; w.weakTarget *= P.otherWeak; w.generalTarget = 1; w.supportTarget = 1; }
-    // 直情：軍略（補助・妨害・状態）をあまり使わない。知略：進んで使う
-    const k = plan.mind === 'cunning' ? P.cunningTactics : P.directTactics;
+    // 策（P104。5段階）：1 直情は軍略（補助・妨害・状態）をあまり使わず、5 知略は進んで使う。あいだは掛け目を比で埋める
+    const k = P.directTactics * (P.cunningTactics / P.directTactics) ** planT(plan.mind);
     w.buff *= k; w.debuff *= k; w.status *= k;
+    // 統制（P104）：兵が采配範囲の外に出る・将から離れることを、段階に応じて重く見る
+    const cm = P.commandMult[plan.command - 1];
+    w.outOfCommand *= cm; w.cohesion *= cm;
   }
   // 攻め手は押す（むずかしい）：時間が経つほど、危険と倒される危うさを軽く見る
   if (lv?.smart?.attackerPush && u.home === 0) {
@@ -663,6 +699,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
     travel: st.map.siege && foes.length ? travelField(st, u, foes) : null,
     seatPath: st.hold && u.side === 0 ? travelField(st, u, [{ pos: st.hold.cell } as BUnit]) : null,
     guardMult: lv?.weights.guard ?? 1,
+    ...(plan ? { shape: { tight: planT(plan.tight), envelop: planT(plan.envelop) } } : {}),
     keep: st.hold && u.side === 1 ? keepCtx(st, u) : undefined,
     smart: lv?.smart,
     threats: threatsTo(st, u, !!lv?.smart?.exactReach),
@@ -678,6 +715,9 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   let stay = -Infinity;
   // 気力の値打ちで使う：この駒が、いま撃てるいちばん良い一撃の大きさ（気力の値打ちを引く前）
   let bestCast = 0;
+  // とどめの例外（P104）の基準：今いる場所での、密集・統制の減点
+  let originCoh = -Infinity;
+  if (ctx.shape) { u.pos = origin; const p0 = zeroParts(); scorePosition(st, u, ctx, p0); originCoh = p0.cohesion; }
   for (const c of cells) {
     u.pos = c; u.moved = wasMoved || c !== origin;
     const base = zeroParts();
@@ -702,7 +742,10 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
         if (skill.mp > 0) bestCast = Math.max(bestCast, r.value + skill.mp * w.mp);
         if (r.value <= 0) continue;
         const heals = skill.effects.some((e) => e.type === 'heal');
-        consider({ ...base, attack: heals ? 0 : r.value, support: heals ? r.value : 0, counter: r.counter }, { type: 'skill', unit: u.id, skill: sid, target: t });
+        // とどめ（P104。方針で動く駒だけ）：倒せる攻めなら、まとまりの点を今いる場所と同じにする（離れてでも倒しに行く）
+        // まとまりの点（密集・統制）を、今いる場所と同じまで戻す（離れて失うぶんを数えない）
+        const finish = base.cohesion < originCoh && !heals && skillVictims(st, u, skill, t).some((v) => v.side !== u.side && skillDamage(st, u, skill, v) >= v.hp);
+        consider({ ...base, cohesion: finish ? originCoh : base.cohesion, attack: heals ? 0 : r.value, support: heals ? r.value : 0, counter: r.counter }, { type: 'skill', unit: u.id, skill: sid, target: t });
       }
     }
     // 造りを壊す（攻め手だけ）：閉じた門を開けると道が開くので、少し高く見る。相手を攻められるときは、ふつうそちらが勝つ

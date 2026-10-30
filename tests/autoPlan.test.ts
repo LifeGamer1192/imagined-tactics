@@ -1,7 +1,7 @@
-// 味方のおまかせの方針（P50）：性格の代わりに方針で動く。狙う相手が方針で変わる。セーブに残る
+// 味方のおまかせの方針（P50。P104 で5段階と、密集・統制・包囲を足した）：性格の代わりに方針で動く。狙う相手が方針で変わる。セーブに残る
 import { describe, expect, it } from 'vitest';
 import { personaOf, planUnitDetailed } from '../src/ai/ai';
-import { NEUTRAL, planPersona, type AutoPlan, type Personality } from '../src/ai/personality';
+import { DEFAULT_PLAN, NEUTRAL, planPersona, validPlan, type AutoPlan, type Personality } from '../src/ai/personality';
 import { parseMap } from '../src/battle/map';
 import type { BUnit, BattleState, Side } from '../src/battle/types';
 import { convert, generalsOf, makeTroop } from '../src/convert/convert';
@@ -49,13 +49,14 @@ function targetOf(st: BattleState, u: BUnit): number | undefined {
 
 describe('auto plan for the player side', () => {
   it('replaces personality with the plan for that side only', () => {
-    const { st, u, near } = scene({ push: 'wait', aim: 'general', mind: 'cunning' });
-    expect(personaOf(st, u)).toEqual(planPersona({ push: 'wait', aim: 'general', mind: 'cunning' }));
+    const plan: AutoPlan = { ...DEFAULT_PLAN, push: 1, aim: 'general', mind: 5 };
+    const { st, u, near } = scene(plan);
+    expect(personaOf(st, u)).toEqual(planPersona(plan));
     expect(personaOf(st, near)).toEqual(st.units[near.leader].persona);
   });
 
   it('aims at the nearest, the general, or the weakened enemy as chosen', () => {
-    const pick = (aim: AutoPlan['aim']) => { const s = scene({ push: 'push', aim, mind: 'direct' }); return [targetOf(s.st, s.u), s] as const; };
+    const pick = (aim: AutoPlan['aim']) => { const s = scene({ ...DEFAULT_PLAN, push: 5, aim, mind: 1 }); return [targetOf(s.st, s.u), s] as const; };
     const [n, sn] = pick('near'), [g, sg] = pick('general'), [w, sw] = pick('weak');
     expect(n).toBe(sn.near.id);
     expect(g).toBe(sg.gen.id);
@@ -66,8 +67,90 @@ describe('auto plan for the player side', () => {
     const save = await loadFixture('sengoku_fid5_1575'), gs = convert(save);
     const f = Object.values(gs.factions).sort((a, b) => generalsOf(gs, b.id).length - generalsOf(gs, a.id).length)[0];
     const c = newCampaign(gs, save.world, f.id);
-    c.autoPlan = { push: 'wait', aim: 'weak', mind: 'cunning' };
+    c.autoPlan = { push: 2, aim: 'weak', mind: 4, tight: 5, command: 1, envelop: 3 };
     const back = restore(JSON.parse(JSON.stringify(snapshot(c))));
     expect(back.autoPlan).toEqual(c.autoPlan);
+  });
+
+  it('reads the old two-step plans as the ends of the five steps (P104)', () => {
+    expect(validPlan({ push: 'wait', aim: 'general', mind: 'cunning' })).toEqual({ push: 1, aim: 'general', mind: 5, tight: 3, command: 3, envelop: 3 });
+    expect(validPlan({ push: 'push', aim: 'near', mind: 'direct' })).toEqual({ ...DEFAULT_PLAN, push: 5, mind: 1 });
+    expect(validPlan({ push: 9, tight: 0 })).toEqual(DEFAULT_PLAN);
+    // 1と5は、前の2段階と同じ動き方
+    expect(planPersona({ ...DEFAULT_PLAN, push: 1 }).aggression).toBeCloseTo(-0.7, 6);
+    expect(planPersona({ ...DEFAULT_PLAN, push: 5 }).aggression).toBeCloseTo(0.8, 6);
+    expect(planPersona({ ...DEFAULT_PLAN, push: 3 }).aggression).toBeCloseTo(0.05, 6);
+  });
+});
+
+/** 動いた先（動かなければ今の場所） */
+function moveTo(st: BattleState, u: BUnit): number {
+  const a = planUnitDetailed(st, u).actions.find((x) => x.type === 'move');
+  return a && a.type === 'move' ? a.to : u.pos;
+}
+
+describe('formation, command and envelopment (P104)', () => {
+  it('tight 5 moves next to friends, tight 1 does not care', () => {
+    const run = (tight: AutoPlan['tight']) => {
+      const st = field();
+      const lead = put(st, 'u01a', 0, 1, 1, { persona: {} });
+      lead.commandRange = 12;
+      put(st, 'u01a', 0, 2, 4, { leader: lead }); put(st, 'u01a', 0, 2, 5, { leader: lead });
+      const u = put(st, 'u07a', 0, 7, 4, { leader: lead });
+      put(st, 'u01a', 1, 12, 8);
+      st.autoPlan = [{ ...DEFAULT_PLAN, push: 3, tight, envelop: 1 }, null];
+      const to = moveTo(st, u);
+      return Math.min(...st.units.filter((x) => x.side === 0 && x.id !== u.id).map((x) => st.map.grid.distance(x.pos, to)));
+    };
+    expect(run(5)).toBe(1);
+    expect(run(1)).toBeGreaterThan(1);
+  });
+
+  it('command 5 keeps a troop inside its general\'s range; command 1 lets it wander toward the enemy', () => {
+    const run = (command: AutoPlan['command']) => {
+      const st = field();
+      const lead = put(st, 'u01a', 0, 1, 4, { persona: {} });
+      lead.commandRange = 2;
+      const u = put(st, 'u07a', 0, 3, 4, { leader: lead });
+      put(st, 'u01a', 1, 12, 4);
+      st.autoPlan = [{ ...DEFAULT_PLAN, push: 5, command, tight: 1, envelop: 1 }, null];
+      return st.map.grid.distance(moveTo(st, u), lead.pos);
+    };
+    expect(run(5)).toBeLessThanOrEqual(2);
+    expect(run(1)).toBeGreaterThan(2);
+  });
+
+  it('envelop 5 goes round to the back of an enemy that a friend is facing, and only then scores the envelopment', () => {
+    const plan = (envelop: AutoPlan['envelop'], c: number, r: number) => {
+      const st = field();
+      const lead = put(st, 'u01a', 0, 1, 4, { persona: {} });
+      lead.commandRange = 12;
+      put(st, 'u01a', 0, 5, 4, { leader: lead });
+      const foe = put(st, 'u01a', 1, 6, 4);
+      const u = put(st, 'u07a', 0, c, r, { leader: lead });
+      st.autoPlan = [{ ...DEFAULT_PLAN, push: 3, envelop, tight: 1 }, null];
+      const p = planUnitDetailed(st, u), g = st.map.grid;
+      const m = p.actions.find((x) => x.type === 'move'), to = m && m.type === 'move' ? m.to : u.pos;
+      return { behind: g.distance(to, foe.pos) === 1 && g.center(to, 1)[0] > g.center(foe.pos, 1)[0], spacing: p.parts.spacing };
+    };
+    const starts: [number, number][] = [[3, 2], [4, 2], [3, 6], [4, 6], [4, 3], [4, 5], [2, 3], [2, 5]];
+    for (const [c, r] of starts) {
+      const hi = plan(5, c, r), lo = plan(1, c, r);
+      expect(hi.behind, `${c},${r}`).toBe(true);
+      expect(hi.spacing).toBeGreaterThan(0);
+      expect(lo.spacing).toBe(0);
+    }
+  });
+
+  it('even at tight 5 and command 5, a unit leaves to finish off a weakened enemy', () => {
+    const st = field();
+    const lead = put(st, 'u01a', 0, 1, 4, { persona: {} });
+    lead.commandRange = 1;
+    put(st, 'u01a', 0, 1, 5, { leader: lead });
+    const u = put(st, 'u07a', 0, 2, 4, { leader: lead });
+    const foe = put(st, 'u01a', 1, 6, 4, { hp: 5 });
+    put(st, 'u01a', 1, 12, 8);
+    st.autoPlan = [{ ...DEFAULT_PLAN, push: 3, tight: 5, command: 5, envelop: 1 }, null];
+    expect(targetOf(st, u)).toBe(foe.id);
   });
 });

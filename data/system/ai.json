@@ -89,7 +89,9 @@
       "statMult": 1.15 }
   },
   "reload": 0.6,
-  "plan": { "generalTarget": 2.5, "leaderKill": 0.5, "weakTarget": 4, "weakKill": 1.5, "otherWeak": 0.4, "nearAim": 0.35, "cunningTactics": 1.6, "directTactics": 0.4 },
+  "plan": { "generalTarget": 2.5, "leaderKill": 0.5, "weakTarget": 4, "weakKill": 1.5, "otherWeak": 0.4, "nearAim": 0.35, "cunningTactics": 1.6, "directTactics": 0.4,
+    "_p104": "P104：統制の掛け目（段階1〜5）、密集・包囲の点（段階5のとき。段階1は0、あいだは比例）",
+    "commandMult": [0.3, 0.6, 1, 2, 3.5], "tightAdj": 16, "tightGap": 22, "envelopBack": 32, "envelopMates": 10 },
   "castle": { "hold": 90, "approach": 1.0, "guard": 30, "guardRange": 4, "breach": 25, "breachKill": 45, "breachClosed": 1.5, "keep": 40, "ring": 12, "retake": 6, "retakeUrgent": 4, "retakeHit": 60, "retakeCounterCut": 1.0 },
   "_boonTarget": "発動中の天佑の持ち主を狙う倍率（P102）",
   "boonTarget": 1.3,
