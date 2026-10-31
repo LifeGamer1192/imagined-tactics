@@ -214,8 +214,9 @@ export class App {
   // ------------------------------------------------------------ 読み込み
 
   private titleScreen(error = ''): void {
-    // タイトルだけ背景画を敷く（絵が無ければ地の色のまま）
-    const bg = artUrl('bg/title');
+    // タイトルだけ背景画を敷く（絵が無ければ地の色のまま）。日本・中国・西洋の絵があれば、開くたびにどれかを選ぶ
+    const titles = ['bg/title', 'bg/title_jp', 'bg/title_cn', 'bg/title_west'].map((n) => artUrl(n)).filter((u): u is string => !!u);
+    const bg = titles.length ? titles[Math.floor(Math.random() * titles.length)] : null;
     setScene(null);
     initBgm(); bgm('title');
     document.body.classList.add('title');

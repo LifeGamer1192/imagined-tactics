@@ -4,9 +4,13 @@
 import { art, artUrl } from '../art/art';
 import { getArtSet, type ArtSet } from '../data/db';
 
+/** あとから足した場面の絵。その版の絵がまだ無ければ、近い場面の絵で代える */
+const SCENE_STANDIN: Record<string, string> = { war: 'setup', omen: 'envoy', peace: 'envoy', captive: 'defect' };
+
 /** 今の絵の版に合った絵（その版の絵が無ければ、共通の絵） */
 export function sceneUrl(name: string, set: ArtSet = getArtSet()): string | null {
-  return artUrl(`bg/${name}_${set}`) ?? artUrl(`scene/${name}_${set}`) ?? artUrl(`bg/${name}`);
+  const url = artUrl(`bg/${name}_${set}`) ?? artUrl(`scene/${name}_${set}`) ?? artUrl(`bg/${name}`);
+  return url ?? (SCENE_STANDIN[name] ? sceneUrl(SCENE_STANDIN[name], set) : null);
 }
 
 /** 月 → 季節の帯の絵（3〜5月が春、6〜8月が夏、9〜11月が秋、12〜2月が冬） */

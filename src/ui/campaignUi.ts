@@ -432,7 +432,7 @@ export class CampaignScreen {
     if (!items.length) return;
     const kinds = ORDER.filter((k) => items.some((e) => KIND[e.key] === k));
     const TITLE: Record<string, string> = { hgoal: '史実の目標', hbattle: '史実の合戦', omen: '兆し', death: '訃報', defect: '寝返り', captive: '捕虜', succession: '代替わり', history: '史実の出来事', envoy: '外交の知らせ', travel: '諸国巡りから', promote: '新たな顔ぶれ', capital: '遷都', recover: '療養明け', teach: '直伝', classup: '昇進できる' };
-    const SCENE: Record<string, string> = { hbattle: 'setup', hgoal: 'setup', history: 'envoy', omen: 'envoy', captive: 'defect', death: 'death', defect: 'defect', succession: 'succession', envoy: 'envoy', travel: 'travel', promote: 'promote' };
+    const SCENE: Record<string, string> = { hbattle: 'war', hgoal: 'war', history: 'envoy', omen: 'omen', captive: 'captive', death: 'death', defect: 'defect', succession: 'succession', envoy: 'envoy', travel: 'travel', promote: 'promote' };
     // 出来事の種類ごとに見出しを付けて並べる（種類が1つなら見出しは窓の題に）
     const list = (k: string): string => {
       const es = items.filter((e) => KIND[e.key] === k), more = es.length - 8;
@@ -742,7 +742,7 @@ export class CampaignScreen {
     if (owner && relation(c, c.player, owner.id) === 'neutral') {
       const allies = Object.values(gs.factions).filter((x) => x.id !== owner.id && x.id !== c.player && relation(c, x.id, owner.id) === 'ally').map((x) => esc(x.name.ja));
       const ok = await confirmBox(this.frame(), {
-        title: `${esc(owner.name.ja)}と開戦して攻める`, danger: true, banner: sceneUrl('setup'),
+        title: `${esc(owner.name.ja)}と開戦して攻める`, danger: true, banner: sceneUrl('war'),
         body: `<p>${factionBadge(owner.name.ja, owner.color)} とは、いま戦をしていません（中立）。${esc(gs.provinces[prov].name.ja)}へ攻め込むと、<b>${esc(owner.name.ja)}と戦</b>になります。</p>
           <ul class="small"><li>停戦するまで、互いに領を攻め合えるようになる（${esc(owner.name.ja)}からも攻めてくる）</li>
           <li>${esc(owner.name.ja)}の心証が大きく下がる</li>
@@ -1224,7 +1224,7 @@ export class CampaignScreen {
     const chance = recruitChance(c, cap), months = Math.max(0, gs.tick - cap.since);
     const box = document.createElement('div');
     box.className = 'result ask captive';
-    box.innerHTML = `<h2 class="wrap">${cap.lord ? '敵の当主を捕らえた' : '捕虜をどうするか'}</h2>
+    box.innerHTML = `${bannerHtml(sceneUrl('captive'))}<h2 class="wrap">${cap.lord ? '敵の当主を捕らえた' : '捕虜をどうするか'}</h2>
       <div class="pf-head">${this.figure(g)}<div>
         <div class="pf-name">${esc(g.name.ja)}${cap.lord ? ' <span class="tag">当主</span>' : ''}</div>
         <div class="dim">${esc(from?.name.ja ?? '滅んだ家')}・${esc(L(cls.name))} Lv${g.level}・${g.age}歳${months ? `・捕らえて${months}か月` : ''}</div>
@@ -1712,7 +1712,7 @@ export class CampaignScreen {
         // 新しく覚える技・軍略の説明と気力のバー（P85）。祝いの窓では「覚えた」と言い換える
         const arts = generalArtsHtml(g, to), learnt = generalArtsHtml(g, to, '新しく覚えた技・軍略');
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(g.name.ja)}を ${esc(next)} に昇進させる`, banner: sceneUrl('setup'),
+          title: `${esc(g.name.ja)}を ${esc(next)} に昇進させる`, banner: sceneUrl('promote'),
           body: `<p><b>${esc(from)}</b> → <b>${esc(next)}</b></p><p class="warn">⚠ 昇進すると、元の役職には戻れません。</p>${changeTable(rows)}${arts}<p class="small">${esc(classTip(to)).replace(/\n/g, '<br>')}</p>`,
           ok: '昇進させる', cancel: 'やめる', btnTop: true,
         });
@@ -1730,7 +1730,7 @@ export class CampaignScreen {
         const rule = D.byUnit[t.unitId].promote.find((p) => p.to === to);
         const useItem = rule?.item ? `昇進の品「${esc(D.items[rule.item]?.jp ?? rule.item)}」を1つ使います。` : rule?.lv && t.level < rule.lv ? '昇進の品を1つ使います（レベルが足りないため）。' : '';
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(name)}を ${esc(next)} に進める`, banner: sceneUrl('setup'),
+          title: `${esc(name)}を ${esc(next)} に進める`, banner: sceneUrl('promote'),
           body: `<p>${this.icon(t.unitId)}<b>${esc(from)}</b> → ${this.icon(to)}<b>${esc(next)}</b>（${esc(g.name.ja)}の兵・Lv${t.level}）</p><p class="warn">⚠ 進めると、元の兵種には戻れません。${useItem}</p>${changeTable(rows)}${arts}<p class="small">${esc(unitTip(to)).replace(/\n/g, '<br>')}</p>`,
           ok: '進める', cancel: 'やめる', btnTop: true,
         });
@@ -1890,7 +1890,7 @@ export class CampaignScreen {
         const KIND = { truce: '停戦', alliance: '同盟', vassal: '従属' } as const;
         const what = o.kind === 'alliance' ? '同盟を結ぶと、互いに攻め合えなくなり、相手が攻められたときに加勢を頼まれることがあります。' : o.kind === 'truce' ? `停戦すると、${o.months ? `${o.months}か月` : 'しばらく'}のあいだ互いに攻め合えなくなります。` : '従属を受けると、相手はこちらの下につき、攻め合えなくなります。';
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(f.name.ja)}からの${KIND[o.kind]}の申し込みを${b.dataset.yes ? '受ける' : '断る'}`, banner: sceneUrl('envoy'),
+          title: `${esc(f.name.ja)}からの${KIND[o.kind]}の申し込みを${b.dataset.yes ? '受ける' : '断る'}`, banner: sceneUrl('peace'),
           body: `<p>${what}</p><p class="dim small">${b.dataset.yes ? '受けると、すぐに結ばれます。' : '断ると、相手の心証が少し下がります。'}</p>`,
           ok: b.dataset.yes ? '受ける' : '断る',
         });
@@ -1907,7 +1907,7 @@ export class CampaignScreen {
         const s = fight ? histBattleSetup(c, hb) : null;
         const names = (ids: string[]) => ids.map((id) => gs.generals[id]?.name.ja).filter(Boolean).map(esc).join('・');
         const ok = await confirmBox(this.frame(), {
-          title: `${esc(hb.name)}を${fight ? '戦う' : '見送る'}`, banner: sceneUrl('setup'),
+          title: `${esc(hb.name)}を${fight ? '戦う' : '見送る'}`, banner: sceneUrl('war'),
           body: fight && s
             ? `${hb.deploy ? `<p class="small">${esc(hb.deploy)}</p>` : ''}<p>${esc(gs.provinces[hb.prov]?.name.ja ?? '')}の戦場で、${s.mySide === 0 ? '攻め手' : '守り手'}として戦います。</p><p class="small">自分：${names(s.mySide === 0 ? s.atk : s.def)}<br>相手：${names(s.mySide === 0 ? s.def : s.atk)}</p><p class="small dim">勝てば名声+${S.histBattle.prestige}、相手の軍が減ります。負ければ名声−${S.histBattle.prestigeLoss}。史実と逆の勝ち負けなら、出来事の残りは起きず、史実と違う道になります。</p>`
             : `<p>史実どおり出来事が起きます（自分の家の損耗は起きません）。</p>`,
@@ -1925,7 +1925,7 @@ export class CampaignScreen {
         if (!o) return;
         const guard = b.dataset.c === 'guard';
         const ok = await confirmBox(this.frame(), {
-          title: guard ? `${esc(o.name)}の身に備える` : `${esc(o.name)}の運命を史実に任せる`, banner: sceneUrl('envoy'),
+          title: guard ? `${esc(o.name)}の身に備える` : `${esc(o.name)}の運命を史実に任せる`, banner: sceneUrl('omen'),
           body: `<p class="small">${esc(o.text)}</p><p>${guard
             ? `兵糧${S.omen.cost}を払い、${esc(o.name)}はこの月は行動済みになります。${Math.round(S.omen.avert * 100)}%で難を逃れ、史実と違う道になります（年表に「異」）。`
             : `史実どおり、${esc(o.name)}は${esc(CAUSE_NAME[o.cause] ?? o.cause)}で世を去ります。`}</p>`,
@@ -1965,7 +1965,7 @@ export class CampaignScreen {
         };
         const tx = TEXT[kind];
         if (!f || !tx) return;
-        if (!(await confirmBox(this.frame(), { title: `${esc(f.name.ja)}に${tx[0]}`, body: `<p>${tx[1]}</p>`, ok: tx[0], danger: tx[2], banner: sceneUrl('envoy') }))) return;
+        if (!(await confirmBox(this.frame(), { title: `${esc(f.name.ja)}に${tx[0]}`, body: `<p>${tx[1]}</p>`, ok: tx[0], danger: tx[2], banner: sceneUrl(kind === 'war' ? 'war' : kind === 'break' ? 'envoy' : 'peace') }))) return;
         const ok = b.dataset.dip === 'war' ? declareWar(c, a, to) : b.dataset.dip === 'ally' ? proposeAlliance(c, a, to)
           : b.dataset.dip === 'break' ? breakAlliance(c, a, to) : proposeTruce(c, a, to);
         if (ok) this.refresh();

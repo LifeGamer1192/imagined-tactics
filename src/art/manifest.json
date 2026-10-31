@@ -38,6 +38,15 @@
  "bg/title": [
   "bg/title.webp"
  ],
+ "bg/title_cn": [
+  "bg/title_cn.webp"
+ ],
+ "bg/title_jp": [
+  "bg/title_jp.webp"
+ ],
+ "bg/title_west": [
+  "bg/title_west.webp"
+ ],
  "bg/victory_cn": [
   "bg/victory_cn.webp"
  ],
@@ -467,6 +476,15 @@
  "map/wonder_ink_temple_of_heaven": [
   "map/wonder_ink_temple_of_heaven_0.webp"
  ],
+ "scene/captive_cn": [
+  "scene/captive_cn.webp"
+ ],
+ "scene/captive_jp": [
+  "scene/captive_jp.webp"
+ ],
+ "scene/captive_west": [
+  "scene/captive_west.webp"
+ ],
  "scene/death_cn": [
   "scene/death_cn.webp"
  ],
@@ -494,6 +512,24 @@
  "scene/envoy_west": [
   "scene/envoy_west.webp"
  ],
+ "scene/omen_cn": [
+  "scene/omen_cn.webp"
+ ],
+ "scene/omen_jp": [
+  "scene/omen_jp.webp"
+ ],
+ "scene/omen_west": [
+  "scene/omen_west.webp"
+ ],
+ "scene/peace_cn": [
+  "scene/peace_cn.webp"
+ ],
+ "scene/peace_jp": [
+  "scene/peace_jp.webp"
+ ],
+ "scene/peace_west": [
+  "scene/peace_west.webp"
+ ],
  "scene/promote_cn": [
   "scene/promote_cn.webp"
  ],
@@ -520,6 +556,15 @@
  ],
  "scene/travel_west": [
   "scene/travel_west.webp"
+ ],
+ "scene/war_cn": [
+  "scene/war_cn.webp"
+ ],
+ "scene/war_jp": [
+  "scene/war_jp.webp"
+ ],
+ "scene/war_west": [
+  "scene/war_west.webp"
  ],
  "ui/brush_ink": [
   "ui/brush_ink.webp"
