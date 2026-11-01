@@ -184,6 +184,77 @@
     "rank": null
    }
   ],
+  "promote": [
+   {
+    "to": "u01f",
+    "lv": 35,
+    "item": "item_guard_top"
+   }
+  ],
+  "kind": "foot"
+ },
+ {
+  "id": "u01f",
+  "name": {
+   "jp": "馬廻衆",
+   "cn": "羽林衛"
+  },
+  "line": 1,
+  "tier": 4,
+  "cost": 78,
+  "hp": 678,
+  "mp": 103,
+  "str": 80,
+  "int": 35,
+  "agi": 78,
+  "def": 126,
+  "move": 5,
+  "affinity": "plain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    2
+   ],
+   "agi": [
+    1,
+    2
+   ]
+  },
+  "skills": [
+   "k095",
+   "k096"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "mass",
+    "pct": 5,
+    "max": 15,
+    "rank": null
+   },
+   {
+    "type": "rugged",
+    "rank": null
+   },
+   {
+    "type": "guard",
+    "pct": 30,
+    "rank": null
+   }
+  ],
   "promote": [],
   "kind": "foot"
  },
@@ -1427,6 +1498,71 @@
     "rank": "B"
    }
   ],
+  "promote": [
+   {
+    "to": "u05d",
+    "lv": 35,
+    "item": "item_ninja_top"
+   }
+  ]
+ },
+ {
+  "id": "u05d",
+  "name": {
+   "jp": "上忍",
+   "cn": "影刺"
+  },
+  "line": 5,
+  "tier": 4,
+  "cost": 83,
+  "hp": 564,
+  "mp": 45,
+  "str": 85,
+  "int": 46,
+  "agi": 85,
+  "def": 128,
+  "move": 5,
+  "affinity": "forest",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    1,
+    4
+   ],
+   "mp": [
+    0,
+    2
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    3
+   ]
+  },
+  "skills": [
+   "k021",
+   "k022",
+   "k023"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "crit",
+    "pct": 15,
+    "rank": "B"
+   },
+   {
+    "type": "stealth",
+    "rank": null
+   }
+  ],
   "promote": []
  },
  {
@@ -1777,6 +1913,83 @@
     "type": "evade",
     "pct": 15,
     "rank": "B"
+   }
+  ],
+  "promote": [
+   {
+    "to": "u07d",
+    "lv": 35,
+    "item": "item_horse_top"
+   }
+  ],
+  "kind": "cavalry"
+ },
+ {
+  "id": "u07d",
+  "name": {
+   "jp": "騎馬軍団",
+   "cn": "鉄騎軍"
+  },
+  "line": 7,
+  "tier": 4,
+  "cost": 88,
+  "hp": 654,
+  "mp": 92,
+  "str": 94,
+  "int": 35,
+  "agi": 117,
+  "def": 135,
+  "move": 7,
+  "affinity": "plain",
+  "speed": "B",
+  "growth": {
+   "hp": [
+    2,
+    8
+   ],
+   "mp": [
+    1,
+    4
+   ],
+   "str": [
+    1,
+    2
+   ],
+   "int": [
+    0,
+    1
+   ],
+   "agi": [
+    1,
+    3
+   ]
+  },
+  "skills": [
+   "k029",
+   "k030",
+   "k031"
+  ],
+  "tactics": [],
+  "passives": [
+   {
+    "type": "remove",
+    "rank": null
+   },
+   {
+    "type": "evade",
+    "pct": 15,
+    "rank": "B"
+   },
+   {
+    "type": "charge",
+    "pct": 5,
+    "max": 20,
+    "rank": null
+   },
+   {
+    "type": "pursuit",
+    "move": 1,
+    "rank": null
    }
   ],
   "promote": [],
