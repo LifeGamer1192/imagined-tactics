@@ -14,7 +14,8 @@ page.on('pageerror', (e) => errors.push(String(e)));
 page.on('request', (r) => { const u = r.url(); if (/\/art\//.test(u)) arts.push(u.replace(/^.*\/art\//, '')); });
 const shot = async (n) => { if (out) { await page.waitForTimeout(300); await page.screenshot({ path: path.join(out, `west_${n}.png`) }); } };
 // ほかの版の絵：日本版・中国版の場面・人物・兵の駒・城と町・城壁の記号
-const foreign = () => arts.filter((a) => /(_jp|_cn)\.webp|\/(jp|cn)\//.test(a) && !a.startsWith('faces/'));
+// タイトルの背景（P105）は世界を選ぶ前に出すので、どの版の絵でもよい
+const foreign = () => arts.filter((a) => /(_jp|_cn)\.webp|\/(jp|cn)\//.test(a) && !a.startsWith('faces/') && !a.startsWith('bg/title'));
 
 await page.goto(process.env.HEX_URL ?? 'http://localhost:5183/');
 await page.click('[data-sample="rome_fid3_212bc"]');
