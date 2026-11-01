@@ -13,6 +13,8 @@ const STAND_IN: Record<string, string> = {
   u01d: 'u01a', u01e: 'u11b', u19a: 'u01a', u19c: 'u01b', u20a: 'u01c', u20b: 'u01c', u21a: 'u11a', u21b: 'u08b2', u21c: 'u11c',
   // 上級8種（P106）：絵ができるまで、すぐ下の格の絵
   u02c: 'u02b', u03c: 'u03b', u04c: 'u04b', u06c: 'u06b', u08c: 'u08b', u08c2: 'u08b2', u12c: 'u12b', u12c2: 'u12b2',
+  // 最上級3種（P107）
+  u01f: 'u01e', u07d: 'u07c', u05d: 'u05c',
 };
 /** 組の絵の一覧。兵種の絵が無ければ、仮の絵の組 */
 function listOf(group: string): string[] | undefined {

@@ -65,7 +65,7 @@ function hitFormula(h: HitParts, r: number, landed: boolean): string {
   const C = D.combat;
   const verdict = `出目 ${roll(r)} ${landed ? '＜' : '≧'} ${h.pct} → ${landed ? '命中' : '外れ'}`;
   if (h.fixed) {
-    const why = { x: 'この相手には当てられない', mark: '必ず当たる技', disabled: '相手が動けないので必ず当たる', sureNext: '「次の攻撃が必中」の効果' }[h.fixed];
+    const why = { x: 'この相手には当てられない', mark: '必ず当たる技', disabled: '相手が動けないので必ず当たる', sureNext: '「次の攻撃が必中」の効果', hidden: '相手が隠密で、離れた所からは当たらない' }[h.fixed];
     return `命中率 ${h.pct}%（${why}）／${verdict}`;
   }
   const terms = [

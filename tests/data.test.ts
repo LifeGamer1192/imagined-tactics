@@ -6,7 +6,7 @@ import { RNG } from '../src/core/rng';
 describe('system data', () => {
   it('counts', () => {
     expect(D.classes.length).toBe(63);
-    expect(D.units.length).toBe(67);
+    expect(D.units.length).toBe(70);
     expect(D.skills.length).toBe(106);
     expect(D.tactics.length).toBe(42);
   });
@@ -88,6 +88,7 @@ describe('shared IDs (ima-rpg uses the same IDs; never renumber)', () => {
       'u17a', 'u17b', 'u17c', 'u18a', 'u18b', 'u18c',
       'u01d', 'u01e', 'u19a', 'u19c', 'u20a', 'u20b', 'u21a', 'u21b', 'u21c',
       'u02c', 'u03c', 'u04c', 'u06c', 'u08c', 'u08c2', 'u12c', 'u12c2',
+      'u01f', 'u07d', 'u05d',
     ].sort());
     for (const x of [...D.skills, ...D.tactics, ...D.units]) { expect(x.name.jp, x.id).toBeTruthy(); expect(x.name.cn, x.id).toBeTruthy(); }
   });

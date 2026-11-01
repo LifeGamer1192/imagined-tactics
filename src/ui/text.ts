@@ -8,7 +8,7 @@ export const STATUS_NAME: Record<StatusId, string> = {
   poison: '毒', daze: '怯み', silence: '攪乱', defect: '寝返り', stun: '気絶', confuse: '捕縛',
   weaken: '攻撃・防御ダウン', atkNext: '次の攻撃アップ', moveUp: '移動アップ', resistUp: '軍略耐性アップ', defUp: '防御アップ',
   atkUp: '攻撃アップ', agiUp: '命中・回避アップ', atkDown: '攻撃ダウン', intDown: '知略ダウン', grounded: '足止め',
-  mounted: '騎乗', regen: '毎巡回復', ward: '軍略無効', sureNext: '次の攻撃が必中', extraAct: '再行動', routed: '収容された敗残兵', loaded: '装填済み',
+  mounted: '騎乗', regen: '毎巡回復', ward: '軍略無効', sureNext: '次の攻撃が必中', extraAct: '再行動', routed: '収容された敗残兵', loaded: '装填済み', hidden: '隠密',
 };
 export const AFFINITY_NAME: Record<string, string> = { plain: '平地', forest: '森', mountain: '山', swamp: '湿地', water: '水上', rider: '騎' };
 
@@ -46,6 +46,9 @@ const TEXT: Record<string, string> = {
   'boonEnd': '{unit}の天佑「{name}」が消えた',
   'boonHit': '→ {target}に天佑の一手',
   'blast': '{target}に{dmg}（{pct}%）',
+  'stealth': '{target}は隠密で{unit}の攻撃をかわした',
+  'guard': '{unit}が{target}をかばい、{dmg}を代わりに受けた',
+  'pursuit': '{unit}は追い討ちで、あと{move}マス動ける',
 };
 
 export function logText(e: BattleLogEntry): string {

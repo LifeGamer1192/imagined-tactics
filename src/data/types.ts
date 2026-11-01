@@ -21,7 +21,7 @@ export type Mark = 'sure' | 'o' | 'tri' | 'x';
 export type StatusId =
   | 'poison' | 'daze' | 'silence' | 'defect' | 'stun' | 'confuse'
   | 'weaken' | 'atkNext' | 'moveUp' | 'resistUp' | 'defUp' | 'atkUp' | 'agiUp' | 'atkDown' | 'intDown'
-  | 'grounded' | 'mounted' | 'regen' | 'ward' | 'sureNext' | 'extraAct' | 'routed' | 'loaded';
+  | 'grounded' | 'mounted' | 'regen' | 'ward' | 'sureNext' | 'extraAct' | 'routed' | 'loaded' | 'hidden';
 
 export interface StatBlock { hp: number; mp: number; str: number; int: number; agi: number }
 
@@ -117,7 +117,13 @@ export type Passive =
   /** 回復の名手（P106）：回復の軍略・技で治す量+pct% */
   | { type: 'healBoost'; pct: number }
   /** 加持（P106）：隣の味方の軍略への耐性+pct%（重ならない） */
-  | { type: 'resistAura'; pct: number };
+  | { type: 'resistAura'; pct: number }
+  /** 身代わり（P107・馬廻衆）：隣にいる自分の将が敵から受けるダメージの pct% を、代わりに受ける */
+  | { type: 'guard'; pct: number }
+  /** 追い討ち（P107・騎馬軍団）：敵を倒すと、そのあと move だけ動ける */
+  | { type: 'pursuit'; move: number }
+  /** 隠密（P107・上忍）：森で待機すると「隠密」になる。2マス以上離れた所からの攻撃・技を1度だけかわす */
+  | { type: 'stealth' };
 
 /** 兵種の分類（0.11.0。歩兵・槍・長槍・戟の相性と、騎馬かどうか） */
 export type UnitKind = 'foot' | 'spear' | 'pike' | 'halberd' | 'cavalry';
@@ -126,7 +132,7 @@ export interface UnitDef extends StatBlock {
   id: string;
   name: Loc;
   line: number;
-  tier: 1 | 2 | 3;
+  tier: 1 | 2 | 3 | 4;
   cost: number;
   def: number;
   move: number;

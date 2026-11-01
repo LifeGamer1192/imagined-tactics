@@ -75,6 +75,8 @@ export interface BUnit {
   moveSpent: number;
   /** その手番に動く前の位置から進んだマス数（突撃。0.11.0。動いてから行動する前まで数える） */
   moveSteps?: number;
+  /** 追い討ち（P107）：敵を倒して得た、行動のあとに動けるマス */
+  pursuit?: number;
   moved: boolean;
   /** 行動のあとの再移動を済ませたか */
   postMoved: boolean;

@@ -93,6 +93,18 @@
   "item_ship_top": {
    "jp": "鉄甲の図面",
    "cn": "王舟の図"
+  },
+  "item_guard_top": {
+   "jp": "主君の御旗",
+   "cn": "主公の旗"
+  },
+  "item_horse_top": {
+   "jp": "名馬の鞍",
+   "cn": "汗血馬の鞍"
+  },
+  "item_ninja_top": {
+   "jp": "忍びの奥義",
+   "cn": "刺客の秘奥"
   }
  }
 }

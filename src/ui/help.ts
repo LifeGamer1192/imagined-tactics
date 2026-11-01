@@ -335,7 +335,7 @@ function statusRows(): [string, string][] {
   const s = D.status, hp = term('hp'), agi = term('agi'), int = term('int');
   const span = (t: [number, number]): string => `${t[0]}〜${t[1]}巡`;
   // 効き目の文は describe.ts の statusEffect（技・軍略の説明と同じもの）
-  const ids: StatusId[] = ['poison', 'daze', 'stun', 'confuse', 'silence', 'defect', 'weaken', 'atkDown', 'intDown', 'grounded', 'atkNext', 'sureNext', 'atkUp', 'defUp', 'agiUp', 'moveUp', 'resistUp', 'regen', 'ward', 'extraAct', 'mounted', 'routed', 'loaded'];
+  const ids: StatusId[] = ['poison', 'daze', 'stun', 'confuse', 'silence', 'defect', 'weaken', 'atkDown', 'intDown', 'grounded', 'atkNext', 'sureNext', 'atkUp', 'defUp', 'agiUp', 'moveUp', 'resistUp', 'regen', 'ward', 'extraAct', 'mounted', 'routed', 'loaded', 'hidden'];
   const text: Partial<Record<StatusId, string>> = Object.fromEntries(ids.map((id) => [id, statusEffect(id)]));
   const rows = (Object.keys(text) as StatusId[]).map((id): [string, string] => [STATUS_NAME[id], text[id]!]);
   rows.push(['采配範囲外', `武将の采配範囲の外にいる兵。攻撃と防御が${Math.abs(s.outOfCommand.atkDefPct)}%下がり、軍略で受けるダメージが${s.outOfCommand.tacticDamagePct}%増える。`]);

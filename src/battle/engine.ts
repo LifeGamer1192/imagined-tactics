@@ -28,15 +28,21 @@ export function canAct(st: BattleState, u: BUnit): boolean {
   return st.winner === null && u.alive && u.side === st.turn && !u.acted && !disabled(u);
 }
 export function hasRemove(u: BUnit): boolean { return passive(u, 'remove').length > 0; }
+/** いま動ける残り。行動のあとは、一撃離脱の残りと、追い討ち（P107）のぶん */
+export function moveLeft(st: BattleState, u: BUnit): number {
+  const rest = moveOf(u, st) - u.moveSpent;
+  if (!u.acted) return rest;
+  return (hasRemove(u) ? Math.max(0, rest) : 0) + (u.pursuit ?? 0);
+}
 export function canMove(st: BattleState, u: BUnit): boolean {
   if (st.winner !== null || !u.alive || u.side !== st.turn || disabled(u)) return false;
   if (!u.acted) return !u.moved;
-  return hasRemove(u) && !u.postMoved && moveOf(u, st) - u.moveSpent > 0;
+  return !u.postMoved && moveLeft(st, u) > 0;
 }
 /** いま移動できるマス */
 export function moveCells(st: BattleState, u: BUnit): number[] {
   if (!canMove(st, u)) return [];
-  return reach(st, u, moveOf(u, st) - u.moveSpent).cells.filter((i) => i !== u.pos);
+  return reach(st, u, moveLeft(st, u)).cells.filter((i) => i !== u.pos);
 }
 
 // ---------------------------------------------------------------- 状態変化
@@ -88,6 +94,11 @@ function defeat(st: BattleState, victim: BUnit, killer: BUnit | null): void {
   const exp = killer && killer.alive ? killExp(victim) : 0;
   log(st, 'defeat', killer && killer.alive ? { unit: victim.name, uid: victim.id, by: killer.id, exp } : { unit: victim.name, uid: victim.id });
   if (killer && killer.alive) killer.expGained += exp;
+  // 追い討ち（P107）：自分の番に敵を倒すと、行動のあとに動ける
+  if (killer && killer.alive && killer.side !== victim.side && killer.side === st.turn) for (const p of passive(killer, 'pursuit')) {
+    killer.pursuit = Math.max(killer.pursuit ?? 0, p.move);
+    log(st, 'pursuit', { unit: killer.name, uid: killer.id, move: p.move });
+  }
   if (killer && victim.kind === 'general' && killer.side !== victim.side) victim.killedBy = killer.generalId;
   // 天佑の持ち主が倒れたら、その天佑は消える（P102）
   if (victim.kind === 'general') boonsLost(st, [victim.id]);
@@ -104,6 +115,23 @@ function defeat(st: BattleState, victim: BUnit, killer: BUnit | null): void {
 }
 
 function damage(st: BattleState, t: BUnit, amount: number, by: BUnit | null): void {
+  // 身代わり（P107・馬廻衆）：隣にいる、この将の兵が、敵から受けるダメージの一部を代わりに受ける
+  if (by && t.kind === 'general' && by.side !== t.side && amount > 1) {
+    const g = st.map.grid;
+    let best: [BUnit, number] | null = null;
+    for (const x of st.units) {
+      if (!x.alive || x.id === t.id || x.leader !== t.id || x.side !== t.side || g.distance(x.pos, t.pos) !== 1) continue;
+      for (const p of passive(x, 'guard')) if (!best || p.pct > best[1]) best = [x, p.pct];
+    }
+    if (best) {
+      const share = Math.min(amount - 1, Math.round(amount * best[1] / 100));
+      if (share > 0) {
+        amount -= share;
+        log(st, 'guard', { unit: best[0].name, target: t.name, dmg: share, uid: best[0].id, tid: t.id });
+        damage(st, best[0], share, by);
+      }
+    }
+  }
   // 将が受けたダメージを、相手の将（兵なら率いる将）ごとに数える（深手の記録の「負わされた相手」）
   if (by && t.kind === 'general' && by.side !== t.side && amount > 0) (t.hurtBy ??= {})[by.generalId] = (t.hurtBy[by.generalId] ?? 0) + Math.min(amount, t.hp);
   t.hp = Math.max(0, t.hp - amount);
@@ -146,6 +174,9 @@ export function checkWinner(st: BattleState): void {
 
 function strike(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, single: boolean, isCounter: boolean): void {
   const rng = st.rng;
+  // 隠密（P107）：攻めると解ける。2マス以上離れた所から攻められたら、1度だけかわす
+  if (has(a, 'hidden')) expire(st, a, 'hidden');
+  if (stealthDodge(st, a, t)) return;
   const hp = hitParts(st, a, skill, t);
   const hit = hp.pct;
   const roll = rng.float() * 100;
@@ -239,6 +270,7 @@ function bombard(st: BattleState, u: BUnit, skill: SkillDef, aim: number): void 
   for (const c of blastCells(st, land)) {
     const t = unitAt(st, c);
     if (!t || t.id === u.id || !t.alive) continue;
+    if (stealthDodge(st, u, t)) continue;
     const center = c === land, pct = center ? 100 : rng.int(B.splashMin, B.splashMax);
     const base = damageParts(st, u, skill, t, false).base;
     let dmg = base * rng.range(D.combat.randomMin, D.combat.randomMax) * pct / 100;
@@ -263,8 +295,17 @@ function countBorrowed(u: BUnit, id: string): void {
   if (u.borrowed?.includes(id)) (u.artUses ??= {})[id] = (u.artUses[id] ?? 0) + 1;
 }
 
+/** 隠密でかわすか（P107）。かわしたら隠密は解ける */
+function stealthDodge(st: BattleState, a: BUnit, t: BUnit): boolean {
+  if (!has(t, 'hidden') || st.map.grid.distance(a.pos, t.pos) < 2) return false;
+  log(st, 'stealth', { unit: a.name, target: t.name, uid: a.id, tid: t.id });
+  expire(st, t, 'hidden');
+  return true;
+}
+
 function doSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number): void {
   u.mp -= skillCost(u, skill);
+  if (has(u, 'hidden')) expire(st, u, 'hidden');
   countBorrowed(u, skill.id);
   // 装填の要る技は、撃つと装填が外れる
   if (skill.reload) removeStatus(u, 'loaded');
@@ -300,6 +341,7 @@ function freeNear(st: BattleState, u: BUnit, center: number): number {
 }
 
 function doTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number): void {
+  if (has(u, 'hidden')) expire(st, u, 'hidden');
   const rng = st.rng;
   u.mp -= tacticCost(u, tac);
   countBorrowed(u, tac.id);
@@ -405,7 +447,7 @@ function afterAction(st: BattleState, u: BUnit): void {
   if (u.alive && extra && !u.extraUsed) {
     u.extraUsed = true;
     removeStatus(u, 'extraAct');
-    u.acted = false; u.moved = false; u.postMoved = false; u.moveSpent = 0; u.moveSteps = 0;
+    u.acted = false; u.moved = false; u.postMoved = false; u.moveSpent = 0; u.moveSteps = 0; u.pursuit = 0;
   }
 }
 
@@ -428,7 +470,7 @@ export function startTurn(st: BattleState, side: Side): void {
       }
     }
     if (u.side !== side) continue;
-    u.moved = false; u.postMoved = false; u.acted = false; u.extraUsed = false; u.moveSpent = 0; u.moveSteps = 0;
+    u.moved = false; u.postMoved = false; u.acted = false; u.extraUsed = false; u.moveSpent = 0; u.moveSteps = 0; u.pursuit = 0;
     if (has(u, 'poison')) {
       const d = Math.round(u.maxHp * D.status.poison.pct / 100);
       log(st, 'poison', { unit: u.name, dmg: d, tid: u.id, hp: u.hp, pct: D.status.poison.pct, max: u.maxHp });
@@ -495,7 +537,7 @@ export function apply(st: BattleState, a: Action): boolean {
   switch (a.type) {
     case 'move': {
       if (!canMove(st, u)) return false;
-      const r = reach(st, u, moveOf(u, st) - u.moveSpent);
+      const r = reach(st, u, moveLeft(st, u));
       if (a.to === u.pos || !r.cells.includes(a.to)) return false;
       log(st, 'move', { uid: u.id, side: u.side, from: u.pos, to: a.to, cost: r.dist[a.to] });
       u.moveSpent += r.dist[a.to];
@@ -503,6 +545,8 @@ export function apply(st: BattleState, a: Action): boolean {
       if (!u.acted) u.moveSteps = (u.moveSteps ?? 0) + st.map.grid.distance(u.pos, a.to);
       u.pos = a.to;
       if (u.acted) u.postMoved = true; else u.moved = true;
+      // 隠密（P107）：森から出ると解ける
+      if (has(u, 'hidden') && terrainAt(st, u.pos) !== 'forest') expire(st, u, 'hidden');
       return true;
     }
     case 'skill': {
@@ -528,6 +572,7 @@ export function apply(st: BattleState, a: Action): boolean {
     case 'breach': {
       if (!canAct(st, u) || !breachTargets(st, u).includes(a.target)) return false;
       const act = openAct(st, u, 'breach', '', a.target, 0);
+      if (has(u, 'hidden')) expire(st, u, 'hidden');
       doBreach(st, u, a.target);
       afterAction(st, u);
       closeAct(st, u, act);
@@ -537,6 +582,8 @@ export function apply(st: BattleState, a: Action): boolean {
       if (!canAct(st, u)) return false;
       const act = openAct(st, u, 'wait', '', u.pos, 0);
       reload(st, u);
+      // 隠密（P107・上忍）：森で待機すると隠密になる
+      if (passive(u, 'stealth').length && terrainAt(st, u.pos) === 'forest') addStatus(st, u, 'hidden', -1, u);
       afterAction(st, u);
       closeAct(st, u, act);
       return true;

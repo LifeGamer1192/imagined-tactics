@@ -9,7 +9,8 @@ import type { StatusId } from '../data/types';
 import { HEX, type Fx } from '../render/battleView';
 import { INDIGO, OCHRE, VERDIGRIS, VERMILION, type RGB } from '../render/ink';
 import { reach, routeTo } from '../rules/move';
-import { moveOf, skillOf } from '../rules/stats';
+import { skillOf } from '../rules/stats';
+import { moveLeft } from '../battle/engine';
 import { isProjectile, skillFx, tacticFx, type StrikeFx, type TacticFx } from './fxTable';
 import type { SoundId } from './sound';
 import { STATUS_NAME } from './text';
@@ -58,7 +59,7 @@ const TACTIC_COLOR: Record<TacticFx, RGB> = {
   heal: VERDIGRIS, buff: OCHRE, debuff: PURPLE, shout: PURPLE,
 };
 /** 付くと得になる状態（小さな字の色を分ける） */
-const GOOD = new Set<StatusId>(['atkNext', 'moveUp', 'resistUp', 'defUp', 'atkUp', 'agiUp', 'mounted', 'regen', 'ward', 'sureNext', 'extraAct', 'routed', 'loaded']);
+const GOOD = new Set<StatusId>(['atkNext', 'moveUp', 'resistUp', 'defUp', 'atkUp', 'agiUp', 'mounted', 'regen', 'ward', 'sureNext', 'extraAct', 'routed', 'loaded', 'hidden']);
 
 export function before(st: BattleState): Before {
   return { units: st.units.map((u) => ({ ...u, statuses: [...u.statuses] })), logLen: st.log.length, paths: new Map() };
@@ -69,7 +70,7 @@ export function notePath(st: BattleState, b: Before, a: Action): void {
   if (a.type !== 'move') return;
   const u = st.units[a.unit];
   if (!u || !u.alive) return;
-  const r = reach(st, u, moveOf(u, st) - u.moveSpent);
+  const r = reach(st, u, moveLeft(st, u));
   if (a.to === u.pos || !r.cells.includes(a.to)) return;
   b.paths.set(u.id, [...(b.paths.get(u.id) ?? [u.pos]), ...routeTo(r, a.to)]);
 }

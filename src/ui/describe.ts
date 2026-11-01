@@ -86,6 +86,9 @@ const PASSIVE_TEXT = (p: Passive): string => {
     case 'cavalryBane': return `騎馬殺し：騎馬の相手に与えるダメージ+${p.pct}%`;
     case 'healBoost': return `回復の名手：回復の軍略で治す量+${p.pct}%`;
     case 'resistAura': return `加持：隣の味方の軍略への耐性+${p.pct}%（重ならない）`;
+    case 'guard': return `身代わり：隣にいる自分の将が敵から受けるダメージの${p.pct}%を、代わりに受ける`;
+    case 'pursuit': return `追い討ち：敵を倒すと、そのあと${p.move}マス動ける（行動のあとの移動に足す）`;
+    case 'stealth': return '隠密：森で待機すると隠密になる。2マス以上離れた所からの攻撃・技を1度だけかわす（軍略・隣からの攻撃は当たる）';
   }
 };
 
@@ -201,6 +204,7 @@ export function statusEffect(id: string): string {
     case 'mounted': return mountedText();
     case 'routed': return '倒れた兵が、収容した側の陣営で戦う。戦いが終わると失われる。';
     case 'loaded': return '矢・弾を込めてある。装填の要る技（一斉射撃・三段撃ちなど）を撃てる。撃つと外れる。待機すると込める（移動したあとでもよい）。戦いの始めは込めていない。';
+    case 'hidden': return '森に潜んでいる（上忍が森で待機すると付く）。2マス以上離れた所からの攻撃・技（列・周りの技も）を1度だけ、みなかわす。軍略は当たる。隣からの攻撃は当たる。1度かわす・自分で攻撃・技・軍略を使う・森から出ると解ける。';
     default: return '';
   }
 }

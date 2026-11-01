@@ -8,7 +8,7 @@
 // さらに部隊ごとに「構え」（前進・交戦・守備・退却）を決め、位置の採点を切り替える。
 // 狙いの優先をデータで持つ考え方は rts-mons/web/src/rules.js の chooseTarget にならう。
 
-import { apply, canAct, canMove, endTurn } from '../battle/engine';
+import { apply, canAct, canMove, endTurn, moveLeft } from '../battle/engine';
 import type { Action, BUnit, BattleState } from '../battle/types';
 import { D } from '../data/db';
 import type { SkillDef, TacticDef } from '../data/types';
@@ -710,7 +710,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   // 装填の値打ち：込めていない駒の待機に、撃てるようになる技の威力 × ai.json の reload を足す
   const reloadValue = mayAct && needsReload(u) && !has(u, 'loaded') ? AI.reload * Math.max(0, ...u.skills.map(skillOf).filter((s) => s.reload).map((s) => s.power)) : 0;
   const origin = u.pos, wasMoved = u.moved;
-  const cells = mayMove ? reach(st, u, moveOf(u, st) - u.moveSpent).cells : [origin];
+  const cells = mayMove ? reach(st, u, moveLeft(st, u)).cells : [origin];
   let best: { score: number; parts: ScoreParts; move: number | null; act: Action | null } = { score: -Infinity, parts: zeroParts(), move: null, act: null };
   let stay = -Infinity;
   // 気力の値打ちで使う：この駒が、いま撃てるいちばん良い一撃の大きさ（気力の値打ちを引く前）

@@ -24,7 +24,7 @@ export function markFor(skill: SkillDef, target: BUnit): SkillDef['vsGround'] {
 export interface HitParts {
   pct: number;
   /** 式を通らずに決まったとき：x=当てられない、mark=必中の技、disabled=相手が動けない、sureNext=次の攻撃が必中 */
-  fixed: 'x' | 'mark' | 'disabled' | 'sureNext' | null;
+  fixed: 'x' | 'mark' | 'disabled' | 'sureNext' | 'hidden' | null;
   base: number; agiA: number; agiT: number; skill: number; terA: number; terT: number;
   /** △の相手への命中減（引く値） */
   tri: number;
@@ -43,6 +43,8 @@ export function hitParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit): 
   };
   const mark = markFor(skill, t);
   if (mark === 'x') { p.fixed = 'x'; return p; }
+  // 隠密（P107）：2マス以上離れた所からは当たらない（1度かわすと解ける）
+  if (has(t, 'hidden') && st.map.grid.distance(a.pos, t.pos) >= 2) { p.fixed = 'hidden'; return p; }
   if (mark === 'sure' || disabled(t) || has(a, 'sureNext')) {
     p.fixed = mark === 'sure' ? 'mark' : disabled(t) ? 'disabled' : 'sureNext';
     p.pct = p.raw = 100;

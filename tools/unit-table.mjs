@@ -9,7 +9,7 @@ const LINE = {
   1: '歩兵', 2: '鼓舞（楽隊）', 3: '小舟', 4: '鉄砲・弩・投石', 5: '忍び・刺客', 6: '弓', 7: '軽騎兵', 8: '回復',
   9: '盾', 10: '城攻め（工兵・攻城兵器）', 11: '大刀・斧', 12: '山岳', 13: '騎馬武者・戦車・重騎兵', 14: '伏兵', 15: '火攻め', 16: '大船', 17: '指揮', 18: '調略', 19: '槍', 20: '長槍', 21: '戟・薙刀',
 };
-const TIER = { 1: '下級', 2: '中級', 3: '上級' };
+const TIER = { 1: '下級', 2: '中級', 3: '上級', 4: '最上級' };
 const pic = (set, id) => (existsSync(`public/art/unit/${set}/${id}.webp`) ? `<img src="../public/art/unit/${set}/${id}.webp" width="56" alt="">` : '（絵なし）');
 const cell = (set, id, name) => `${pic(set, id)}<br>${name}`;
 const byId = Object.fromEntries(list.map((u) => [u.id, u]));
