@@ -1180,7 +1180,7 @@ export class App {
     const e = id !== undefined && id !== null ? st.units[id] : null;
     if (!e || !e.alive || this.human.has(e.side) || disabled(e)) return undefined;
     const g = st.map.grid;
-    const move = new Set(reach(st, e, moveOf(e)).cells);
+    const move = new Set(reach(st, e, moveOf(e, st)).cells);
     move.add(e.pos);
     const hit = new Set<number>();
     for (const sid of e.skills) {
@@ -1255,7 +1255,7 @@ export class App {
       <div><b>${esc(u.name)}</b> <span class="dim">${u.kind === 'general' ? kindName(u) : '兵'} Lv${u.level}${enemy ? '　<b class="foe">敵</b>' : ''}${u.acted && u.side === st.turn ? '（行動済み）' : ''}</span></div>
       <div class="bars">${bar(u.hp, u.maxHp, 'hp')}${u.maxMp ? bar(u.mp, u.maxMp, 'mp') : ''}</div>
       <div class="stats">攻撃${Math.round(attackPower(st, u))} 防御${Math.round(defense(st, u))} ${T.int()}${intellect(u)} ${T.agi()}${agility(u)}
-        移動${moveOf(u)} ${AFFINITY_NAME[affinityOf(u)]}${u.kind === 'general' ? ` 采配範囲${u.commandRange}` : ''}</div>
+        移動${moveOf(u, st)} ${AFFINITY_NAME[affinityOf(u)]}${u.kind === 'general' ? ` 采配範囲${u.commandRange}` : ''}</div>
       ${statuses.length ? `<div class="status">${statuses.join(' ')}</div>` : ''}
       ${menLine}
       ${withButtons ? '' : skills.length + tactics.length > ARTS_FLAT
@@ -1296,7 +1296,7 @@ export class App {
     const lead = t.kind === 'troop' ? `${st.units[t.leader]?.name ?? ''}の配下` : kindName(t);
     const basic = basicSkill(t);
     const rng = basic ? skillRange(st, t, basic) : null;
-    return `<div class="cellinfo"><b style="color:${SIDE_COLOR[t.side]}">${enemy ? '敵　' : ''}${esc(t.name)}</b> Lv${t.level}・${esc(lead)}<br>体力 ${t.hp}／${t.maxHp}${t.maxMp ? `・気力 ${t.mp}／${t.maxMp}` : ''}・攻撃${Math.round(attackPower(st, t))}・防御${Math.round(defense(st, t))}・移動${moveOf(t)}${rng ? `・射程${rng[0] === rng[1] ? rng[1] : `${rng[0]}〜${rng[1]}`}` : ''}${sts.length ? `<br>${sts.map(esc).join(' ')}` : ''}<br><span class="dim">押すと詳しく出ます</span></div>`;
+    return `<div class="cellinfo"><b style="color:${SIDE_COLOR[t.side]}">${enemy ? '敵　' : ''}${esc(t.name)}</b> Lv${t.level}・${esc(lead)}<br>体力 ${t.hp}／${t.maxHp}${t.maxMp ? `・気力 ${t.mp}／${t.maxMp}` : ''}・攻撃${Math.round(attackPower(st, t))}・防御${Math.round(defense(st, t))}・移動${moveOf(t, st)}${rng ? `・射程${rng[0] === rng[1] ? rng[1] : `${rng[0]}〜${rng[1]}`}` : ''}${sts.length ? `<br>${sts.map(esc).join(' ')}` : ''}<br><span class="dim">押すと詳しく出ます</span></div>`;
   }
 
   /** 性格と、いまの構え（おまかせの陣営がどう動こうとしているか） */

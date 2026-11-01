@@ -79,7 +79,7 @@ export interface SkillDef {
 
 export type Passive =
   | { type: 'remove' } | { type: 'doubleAct' }
-  | { type: 'regen'; pct: number; on?: 'forest' | 'water' }
+  | { type: 'regen'; pct: number; on?: 'forest' | 'water' | 'mountain' }
   | { type: 'evade'; pct: number } | { type: 'hit'; pct: number }
   | { type: 'shield'; chance: number }
   | { type: 'immune'; statuses: StatusId[] }
@@ -107,9 +107,17 @@ export type Passive =
   /** 飛び道具の盾：離れた所（2マス以上）からの攻撃を、chance% で半分にする */
   | { type: 'missileGuard'; chance: number }
   /** 鼓舞：隣の味方の与えるダメージ+pct%（いつも。重ならない） */
-  | { type: 'rally'; pct: number }
+  | { type: 'rally'; pct: number; range?: number }
   /** 平地（草原・道）に立つと、防御−defPct%・回避−evadePct（山岳の兵。0.13.0） */
-  | { type: 'lowland'; defPct: number; evadePct: number };
+  | { type: 'lowland'; defPct: number; evadePct: number }
+  /** 地の利（P106）：その地形に立つと、移動と回避が増える（警固衆：水の上） */
+  | { type: 'terrainBoost'; terrain: TerrainKind; move: number; evade: number }
+  /** 騎馬殺し（P106）：騎馬（分類が騎馬か、得意地形が騎馬）に与えるダメージ+pct% */
+  | { type: 'cavalryBane'; pct: number }
+  /** 回復の名手（P106）：回復の軍略・技で治す量+pct% */
+  | { type: 'healBoost'; pct: number }
+  /** 加持（P106）：隣の味方の軍略への耐性+pct%（重ならない） */
+  | { type: 'resistAura'; pct: number };
 
 /** 兵種の分類（0.11.0。歩兵・槍・長槍・戟の相性と、騎馬かどうか） */
 export type UnitKind = 'foot' | 'spear' | 'pike' | 'halberd' | 'cavalry';

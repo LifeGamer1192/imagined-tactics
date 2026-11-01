@@ -2717,5 +2717,82 @@
   },
   "targets": "enemy",
   "effects": []
+ },
+ {
+  "id": "k106",
+  "reload": true,
+  "name": {
+   "jp": "狙撃",
+   "cn": "狙射"
+  },
+  "mp": 24,
+  "power": 176,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 10,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": [
+   {
+    "type": "critBonus"
+   }
+  ]
+ },
+ {
+  "id": "k107",
+  "name": {
+   "jp": "強弓",
+   "cn": "強弓"
+  },
+  "mp": 0,
+  "power": 124,
+  "range": [
+   1,
+   3
+  ],
+  "hit": 6,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
+ },
+ {
+  "id": "k108",
+  "name": {
+   "jp": "大逆落とし",
+   "cn": "大俯衝"
+  },
+  "mp": 0,
+  "power": 172,
+  "range": [
+   1,
+   1
+  ],
+  "hit": 10,
+  "vsGround": "o",
+  "vsRider": "tri",
+  "afterMove": true,
+  "counter": true,
+  "basic": true,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
  }
 ]

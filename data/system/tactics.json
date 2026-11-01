@@ -548,5 +548,48 @@
   "sure": false,
   "kind": "status",
   "status": "defect"
+ },
+ {
+  "id": "x40",
+  "name": {
+   "jp": "勢い太鼓",
+   "cn": "擂鼓"
+  },
+  "mp": 110,
+  "power": 0,
+  "range": 3,
+  "area": 1,
+  "sure": true,
+  "kind": "buff",
+  "status": "atkUp",
+  "turns": 2
+ },
+ {
+  "id": "x41",
+  "name": {
+   "jp": "早鼓",
+   "cn": "急鼓"
+  },
+  "mp": 90,
+  "power": 0,
+  "range": 3,
+  "area": 1,
+  "sure": true,
+  "kind": "buff",
+  "status": "moveUp",
+  "turns": 3
+ },
+ {
+  "id": "x42",
+  "name": {
+   "jp": "施薬",
+   "cn": "施薬"
+  },
+  "mp": 60,
+  "power": 90,
+  "range": 1,
+  "area": 1,
+  "sure": true,
+  "kind": "heal"
  }
 ]

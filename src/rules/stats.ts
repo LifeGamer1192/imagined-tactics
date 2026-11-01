@@ -114,13 +114,30 @@ export function intellect(u: BUnit): number {
   return Math.max(1, Math.round(u.int * pctMult(has(u, 'intDown') ? [D.status.intDown.intPct] : [])));
 }
 
-export function moveOf(u: BUnit): number {
-  return Math.max(1, u.move + (has(u, 'moveUp') ? D.status.moveUp.move : 0) + (u.bmod?.move ?? 0));
+/** 地の利（P106）：いまの地形で増える移動・回避 */
+export function terrainBoost(st: BattleState | undefined, u: BUnit, key: 'move' | 'evade'): number {
+  if (!st) return 0;
+  const k = st.map.terrain[u.pos];
+  return passive(u, 'terrainBoost').reduce((s, p) => s + (p.terrain === k ? p[key] : 0), 0);
+}
+
+export function moveOf(u: BUnit, st?: BattleState): number {
+  return Math.max(1, u.move + (has(u, 'moveUp') ? D.status.moveUp.move : 0) + (u.bmod?.move ?? 0) + terrainBoost(st, u, 'move'));
+}
+
+/** 加持（P106）：隣の味方の resistAura の一番大きいもの（重ならない） */
+export function resistAura(st: BattleState, u: BUnit): number {
+  let best = 0;
+  for (const i of st.map.grid.neighbors(u.pos)) {
+    const x = st.units.find((v) => v.alive && v.pos === i);
+    if (x && x.side === u.side && x.id !== u.id) for (const p of passive(x, 'resistAura')) best = Math.max(best, p.pct);
+  }
+  return best;
 }
 
 /** 軍略への耐性（0〜1。負なら受けるダメージが増える） */
 export function tacticResist(st: BattleState, u: BUnit): number {
-  let r = passivePct(u, 'tacticResist') / 100;
+  let r = passivePct(u, 'tacticResist') / 100 + resistAura(st, u) / 100;
   if (has(u, 'resistUp')) r += D.status.resistUp.pct / 100;
   if (outOfCommand(st, u)) r -= D.status.outOfCommand.tacticDamagePct / 100;
   return Math.min(0.9, r);

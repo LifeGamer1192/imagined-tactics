@@ -7,7 +7,7 @@ import { BM } from '../battle/map';
 import { unitAt } from './move';
 import {
   affinityOf, agility, attackPower, defense, disabled, has, intellect, fireMult, outOfCommand, passive, passivePct, situationHit, skillRange, supplyMultOf, fieldMult, type FieldParts, basicSkill, attackKinds,
-  skillOf, tacticResist, terrainAt, terrainMod, seatDefMult, unitKind, isCavalry, KIND_NAME, ROUGH, lowlandDefMult, lowlandEvade,
+  skillOf, tacticResist, terrainAt, terrainMod, seatDefMult, unitKind, isCavalry, KIND_NAME, ROUGH, lowlandDefMult, lowlandEvade, terrainBoost,
 } from './stats';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -53,7 +53,7 @@ export function hitParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit): 
   if (mark === 'tri') { p.tri = C.triPenalty; r -= C.triPenalty; }
   // 山岳の兵が平地に立つと、回避が下がる（0.13.0）
   // 天佑の命中・回避（P102）
-  p.passHit = passivePct(a, 'hit') + (a.bmod?.hit ?? 0); p.passEvade = passivePct(t, 'evade') - lowlandEvade(st, t) + (t.bmod?.evade ?? 0);
+  p.passHit = passivePct(a, 'hit') + (a.bmod?.hit ?? 0); p.passEvade = passivePct(t, 'evade') - lowlandEvade(st, t) + (t.bmod?.evade ?? 0) + terrainBoost(st, t, 'evade');
   r += p.passHit - p.passEvade;
   const sit = situationHit(st, a, skill, t);
   r += sit;
@@ -99,7 +99,10 @@ export function unitFx(st: BattleState, a: BUnit, t: BUnit, isCounter: boolean):
   for (const c of passive(a, 'cramped')) if (ROUGH.has(terrainAt(st, a.pos))) out.push(['足場が悪い', 1 - c.pct / 100]);
   if (isCounter) for (const b of passive(a, 'brace')) if (isCavalry(t)) out.push(['迎え撃ち', b.mult]);
   if (!isCounter) for (const c of passive(a, 'charge')) { const n = a.moveSteps ?? 0; if (n) out.push([`突撃（${n}マス）`, 1 + Math.min(c.max, n * c.pct) / 100]); }
-  const rally = Math.max(0, ...friends(a, () => true).flatMap((x) => passive(x, 'rally').map((r) => r.pct)));
+  // 鼓舞：隣（range があれば、その距離まで）の味方から。いちばん大きいものだけ
+  const g = st.map.grid;
+  const rally = Math.max(0, ...st.units.filter((x) => x.alive && x.side === a.side && x.id !== a.id)
+    .flatMap((x) => passive(x, 'rally').filter((r) => g.distance(x.pos, a.pos) <= (r.range ?? 1)).map((r) => r.pct)));
   if (rally) out.push(['鼓舞', 1 + rally / 100]);
   for (const f of passive(t, 'formation')) if (friends(t, (x) => unitKind(x) === 'pike').length) out.push(['隊列', 1 / (1 + f.pct / 100)]);
   // 天佑（P102）：攻める側の攻撃、受ける側の防御
@@ -132,6 +135,7 @@ export function damageParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit
   let dmg = skill.power * p.atk / p.def;
   for (const b of passive(a, 'bane')) if (affinityOf(t) === b.vs) { dmg *= 1 + b.pct / 100; p.bane *= 1 + b.pct / 100; }
   for (const b of passive(a, 'baneOnTerrain')) if (terrainAt(st, t.pos) === b.terrain) { dmg *= 1 + b.pct / 100; p.bane *= 1 + b.pct / 100; }
+  for (const b of passive(a, 'cavalryBane')) if (isCavalry(t)) { dmg *= 1 + b.pct / 100; p.bane *= 1 + b.pct / 100; }
   const fx = unitFx(st, a, t, isCounter);
   if (fx.length) { p.fx = fx; for (const [, m] of fx) dmg *= m; }
   if (isCounter) { p.counter = D.combat.counterMult * (1 + passivePct(a, 'counterDamage') / 100); dmg *= p.counter; }
@@ -248,8 +252,8 @@ export function tacticSuccess(st: BattleState, a: BUnit, t: BUnit): number {
 export interface HealParts { amount: number; power: number; int: number; c0: number; per: number; healPct: number }
 
 export function healParts(a: BUnit, power: number): HealParts {
-  const p: HealParts = { amount: 0, power, int: intellect(a), c0: 0.6, per: 150, healPct: a.healPct };
-  p.amount = Math.round(power * (p.c0 + p.int / p.per) * (1 + a.healPct / 100));
+  const p: HealParts = { amount: 0, power, int: intellect(a), c0: 0.6, per: 150, healPct: a.healPct + passive(a, 'healBoost').reduce((n, x) => n + x.pct, 0) };
+  p.amount = Math.round(power * (p.c0 + p.int / p.per) * (1 + p.healPct / 100));
   return p;
 }
 

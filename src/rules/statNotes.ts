@@ -4,7 +4,7 @@
 import type { BStatus, BUnit, BattleState } from '../battle/types';
 import { D } from '../data/db';
 import type { StatusId } from '../data/types';
-import { agility, attackPower, defense, has, intellect, moveOf, outOfCommand, passive, seatDefMult, supplyMultOf, tacticResist, terrainMod } from './stats';
+import { agility, attackPower, defense, has, intellect, moveOf, outOfCommand, passive, resistAura, seatDefMult, supplyMultOf, tacticResist, terrainBoost, terrainMod } from './stats';
 import { seatName } from '../battle/map';
 
 export interface StatCause { why: string; value: string; turns?: string }
@@ -58,12 +58,17 @@ export function statRows(st: BattleState, u: BUnit, statusName: (id: StatusId) =
   // 知略・機敏・移動
   { const c = withV(stat('intDown'), pc(S.intDown.intPct)); if (c.length) rows.push({ key: '知略', base: u.int, now: intellect(u), causes: c }); }
   { const c = [...withV(stat('agiUp'), pc(S.agiUp.agiPct)), ...withV(stat('grounded'), pc(S.grounded.agiPct))]; if (c.length) rows.push({ key: '機敏', base: u.agi, now: agility(u), causes: c }); }
-  { const c = withV(stat('moveUp'), sg(S.moveUp.move)); if (c.length) rows.push({ key: '移動', base: u.move, now: moveOf(u), causes: c }); }
+  {
+    const tb = terrainBoost(st, u, 'move');
+    const c = [...withV(stat('moveUp'), sg(S.moveUp.move)), ...(tb ? [{ why: '地の利', value: sg(tb), turns: 'このマスにいる間' }] : [])];
+    if (c.length) rows.push({ key: '移動', base: u.move, now: moveOf(u, st), causes: c });
+  }
   // 軍略への耐性（％）
   {
     const fromPassive = passive(u, 'tacticResist').reduce((s, p) => s + p.pct, 0);
     const causes = [
       ...withV(stat('resistUp'), sg(S.resistUp.pct) + '%'),
+      ...(resistAura(st, u) ? [{ why: '加持（隣の味方）', value: `${sg(resistAura(st, u))}%`, turns: '隣にいる間' }] : []),
       ...(out ? [{ why: '采配範囲外', value: `${sg(-S.outOfCommand.tacticDamagePct)}%`, turns: '将の近くへ戻るまで' }] : []),
     ];
     if (causes.length) rows.push({ key: '軍略への耐性(%)', base: fromPassive, now: Math.round(tacticResist(st, u) * 100), causes });

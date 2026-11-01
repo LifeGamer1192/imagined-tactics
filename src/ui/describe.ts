@@ -9,6 +9,7 @@ import { AILMENTS, DISPELLABLE } from '../battle/engine';
 import { boonEffects, condText } from '../battle/boons';
 import { BOONS } from '../convert/heroes';
 import { FIELD, KIND_NAME } from '../rules/stats';
+import { TERRAIN_NAME } from '../render/battleView';
 import { S } from '../strategy/config';
 import { classMod } from '../rules/growth';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
@@ -62,12 +63,12 @@ const PASSIVE_TEXT = (p: Passive): string => {
     case 'evade': return `回避+${p.pct}%`;
     case 'hit': return `命中+${p.pct}%`;
     case 'crit': return `会心+${p.pct}%`;
-    case 'regen': return `毎巡体力を${p.pct}%回復${p.on === 'forest' ? '（森で）' : p.on === 'water' ? '（水辺で）' : ''}`;
+    case 'regen': return `毎巡体力を${p.pct}%回復${p.on === 'forest' ? '（森で）' : p.on === 'water' ? '（水辺で）' : p.on === 'mountain' ? '（山で）' : ''}`;
     case 'shield': return `盾で受ける（${Math.round(p.chance <= 1 ? p.chance * 100 : p.chance)}%）`;
     case 'immune': return `${p.statuses.map((s) => STATUS_NAME[s] ?? s).join('・')}にかからない`;
     case 'tacticResist': return `軍略への耐性+${p.pct}%`;
     case 'bane': return `${AFFINITY_NAME[p.vs] ?? p.vs}の相手に威力+${p.pct}%`;
-    case 'baneOnTerrain': return `${p.terrain}で威力+${p.pct}%`;
+    case 'baneOnTerrain': return `${TERRAIN_NAME[p.terrain] ?? p.terrain}にいる相手に威力+${p.pct}%`;
     case 'remove': return '倒されても戦場から下がるだけ（失われにくい）';
     case 'doubleAct': return '1巡に2回動けることがある';
     case 'mass': return `数の利：隣の味方の歩兵1体ごとに与えるダメージ+${p.pct}%（最大+${p.max}%）`;
@@ -79,8 +80,12 @@ const PASSIVE_TEXT = (p: Passive): string => {
     case 'unhorse': return `落馬：騎馬に当てると、${p.turns}巡のあいだ下馬させる`;
     case 'charge': return `突撃：その手番で進んだマス数×${p.pct}%、与えるダメージが増える（最大+${p.max}%。反撃では増えない）`;
     case 'missileGuard': return `飛び道具の盾：2マス以上離れた所からの攻撃を、${p.chance}%で半分にする`;
-    case 'rally': return `鼓舞：隣の味方の与えるダメージ+${p.pct}%（いつも。重ならない）`;
+    case 'rally': return `鼓舞：${(p.range ?? 1) > 1 ? `${p.range}マス以内` : '隣'}の味方の与えるダメージ+${p.pct}%（いつも。重ならない）`;
     case 'lowland': return `平地（草原・道）に立つと、防御−${p.defPct}%・回避−${p.evadePct}`;
+    case 'terrainBoost': return `地の利：${TERRAIN_NAME[p.terrain] ?? p.terrain}に立つと、移動+${p.move}・回避+${p.evade}`;
+    case 'cavalryBane': return `騎馬殺し：騎馬の相手に与えるダメージ+${p.pct}%`;
+    case 'healBoost': return `回復の名手：回復の軍略で治す量+${p.pct}%`;
+    case 'resistAura': return `加持：隣の味方の軍略への耐性+${p.pct}%（重ならない）`;
   }
 };
 

@@ -31,12 +31,12 @@ export function hasRemove(u: BUnit): boolean { return passive(u, 'remove').lengt
 export function canMove(st: BattleState, u: BUnit): boolean {
   if (st.winner !== null || !u.alive || u.side !== st.turn || disabled(u)) return false;
   if (!u.acted) return !u.moved;
-  return hasRemove(u) && !u.postMoved && moveOf(u) - u.moveSpent > 0;
+  return hasRemove(u) && !u.postMoved && moveOf(u, st) - u.moveSpent > 0;
 }
 /** いま移動できるマス */
 export function moveCells(st: BattleState, u: BUnit): number[] {
   if (!canMove(st, u)) return [];
-  return reach(st, u, moveOf(u) - u.moveSpent).cells.filter((i) => i !== u.pos);
+  return reach(st, u, moveOf(u, st) - u.moveSpent).cells.filter((i) => i !== u.pos);
 }
 
 // ---------------------------------------------------------------- 状態変化
@@ -495,7 +495,7 @@ export function apply(st: BattleState, a: Action): boolean {
   switch (a.type) {
     case 'move': {
       if (!canMove(st, u)) return false;
-      const r = reach(st, u, moveOf(u) - u.moveSpent);
+      const r = reach(st, u, moveOf(u, st) - u.moveSpent);
       if (a.to === u.pos || !r.cells.includes(a.to)) return false;
       log(st, 'move', { uid: u.id, side: u.side, from: u.pos, to: a.to, cost: r.dist[a.to] });
       u.moveSpent += r.dist[a.to];

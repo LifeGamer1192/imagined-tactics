@@ -69,7 +69,7 @@ export function notePath(st: BattleState, b: Before, a: Action): void {
   if (a.type !== 'move') return;
   const u = st.units[a.unit];
   if (!u || !u.alive) return;
-  const r = reach(st, u, moveOf(u) - u.moveSpent);
+  const r = reach(st, u, moveOf(u, st) - u.moveSpent);
   if (a.to === u.pos || !r.cells.includes(a.to)) return;
   b.paths.set(u.id, [...(b.paths.get(u.id) ?? [u.pos]), ...routeTo(r, a.to)]);
 }

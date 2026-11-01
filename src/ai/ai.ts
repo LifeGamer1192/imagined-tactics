@@ -138,7 +138,7 @@ function threatsTo(st: BattleState, u: BUnit, exact = false): Threat[] {
       const v = tacticDamage(st, e, t, u);
       if (v > best) { best = v; range = (t.range ?? 0) + t.area; }
     }
-    if (best > 0) out.push({ u: e, radius: moveOf(e) + range, expected: best, tm0: terrainMod(st, u), cells: exact ? strikeCells(st, e, range) : undefined });
+    if (best > 0) out.push({ u: e, radius: moveOf(e, st) + range, expected: best, tm0: terrainMod(st, u), cells: exact ? strikeCells(st, e, range) : undefined });
   }
   return out;
 }
@@ -151,7 +151,7 @@ function strikeCells(st: BattleState, e: BUnit, range: number): Uint8Array {
   const key = `${st.round}:${st.turn}:${e.id}:${e.pos}:${range}`;
   let out = m.get(key);
   if (out) return out;
-  const g = st.map.grid, from = reach(st, e, moveOf(e)).cells;
+  const g = st.map.grid, from = reach(st, e, moveOf(e, st)).cells;
   out = new Uint8Array(g.n);
   for (let i = 0; i < g.n; i++) {
     if (st.map.terrain[i] === 'void') continue;
@@ -292,9 +292,9 @@ function contactIn(st: BattleState, t: BUnit): number {
   let best = Infinity;
   for (const f of st.units) {
     if (!f.alive || f.side === t.side) continue;
-    const reachT = moveOf(t) + (basicSkill(t)?.range[1] ?? 1), reachF = moveOf(f) + (basicSkill(f)?.range[1] ?? 1);
+    const reachT = moveOf(t, st) + (basicSkill(t)?.range[1] ?? 1), reachF = moveOf(f, st) + (basicSkill(f)?.range[1] ?? 1);
     const gap = g.distance(t.pos, f.pos) - Math.max(reachT, reachF);
-    best = Math.min(best, Math.max(0, Math.ceil(gap / Math.max(1, moveOf(t) + moveOf(f) * 0.5))));
+    best = Math.min(best, Math.max(0, Math.ceil(gap / Math.max(1, moveOf(t, st) + moveOf(f, st) * 0.5))));
   }
   return best;
 }
@@ -422,7 +422,7 @@ function travelField(st: BattleState, u: BUnit, foes: BUnit[]): Float64Array {
   const dist = new Float64Array(g.n).fill(Infinity);
   const heap = new MinHeap();
   for (const f of foes) { dist[f.pos] = 0; heap.push(0, f.pos); }
-  const budget = moveOf(u);
+  const budget = moveOf(u, st);
   while (heap.size) {
     const d = heap.peekKey();
     const i = heap.pop();
@@ -710,7 +710,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
   // 装填の値打ち：込めていない駒の待機に、撃てるようになる技の威力 × ai.json の reload を足す
   const reloadValue = mayAct && needsReload(u) && !has(u, 'loaded') ? AI.reload * Math.max(0, ...u.skills.map(skillOf).filter((s) => s.reload).map((s) => s.power)) : 0;
   const origin = u.pos, wasMoved = u.moved;
-  const cells = mayMove ? reach(st, u, moveOf(u) - u.moveSpent).cells : [origin];
+  const cells = mayMove ? reach(st, u, moveOf(u, st) - u.moveSpent).cells : [origin];
   let best: { score: number; parts: ScoreParts; move: number | null; act: Action | null } = { score: -Infinity, parts: zeroParts(), move: null, act: null };
   let stay = -Infinity;
   // 気力の値打ちで使う：この駒が、いま撃てるいちばん良い一撃の大きさ（気力の値打ちを引く前）
@@ -894,7 +894,7 @@ export function evaluateBattle(st: BattleState, side: number, control = 0): numb
       if (st.map.terrain[c] === 'void') continue;
       let mine = 0, theirs = 0;
       for (const u of alive) {
-        if (g.distance(u.pos, c) > moveOf(u) + 1) continue;
+        if (g.distance(u.pos, c) > moveOf(u, st) + 1) continue;
         const p = u.hp * attackPower(st, u) / 100;
         if (u.side === side) mine += p; else theirs += p;
       }
