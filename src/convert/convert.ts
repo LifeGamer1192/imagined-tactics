@@ -282,7 +282,7 @@ export function capLines(w: Weights, cap: number): void {
 }
 
 /**
- * 始めの兵を選ぶ。重みで先に兵種を選び、残りの兵糧（采配）で雇えなければそこで止める（0.11.0。
+ * 始めの兵を選ぶ。重みで先に兵種を選び、残りの采配（武将の采配力×割合）で雇えなければそこで止める（0.11.0。
  * 前は雇える兵種の中から選んだので、残りが少なくなると安い雑兵ばかりになっていた）。上の格が入らなければ同じ系統の下の格。1隊目だけは雇える兵種から
  */
 function pickTroops(weights: Weights, budget: number, level: number, variant: Variant, year: number, rng: RNG): GTroop[] {
