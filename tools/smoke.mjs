@@ -362,9 +362,9 @@ await page.click('#saves');
 await page.waitForSelector('.savemenu');
 await shot(page, '11_save_menu');
 check('セーブのメニューに自動の枠が入っている', (await page.textContent('.savemenu')).includes('か月経過'));
-await page.click('[data-save="1"]');
+await page.click('#saveNew');
 await page.waitForSelector('[data-load="1"]');
-check('枠1に保存できる', true);
+check('新しい枠（枠1）に保存できる', true);
 const saved = await snap();
 // ファイルに書き出す
 const [download] = await Promise.all([page.waitForEvent('download'), page.click('#export')]);
@@ -402,6 +402,27 @@ await page.waitForSelector('#next');
 await page.waitForFunction(() => !!window.__campaign);
 check('開き直したあと、枠1から続けられる', (await snap()) === saved);
 await shot(page, '12_campaign_loaded');
+
+// 枠は数に限りなく増やせて、一覧は1ページに10枠（自動の枠は別に上に出る）
+await closeAsks(page);
+await page.click('#saves');
+await page.waitForSelector('#saveNew');
+for (let i = 0; i < 11; i++) {
+  await page.click('#saveNew');
+  await page.waitForSelector(`[data-load="${i + 2}"]`);
+}
+const rows1 = await page.$$eval('.savemenu [data-load]', (x) => x.map((b) => b.dataset.load));
+const nav1 = (await page.textContent('.slotnav'))?.replace(/\s+/g, '');
+await shot(page, '12b_save_pages');
+check('12枠を保存すると、1ページ目は自動＋新しい10枠', rows1.length === 11 && rows1[0] === 'auto' && rows1[1] === '12' && rows1[10] === '3' && nav1.includes('1/2'), `${rows1.join(',')} ${nav1}`);
+await page.click('#nextPage');
+await page.waitForFunction(() => document.querySelector('.slotnav')?.textContent?.includes('2 / 2'));
+const rows2 = await page.$$eval('.savemenu [data-load]', (x) => x.map((b) => b.dataset.load));
+check('2ページ目に残りの枠', rows2.join(',') === 'auto,2,1', rows2.join(','));
+await page.click('[data-del="2"]');
+await page.waitForFunction(() => !document.querySelector('[data-load="2"]'));
+check('枠を消せる（確かめてから）', true);
+await page.click('#closeMenu');
 
 // 書き出したファイルから読み込む
 await page.goto(url);

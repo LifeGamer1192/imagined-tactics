@@ -7,7 +7,6 @@ import { BM } from '../battle/map';
 import { MAX_GENERALS, MAX_ROUNDS } from '../battle/setup';
 import { D, getVariant, L, term } from '../data/db';
 import type { Affinity, StatusId, TerrainKind } from '../data/types';
-import { SLOTS } from '../persist/save';
 import { TERRAIN_NAME } from '../render/battleView';
 import { MAX_MASTERY } from '../rules/growth';
 import { FIELD } from '../rules/stats';
@@ -58,7 +57,7 @@ function intro(): string {
     <p>兵種・役職・技・軍略の名前には、日本版と中国版があります。画面の右上の「名前の版」で切り替えます（今は${getVariant() === 'jp' ? '日本版' : '中国版'}）。</p>
     <h3>セーブ</h3>
     ${ul([
-      `保存できるのは戦略だけ。戦略の画面の「セーブ」を押す。枠は「自動」（月が変わるたびに入る）と、手動の${SLOTS.length - 1}つ。`,
+      `保存できるのは戦略だけ。戦略の画面の「セーブ」を押す。枠は「自動」（月が変わるたびに入る）と、手動の枠。手動の枠は「新しい枠に保存」でいくつでも増やせる（一覧は1ページ10枠、新しい順）。`,
       'セーブは、いま使っているブラウザの中に入る。別の端末で続けるときは「ファイルに書き出す」で .hexsim を作り、タイトルの「セーブファイルを選ぶ」で読み込む。',
       '保存があると、タイトルに「つづきから」が出る。',
       '戦闘の途中は保存できない。',

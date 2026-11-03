@@ -27,7 +27,7 @@ import {
 import { generalPromotions, promoteGeneral } from '../rules/growth';
 import { changeTable, changeText, generalArtsHtml, generalChange, troopArtsHtml, troopChange, type ChangeRow } from './classChange';
 import { MAX_GENERALS } from '../battle/setup';
-import { snapshot, type HexSave } from '../persist/save';
+import { AUTO_SLOT, snapshot, type HexSave } from '../persist/save';
 import { openSaveMenu, writeSlot } from './saveMenu';
 import { TRAIT_NAME } from './text';
 import { TIE_NAME } from '../strategy/biography';
@@ -1042,7 +1042,7 @@ export class CampaignScreen {
   }
 
   /** 月が変わるたびに、自動の枠へ保存する（失敗しても遊びは続ける） */
-  private autosave(): void { void writeSlot('auto', snapshot(this.c)); }
+  private autosave(): void { void writeSlot(AUTO_SLOT, snapshot(this.c)); }
 
   private draw(): void {
     const c = this.c;

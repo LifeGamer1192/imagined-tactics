@@ -14,7 +14,8 @@ import { initScout } from '../strategy/scouting';
 
 export const SAVE_FORMAT = 'hex-sim';
 export const SAVE_VERSION = 1;
-export const SLOTS = ['auto', '1', '2', '3'] as const;
+/** 自動セーブの枠の名前。手動の枠は '1'・'2'・… と数に限りなく増える（src/ui/saveMenu.ts） */
+export const AUTO_SLOT = 'auto';
 
 export interface HexSave {
   format: string;
@@ -180,7 +181,7 @@ export function fromJSON(text: string): HexSave {
 export function dateText(year: number, month: number): string {
   return `${year < 0 ? `前${-year + 1}` : year}年${month}月`;
 }
-export function summaryText(s: HexSave): string {
+export function summaryText(s: Pick<HexSave, 'summary'>): string {
   const m = s.summary;
   return `${m.world} ${dateText(m.year, m.month)}　${m.faction}${m.faction === '観戦' ? '' : `（領${m.provinces}）`}　${m.months}か月経過`;
 }
