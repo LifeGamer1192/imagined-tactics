@@ -57,7 +57,7 @@ const AXIS_WORD: Record<Axis, [string, string]> = {
   honor: ['正面から戦う', '搦め手を使う'],
 };
 
-const PASSIVE_TEXT = (p: Passive): string => {
+export const PASSIVE_TEXT = (p: Passive): string => {
   switch (p.type) {
     case 'counterDamage': return `反撃の威力+${p.pct}%`;
     case 'evade': return `回避+${p.pct}%`;
@@ -69,7 +69,7 @@ const PASSIVE_TEXT = (p: Passive): string => {
     case 'tacticResist': return `軍略への耐性+${p.pct}%`;
     case 'bane': return `${AFFINITY_NAME[p.vs] ?? p.vs}の相手に威力+${p.pct}%`;
     case 'baneOnTerrain': return `${TERRAIN_NAME[p.terrain] ?? p.terrain}にいる相手に威力+${p.pct}%`;
-    case 'remove': return '倒されても戦場から下がるだけ（失われにくい）';
+    case 'remove': return '再移動：攻撃・技・軍略のあとも、残りの移動力で動ける';
     case 'doubleAct': return '1巡に2回動けることがある';
     case 'mass': return `数の利：隣の味方の歩兵1体ごとに与えるダメージ+${p.pct}%（最大+${p.max}%）`;
     case 'rugged': return '森・山・沼でも動きやすい（移動の重さと、命中・回避の下がりが半分）';
@@ -91,6 +91,13 @@ const PASSIVE_TEXT = (p: Passive): string => {
     case 'stealth': return '隠密：森で待機すると隠密になる。2マス以上離れた所からの攻撃・技を1度だけかわす（軍略・隣からの攻撃は当たる）';
   }
 };
+
+/** 兵種の特技の文の一覧（図鑑・説明で使う）。門・柵を打つ力も特技として出す */
+export function unitPassiveLines(u: UnitDef): string[] {
+  const out = u.passives.map(PASSIVE_TEXT);
+  if (BM_SIEGE.lines.includes(u.line)) out.push(`門・柵を打つ力×${BM_SIEGE.mult}（ほとんど一撃で壊す）`);
+  return out;
+}
 
 /** 兵種の分類の相性の文（0.11.0）。分類が無ければ空 */
 export function kindText(kind: UnitKind | undefined): string {
@@ -325,7 +332,7 @@ export function unitTip(unitId: string, level?: number): string {
   if (u.passives.length) out.push(`特技：${u.passives.map(PASSIVE_TEXT).join('、')}`);
   const kt = kindText(u.kind);
   if (kt) out.push(kt);
-  if (BM_SIEGE.lines.includes(u.line)) out.push(`門・柵を打つ力×${BM_SIEGE.mult}（ほとんど一撃で壊す）`);
+  if (BM_SIEGE.lines.includes(u.line)) out.push(unitPassiveLines(u).at(-1)!);
   for (const p of u.promote ?? []) {
     if (!D.byUnit[p.to]) continue;
     // 品の要る昇進は、品とレベルの両方（練兵の書ではレベルを飛ばせない）

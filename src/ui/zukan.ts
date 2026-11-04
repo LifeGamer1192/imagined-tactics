@@ -11,7 +11,7 @@ import { AILMENTS, DISPELLABLE } from '../battle/engine';
 import { BAD_STATUS, GOOD_STATUS } from '../render/battleView';
 import { classMod, generalExpToNext, troopExpToNext } from '../rules/growth';
 import { KIND_NAME } from '../rules/stats';
-import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticEffects, tacticTip, traitTip, unitTip, classTip } from './describe';
+import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticEffects, tacticTip, traitTip, unitTip, classTip, unitPassiveLines } from './describe';
 import { fieldTable, terrainTable } from './help';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
 
@@ -63,12 +63,13 @@ function unitsPage(): string {
     const us = D.units.filter((u) => u.line === line && hit(u.name.jp, u.name.cn, westName(u.id) ?? '', u.id));
     if (!us.length) continue;
     out.push(`<h3>${esc(LINE[line] ?? `系統${line}`)}</h3><div class="scroll"><table class="zk-units">
-      <tr><th>番号</th><th>格</th><th>日本版</th><th>中国版</th><th>西洋版</th><th>体力</th><th>気力</th><th>武力</th><th>知略</th><th>機敏</th><th>防御</th><th>移動</th><th>得意</th><th>采配</th><th>技・軍略（1回の気力）</th><th>昇格先</th></tr>
+      <tr><th>番号</th><th>格</th><th>日本版</th><th>中国版</th><th>西洋版</th><th>体力</th><th>気力</th><th>武力</th><th>知略</th><th>機敏</th><th>防御</th><th>移動</th><th>得意</th><th>采配</th><th>技・軍略（1回の気力）</th><th>特技</th><th>昇格先</th></tr>
       ${us.map((u) => `<tr id="${rowId('units', u.id)}">
         <td>${u.id}${u.kind ? `<br><span class="dim small">${KIND_NAME[u.kind]}</span>` : ''}</td><td>${TIER[u.tier] ?? u.tier}</td>
         ${(['jp', 'cn', 'west'] as const).map((s) => `<td class="zk-pic" data-tip="${esc(unitTip(u.id))}">${pic(s, u.id)}<br>${esc(s === 'west' ? westName(u.id) ?? '' : u.name[s])}</td>`).join('')}
         <td>${u.hp}</td><td>${u.mp || '—'}</td><td>${u.str}</td><td>${u.int}</td><td>${u.agi}</td><td>${u.def}</td><td>${u.move}</td><td>${AFFINITY_NAME[u.affinity] ?? u.affinity}</td><td>${u.cost}</td>
         <td class="zk-left zk-arts">${[...u.skills.map(skillLink), ...u.tactics.map(tacticLink)].join(' ') || '—'}</td>
+        <td class="zk-left zk-pass">${unitPassiveLines(u).map((x) => `<div>${esc(x)}</div>`).join('') || '—'}</td>
         <td class="zk-left">${(u.promote ?? []).filter((p) => D.byUnit[p.to]).map((p) => `${unitLink(p.to)}${p.lv ? ` Lv${p.lv}` : ''}${p.item ? `・品「${esc(D.items[p.item]?.jp ?? p.item)}」` : ''}`).join('<br>') || '—'}</td>
       </tr>`).join('')}</table></div>`);
   }
