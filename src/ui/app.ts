@@ -3,7 +3,7 @@
 import { autoBattle, nextAiActions, planUnit, stanceOf } from '../ai/ai';
 import { AI, personalityLabel, personalityOf, planLabel, type AutoPlan } from '../ai/personality';
 import { getPlan, planPickerHtml, wirePlanPicker } from './autoPlan';
-import { apply, canAct, canMove, canWithdraw, holder, moveCells, withdraw } from '../battle/engine';
+import { apply, canAct, canMove, canWithdraw, holder, moveCells, moveLeft, withdraw } from '../battle/engine';
 import { mapFromProvince, seatName } from '../battle/map';
 import { applyBattleResult, type BattleSummary } from '../battle/result';
 import { lookIncome, newCampaign, note, S, traitsOf, type Difficulty } from '../strategy/campaign';
@@ -915,7 +915,9 @@ export class App {
   private unitDone(u: BUnit): boolean {
     const st = this.st!;
     if (!u.alive) return true;
-    if (u.acted || (!canAct(st, u) && !canMove(st, u))) return true;
+    // 行動したあとも、再移動・追い討ちで残りの移動力があれば、まだ終わっていない（自動で番を終えない・暗くしない）
+    if (u.acted) return !canMove(st, u);
+    if (!canAct(st, u) && !canMove(st, u)) return true;
     return u.moved && !this.hasAction(u);
   }
 
@@ -1633,6 +1635,8 @@ export class App {
       actions += `<button id="wait" ${act ? '' : 'disabled'} class="${act && this.flashActions ? 'flash' : ''}" ${reloads ? 'data-tip="待機すると矢・弾を込めて「装填済み」になり、次の番から装填の要る技を撃てます"' : ''}>${reloads ? '待機（装填する）' : '待機'}${act ? '' : `<small class="why">${esc(notAct)}</small>`}</button>`;
       actions += `<button id="cancel">${this.mode.type !== 'idle' ? (this.mode.type === 'breach' ? '壊すのをやめる' : '技・軍略をやめる') : '選択を解く'}</button>`;
       if (this.undo && this.undo.unit === u.id && !u.acted) actions += `<button id="undo">移動を取り消す</button>`;
+      // 行動のあとも動ける（再移動・追い討ち）：残りの移動力と、動けるマスが光っていることを知らせる
+      if (u.acted && canMove(st, u)) actions += `<p class="small okc">残りの移動力（${moveLeft(st, u)}）で動けます。光っているマスを押してください。</p>`;
       // 一部だけおまかせ（P44）と部隊ごとの退却（初期配置のマスにいる武将だけ）は、たまに使うので畳んでおく
       let etc = `<button id="autoUnit" data-tip="この駒を、コンピューターの考え方で動かします（自分の番の初めに自動で動く）">この駒をおまかせ</button>`;
       if (u.kind === 'general') etc += `<button id="autoGen" data-tip="この将と配下の兵を、すべてコンピューターの考え方で動かします">この将の配下をすべておまかせ</button>`;
@@ -1693,7 +1697,8 @@ export class App {
     });
     // 巡を終える（全員待機）：まだ動ける駒があれば確かめてから、残りを待機にして番を終える（「番を終える」と「全員待機」をまとめた。P42）
     on('#end', async () => {
-      const left = st.units.filter((x) => x.alive && x.side === st.turn && !this.unitDone(x));
+      // 行動を終えて、再移動の残りだけがある駒は数えない（動かさずに番を終えてよい）
+      const left = st.units.filter((x) => x.alive && x.side === st.turn && !x.acted && !this.unitDone(x));
       if (left.length) {
         const ok = await confirmBox(this.root.querySelector('.battle')!, { title: '巡を終える（全員待機）', body: `<p>まだ動ける駒が${left.length}隊あります（${left.slice(0, 6).map((x) => esc(x.name)).join('・')}${left.length > 6 ? ' ほか' : ''}）。すべて待機にして、この番を終えます。</p>`, ok: '巡を終える' });
         if (!ok || this.st !== st || st.winner !== null || !this.isHumanTurn()) return;
