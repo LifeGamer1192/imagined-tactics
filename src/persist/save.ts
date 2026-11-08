@@ -112,11 +112,11 @@ function pruneSkills(c: Campaign): void {
 }
 
 /**
- * なくなった兵種（統合した兵種）を、引き継ぐ兵種に置き換える。0.16.0：長柄組（u20a）は槍の系統に統合して素槍足軽（u19a）に
+ * なくなった兵種（統合した兵種）を、引き継ぐ兵種に置き換える。0.16.0：長柄組（u20a）は槍の系統に統合して素槍足軽（u19a）に。0.17.0：騎馬武者（u13a）は騎馬の系統に統合して軽騎（u07a）に
  */
 /** 0.16.4 で精鋭の証（item_elite）にまとめた昇格の品 */
 export const OLD_PROMOTE_ITEMS = ['item_ambush_top', 'item_fire_top', 'item_ship_top', 'item_guard_top', 'item_horse_top', 'item_ninja_top', 'item_shield_top'];
-export const RETIRED_UNITS: Record<string, string> = { u20a: 'u19a' };
+export const RETIRED_UNITS: Record<string, string> = { u20a: 'u19a', u13a: 'u07a' };
 function retireUnits(c: Campaign): void {
   const to = (id: string): string => RETIRED_UNITS[id] ?? id;
   const fixTroop = (t: GTroop): void => { t.unitId = to(t.unitId); };

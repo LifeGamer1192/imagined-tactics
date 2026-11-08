@@ -75,7 +75,7 @@ describe('gates and palisades', () => {
     f.pos = g.idx(2, 1);
     expect(breachParts(st, eng, cell).siege).toBe(BM.structures.siegeMult);
     expect(breachParts(foot, f, cell).siege).toBe(1);
-    const rider = await onMap('. . . . .\n. . . L .\n. . . . .', 'u13a');
+    const rider = await onMap('. . . . .\n. . . L .\n. . . . .', 'u13b');
     const r = rider.units.find((u) => u.side === 0 && u.kind === 'troop')!;
     expect(stepCost(rider, r, cell)).toBeNull();
     expect(stepCost(foot, f, cell)).not.toBeNull();

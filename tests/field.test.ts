@@ -71,7 +71,7 @@ describe('new terrain', () => {
   it('paddy is slow, walls stop riders, camps heal', () => {
     const st = field('. P H G A .\n. . . . . .');
     const g = st.map.grid;
-    const foot = troop(st, 'u01a', 0, g.idx(0, 0)), rider = troop(st, 'u13a', 0, g.idx(0, 1));
+    const foot = troop(st, 'u01a', 0, g.idx(0, 0)), rider = troop(st, 'u13b', 0, g.idx(0, 1));
     expect(stepCost(st, foot, g.idx(1, 0))).toBeGreaterThan(stepCost(st, foot, g.idx(0, 0))!);
     expect(stepCost(st, rider, g.idx(2, 0))).toBeNull();
     expect(stepCost(st, foot, g.idx(2, 0))).toBeGreaterThanOrEqual(2);
@@ -169,7 +169,7 @@ describe('siege maps', () => {
     const st = field(rows.join('\n'));
     const g = st.map.grid;
     expect(st.map.siege).toBe(true);
-    const rider = troop(st, 'u13a', 0, g.idx(8, 0)), foot = troop(st, 'u01a', 0, g.idx(8, 10));
+    const rider = troop(st, 'u13b', 0, g.idx(8, 0)), foot = troop(st, 'u01a', 0, g.idx(8, 10));
     const def = troop(st, 'u01a', 1, g.idx(13, 5));
     // 守り手は動かさない（攻め手の道の選び方だけを見る）
     def.statuses.push({ id: 'stun', turns: -1 });

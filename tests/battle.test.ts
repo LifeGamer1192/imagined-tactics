@@ -73,7 +73,9 @@ describe('combat formulas (docs/12 の計算例)', () => {
 
   it('riders: melee is △, bows are ○', () => {
     const st = field(PLAIN);
-    const zohyo = troop(st, 'u01a', 0, 10), yumi = troop(st, 'u06a', 0, 12), rider = troop(st, 'u13a', 1, 11);
+    const zohyo = troop(st, 'u01a', 0, 10), yumi = troop(st, 'u06a', 0, 12), rider = troop(st, 'u13b', 1, 11);
+    // 0.17.0：計算例の騎馬武者（u13a）をなくしたので、母衣衆に騎馬武者の能力（機敏61・防御102）を持たせて同じ例を確かめる
+    rider.agi = 61; rider.def = 102;
     expect(skillDamage(st, zohyo, basic(zohyo), rider)).toBe(82);
     expect(hitChance(st, zohyo, basic(zohyo), rider)).toBe(50);
     // 弓足軽は騎馬特効（+10%）を持つので、表の基準値 91 より高くなる
@@ -117,7 +119,7 @@ describe('movement', () => {
   it('riders cannot enter water; enemies block, allies do not', () => {
     const st = field('. ~ . . .\n. ~ . . .\n. . . . .');
     const g = st.map.grid;
-    const rider = troop(st, 'u13a', 0, g.idx(0, 0));
+    const rider = troop(st, 'u13b', 0, g.idx(0, 0));
     const r = reach(st, rider, 99);
     expect(r.dist[g.idx(1, 0)]).toBe(Infinity);
     expect(r.dist[g.idx(2, 0)]).toBeLessThan(Infinity);   // 下を回って行ける

@@ -21,8 +21,8 @@
   "maxTraits": 3,
   "troop": { "levelBase": 1, "levelPerLv": 3, "heroUnit": { "foot": "u01b", "archer": { "jp": "u06a", "cn": "u04a" } } },
   "units": {
-    "jp": { "foot": "u01b", "archer": "u06a", "gun": "u04a", "horse": "u13a" },
-    "cn": { "foot": "u01b", "archer": "u04a", "horse": "u07b", "chariot": "u13a" }
+    "jp": { "foot": "u01b", "archer": "u06a", "gun": "u04a", "horse": "u07a" },
+    "cn": { "foot": "u01b", "archer": "u04a", "horse": "u07b", "chariot": "u07a" }
   },
   "_traits": "特性を持たない主人公・仲間の、特性の見立て。上から順に、反対の特性と重ならないものを maxTraits まで",
   "traitRules": [

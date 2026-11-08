@@ -96,7 +96,7 @@ describe('three kinds of infantry', () => {
 
   it('halberd: shields do not work, and the higher tiers unhorse cavalry they hit', () => {
     const st = field(PLAIN), g = st.map.grid;
-    const n = troop(st, 'u21b', 0, g.idx(2, 3)), h = troop(st, 'u13a', 1, g.idx(3, 3));
+    const n = troop(st, 'u21b', 0, g.idx(2, 3)), h = troop(st, 'u13b', 1, g.idx(3, 3));
     n.passives.push({ type: 'hit', pct: 100 });
     apply(st, { type: 'skill', unit: n.id, skill: n.skills[0], target: h.pos });
     const d = [...st.log].reverse().find((e) => e.key === 'strike' && e.d?.type === 'strike' && !e.d.counter)?.d;
@@ -141,7 +141,7 @@ describe('0.16.0 skills and tactics', () => {
 describe('cavalry charge, shields against missiles, drums, sappers', () => {
   it('mounted warriors hit 5% harder per hex moved this turn, up to 20%, not on the counter', () => {
     const st = field(PLAIN), g = st.map.grid;
-    const c = troop(st, 'u13a', 0, g.idx(0, 3)), t = troop(st, 'u06a', 1, g.idx(5, 3));
+    const c = troop(st, 'u13b', 0, g.idx(0, 3)), t = troop(st, 'u06a', 1, g.idx(5, 3));
     expect(fxOf(st, c, t)['突撃（3マス）']).toBeUndefined();
     apply(st, { type: 'move', unit: c.id, to: g.idx(3, 3) });
     expect(c.moveSteps).toBe(3);
@@ -327,11 +327,24 @@ describe('0.16.2 adjustments', () => {
     expect(k).toMatchObject({ mp: 23, range: [1, 2], basic: false, counter: false });
     expect(k.power).toBeLessThan(D.bySkill.k024.power);
     expect(k.hit).toBeLessThan(D.bySkill.k024.hit);
-    for (const id of ['u13a', 'u13b', 'u13c']) expect(D.byUnit[id].skills).toContain('k109');
+    for (const id of ['u13b', 'u13c']) expect(D.byUnit[id].skills).toContain('k109');
     // 2マス先の相手を撃てる（馬上でも）
     const st = field(PLAIN), g = st.map.grid;
-    const r = troop(st, 'u13a', 0, g.idx(2, 3)), e = troop(st, 'u01a', 1, g.idx(4, 3));
+    const r = troop(st, 'u13b', 0, g.idx(2, 3)), e = troop(st, 'u01a', 1, g.idx(4, 3));
     expect(skillTargetCells(st, r, k)).toContain(e.pos);
+  });
+});
+
+describe('0.17.0: cavalry lines merged', () => {
+  it('軽騎 branches at 中級 into 騎馬隊 or 母衣衆; 騎馬武者 is gone', () => {
+    expect(D.byUnit.u13a).toBeUndefined();
+    expect(D.byUnit.u07a.promote.map((p) => p.to)).toEqual(['u07b', 'u13b']);
+    expect(D.byUnit.u07b.promote.map((p) => p.to)).toEqual(['u07c']);
+    expect(D.byUnit.u13b.promote.map((p) => p.to)).toEqual(['u13c']);
+    for (const id of ['u07a', 'u07b', 'u07c', 'u07d', 'u13b', 'u13c']) { expect(D.byUnit[id].line, id).toBe(7); expect(D.byUnit[id].kind, id).toBe('cavalry'); }
+    expect(D.units.some((u) => u.line === 13)).toBe(false);
+    const opts = troopPromotions(makeTroop(D.byUnit.u07a, 10), {});
+    expect(opts.filter((o) => o.ok).map((o) => o.to.id).sort()).toEqual(['u07b', 'u13b']);
   });
 });
 
