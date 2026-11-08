@@ -313,7 +313,7 @@
   "sure": true,
   "kind": "buff",
   "status": "resistUp",
-  "turns": 3,
+  "turns": 4,
   "pct": 34
  },
  {
@@ -344,7 +344,7 @@
   "sure": true,
   "kind": "buff",
   "status": "defUp",
-  "turns": 3,
+  "turns": 4,
   "value": 31
  },
  {
@@ -406,8 +406,8 @@
  {
   "id": "x30",
   "name": {
-   "jp": "号令",
-   "cn": "軍令"
+   "jp": "再行動の号令",
+   "cn": "再動令"
   },
   "mp": 138,
   "power": 0,

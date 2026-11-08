@@ -790,7 +790,7 @@
   "power": 102,
   "range": [
    1,
-   3
+   2
   ],
   "hit": 0,
   "vsGround": "sure",
@@ -800,32 +800,7 @@
   "basic": false,
   "shape": {
    "type": "line",
-   "n": 3
-  },
-  "targets": "all",
-  "effects": []
- },
- {
-  "id": "k031",
-  "name": {
-   "jp": "総掛かり",
-   "cn": "踏陣"
-  },
-  "mp": 59,
-  "power": 111,
-  "range": [
-   1,
-   3
-  ],
-  "hit": 0,
-  "vsGround": "sure",
-  "vsRider": "sure",
-  "afterMove": false,
-  "counter": false,
-  "basic": false,
-  "shape": {
-   "type": "line",
-   "n": 3
+   "n": 2
   },
   "targets": "all",
   "effects": []
@@ -902,7 +877,9 @@
   "targets": "enemy",
   "effects": [
    {
-    "type": "knockback"
+    "type": "status",
+    "status": "daze",
+    "chance": 8
    }
   ],
   "noCounter": true
