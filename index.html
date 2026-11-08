@@ -268,6 +268,11 @@ option.oni { color: #c0392b; font-weight: bold; }
       .nations footer #campaign { flex: 1 1 100%; order: 9; min-height: 44px; }
       .nations footer { padding-bottom: 52px; }
     }
+    /* 横向きのスマホ（低い画面）：国の一覧と地図が下の欄に押しつぶされないよう、画面全体を送る形にする（P120 で下の欄が増えた） */
+    @media (max-height: 500px) and (min-width: 721px) {
+      .setup.nations { overflow-y: auto; }
+      .nations .nation-body { flex: none; height: 78vh; }
+    }
     .exclave { font-size: 13px; line-height: 1.55; color: #ffe2d4; background: rgba(150,44,26,0.55); border: 1px solid #e07a5c; border-left: 4px solid var(--accent); border-radius: 4px; padding: 5px 8px; }
     .exclave > b:first-child { color: #fff2e8; }
     body .card:has(> .town) > .exclave { margin-right: -72px; }
@@ -766,7 +771,7 @@ body.title { background: linear-gradient(rgba(20,18,15,0.55), rgba(20,18,15,0.88
     .busy i { width: 18px; height: 18px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: busy-spin 0.8s linear infinite; }
     @keyframes busy-spin { to { transform: rotate(360deg); } }
   </style>
-  <script type="module" crossorigin src="./assets/index-DJ1TlpId.js"></script>
+  <script type="module" crossorigin src="./assets/index-f6MMKpHB.js"></script>
 </head>
 <body>
   <div id="app"></div>
