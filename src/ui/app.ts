@@ -126,6 +126,10 @@ export class App {
   private mode: Mode = { type: 'idle' };
   /** 戦いの始めの、配置を直している段階 */
   private deploying = false;
+  /** 1台を交代で遊ぶ（両方の陣営を人が動かす）とき、いま配置している陣営（P119） */
+  private deploySide: Side = 0;
+  /** 交代画面を出している間は、盤を押せない（P119） */
+  private handing = false;
   private human = new Set<Side>([0]);
   private undo: { unit: number; pos: number; moveSpent: number } | null = null;
   /** 全員の行動が終わったときに、自動で番を終えるか */
@@ -682,8 +686,11 @@ export class App {
     this.pushTurnLog();
     // 自分で動かす陣営があれば、始める前に配置を少し直せる（観戦のときは、すぐ始める）
     this.deploying = human.size > 0 && st.round === 1 && st.winner === null && !st.log.some((l) => l.key === 'act');
+    this.deploySide = this.hotseat ? 0 : ([...human][0] ?? 0) as Side;
+    this.handing = false;
     this.refresh();
-    const go = (): void => { if (!this.deploying) this.startFighting(); };
+    // 1台を交代で遊ぶとき：まず攻め手が配置する（交代画面から）
+    const go = (): void => { if (!this.deploying) this.startFighting(); else if (this.hotseat) this.handoff(0, '配置の番です', () => {}); };
     // 天佑が発動していれば、まず大きな札で見せてから（P102。見せ終わるまでは、だれも動かない）
     if (st.boons?.length && !st.boonShown) { this.showBoons(go); return; }
     go();
@@ -755,8 +762,20 @@ export class App {
     this.deploying = false;
     this.selected = null;
     this.refresh();
+    const st = this.st!;
+    if (this.hotseat && this.human.has(st.turn)) { this.handoff(st.turn, '開戦。最初の番です', () => { this.splash('開戦'); this.maybeAi(); }); return; }
     this.splash('開戦');
     this.maybeAi();
+  }
+
+  /** 配置を終える：1台を交代で遊ぶときは、攻め手のあとに守り手が配置してから始める（P119） */
+  private deployDone(): void {
+    if (this.hotseat && this.deploySide === 0) {
+      this.deploySide = 1; this.selected = null; this.inspect = null;
+      this.handoff(1, '配置の番です', () => {});
+      return;
+    }
+    this.startFighting();
   }
 
   /** 配置の段階で、その駒を置けるマス：自分の陣営の配置場所の、入れるマス（自分の駒がいるマスは入れ替え） */
@@ -800,7 +819,29 @@ export class App {
 
   /** 流している演出が終わる時刻（決着の窓は、駒の動きが止まってから出す） */
   private fxEnd = 0;
-  private isHumanTurn(): boolean { return !!this.st && this.st.winner === null && this.human.has(this.st.turn); }
+  private isHumanTurn(): boolean { return !!this.st && this.st.winner === null && this.human.has(this.st.turn) && !this.handing; }
+  /** 1台を交代で遊んでいるか（両方の陣営を人が動かす。P119） */
+  private get hotseat(): boolean { return this.human.size === 2; }
+
+  /**
+   * 交代画面（P119）：盤と情報欄を隠して「◯◯の番です」。押すと then。
+   * 1台を交代で遊ぶとき、次の人に渡す間に、前の人の駒の動きや相手の手の内が見えないように
+   */
+  private handoff(side: Side, what: string, then: () => void): void {
+    const st = this.st, frame = this.root.querySelector<HTMLElement>('.battle');
+    if (!st || !frame) { then(); return; }
+    frame.querySelector('.handoff')?.remove();
+    this.handing = true;
+    const el = document.createElement('div');
+    el.className = 'handoff';
+    el.innerHTML = `<div class="ho-card" style="border-color:${SIDE_COLOR[side]}">
+      <div class="ho-side" style="color:${SIDE_COLOR[side]}">${esc(st.sideNames[side])}<small>（${side === 0 ? '攻め手' : '守り手'}）</small></div>
+      <div class="ho-what">${esc(what)}</div>
+      <p class="dim small">この陣営を動かす人に渡してから、押してください。</p>
+      <button class="primary" data-a="go">始める</button></div>`;
+    frame.appendChild(el);
+    el.querySelector<HTMLButtonElement>('[data-a="go"]')!.onclick = () => { el.remove(); this.handing = false; this.refresh(); then(); };
+  }
   private sel(): BUnit | null { return this.selected === null ? null : this.st!.units[this.selected]; }
 
   private cancel(): void {
@@ -819,14 +860,14 @@ export class App {
   private onClick(sx: number, sy: number, touch = false): void {
     const st = this.st!;
     const cell = this.view!.pick(sx, sy);
-    if (cell < 0 || st.winner !== null) return;
+    if (cell < 0 || st.winner !== null || this.handing) return;
     if (this.deploying) {
       // 配置：自分の駒を選び、配置場所のマスを押すと動く（自分の駒がいれば入れ替える）
       const t = unitAt(st, cell), u0 = this.sel();
       if (u0 && this.deployCells(u0).includes(cell)) {
         if (t) t.pos = u0.pos;
         u0.pos = cell;
-      } else if (t && this.human.has(t.side)) this.selected = t.id;
+      } else if (t && this.human.has(t.side) && (!this.hotseat || t.side === this.deploySide)) this.selected = t.id;
       else { this.inspect = t ? t.id : null; this.selected = null; }
       this.refresh();
       return;
@@ -977,6 +1018,8 @@ export class App {
     this.pushTurnLog();
     this.refresh();
     // 「開戦」は戦いの始めの1回だけ。番が替わったときは、だれの番かを小さく出す（おまかせどうしを速く進めているときは出さない）
+    // 1台を交代で遊ぶとき：次の人に渡す交代画面を出してから（P119）
+    if (this.hotseat && this.human.has(st.turn)) { this.handoff(st.turn, `${st.round}巡目の番です`, () => this.maybeAi()); return; }
     if (this.human.size || FX_SCALE[this.aiSpeed] > 0) this.splash(`${st.sideNames[st.turn]}の番`, true);
     this.maybeAi();
   }
@@ -1091,6 +1134,7 @@ export class App {
   /** 観戦（両方おまかせ）と手動を切り替える。戦闘の途中でも切り替えられる */
   private setWatching(on: boolean): void {
     this.watching = on;
+    this.root.querySelector('.handoff')?.remove(); this.handing = false;
     this.renderCtl();
     // おまかせを外すと、全員がいったん手動になる（P44）
     this.autoUnits.clear(); clearTimeout(this.autoTimer);
@@ -1592,13 +1636,13 @@ export class App {
     const shown = u ?? (this.inspect !== null ? st.units[this.inspect] : null);
     let actions = '';
     if (this.deploying) {
-      this.root.querySelector('#panel')!.innerHTML = `<div class="turn" style="background:${SIDE_COLOR[[...this.human][0] ?? 0]}">配置 <small>始める前に、並びを直せます</small></div>
-        <div class="foot"><button id="deployDone" class="primary">配置完了（戦闘開始）</button></div>
+      this.root.querySelector('#panel')!.innerHTML = `<div class="turn" style="background:${SIDE_COLOR[this.deploySide]}">配置${this.hotseat ? `（${esc(st.sideNames[this.deploySide])}）` : ''} <small>始める前に、並びを直せます</small></div>
+        <div class="foot"><button id="deployDone" class="primary">${this.hotseat && this.deploySide === 0 ? '配置完了（守り手の配置へ）' : '配置完了（戦闘開始）'}</button></div>
         ${this.skyLine()}
         <details class="howto" data-fold="howto-deploy" ${this.fold('howto-deploy')}><summary>自分の駒 → 青いマスで並べ替え（押すと説明）</summary>自分の駒を押してから、青いマス（自分の配置場所）を押すと動きます。自分の駒がいるマスなら入れ替わります。並べ終えたら「配置完了」を押すと、戦いが始まります。</details>
         ${shown ? this.unitCard(shown) : ''}`;
       const dd = this.root.querySelector<HTMLButtonElement>('#deployDone');
-      if (dd) dd.onclick = () => this.startFighting();
+      if (dd) dd.onclick = () => this.deployDone();
       this.wireFolds();
       this.renderLog();
       return;
