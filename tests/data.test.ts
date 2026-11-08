@@ -7,7 +7,7 @@ describe('system data', () => {
   it('counts', () => {
     expect(D.classes.length).toBe(63);
     expect(D.units.length).toBe(69);
-    expect(D.skills.length).toBe(106);
+    expect(D.skills.length).toBe(105);
     expect(D.tactics.length).toBe(42);
   });
 
@@ -78,9 +78,10 @@ describe('shared IDs (ima-rpg uses the same IDs; never renumber)', () => {
     // 0.11.0：技 k093〜k105 と、兵種 u01d・u01e・u19a・u19c・u20a・u20b・u21a・u21b・u21c を足した（前の ID はそのまま）
     // 0.13.0：蹂躙（k058・k061）を外した。番号は詰めない（ほかの技の ID はそのまま）
     // 0.14.0：上級8種（u02c・u03c・u04c・u06c・u08c・u08c2・u12c・u12c2）と、技 k106〜k108・軍略 x40〜x42 を足した
+    // 0.16.3：焙烙火矢（k081）を外した
     // 0.16.2：馬上弓（k109）を足した
     // 0.16.0：総掛かり（k031）を外し、長柄組（u20a）を槍の系統に統合してなくした（番号は詰めない）
-    const removed = new Set(['k058', 'k061', 'k031']);
+    const removed = new Set(['k058', 'k061', 'k031', 'k081']);
     expect(D.skills.map((s) => s.id)).toEqual(Array.from({ length: 109 }, (_, i) => `k${pad(i + 1, 3)}`).filter((id) => !removed.has(id)));
     expect(D.tactics.map((t) => t.id)).toEqual(Array.from({ length: 42 }, (_, i) => `x${pad(i + 1, 2)}`));
     expect(D.units.map((u) => u.id).sort()).toEqual([

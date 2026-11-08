@@ -2070,38 +2070,6 @@
   "effects": []
  },
  {
-  "id": "k081",
-  "name": {
-   "jp": "焙烙火矢",
-   "cn": "火船攻"
-  },
-  "mp": 68,
-  "power": 166,
-  "range": [
-   1,
-   2
-  ],
-  "hit": 0,
-  "vsGround": "sure",
-  "vsRider": "sure",
-  "afterMove": false,
-  "counter": false,
-  "basic": false,
-  "shape": {
-   "type": "around",
-   "n": 2
-  },
-  "targets": "all",
-  "effects": [
-   {
-    "type": "status",
-    "status": "stun",
-    "chance": 21
-   }
-  ],
-  "needsWater": true
- },
- {
   "id": "k082",
   "name": {
    "jp": "鉄甲体当たり",

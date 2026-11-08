@@ -39,7 +39,7 @@
     "snowExtraRounds": 2,
     "nightHit": -5,
     "nightChance": 0.12,
-    "fireSkills": ["k012", "k040", "k071", "k072", "k073", "k081"],
+    "fireSkills": ["k012", "k040", "k071", "k072", "k073"],
     "fireTactics": ["x02", "x08", "x09", "x13"],
     "odds": {
       "spring": { "clear": 60, "rain": 25, "fog": 15, "snow": 0 },

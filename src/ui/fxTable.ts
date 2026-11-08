@@ -29,7 +29,7 @@ const GROUPS: Record<StrikeFx, string> = {
   bullet: 'k014 k016 k078 k080 k106',
   cannon: 'k040 k042 k043 k075 k076 k083 k084',
   stone: 'k055',
-  fire: 'k012 k070 k071 k072 k073 k081',
+  fire: 'k012 k070 k071 k072 k073',
   // 法螺・鬨・唄・言葉
   shout: 'k007 k009 k011 k051 k066 k069 k088 k092',
   heal: 'k053',
