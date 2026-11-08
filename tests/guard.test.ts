@@ -11,6 +11,7 @@ import { D } from '../src/data/db';
 import { forecastSkill, guardSplit, skillDamage, tacticDamage, takenDamage } from '../src/rules/combat';
 import { basicSkill, skillOf } from '../src/rules/stats';
 import { logText } from '../src/ui/text';
+import { before, cues } from '../src/ui/battleFx';
 
 function troop(st: BattleState, unitId: string, side: Side, pos: number, leader?: number): BUnit {
   const def = D.byUnit[unitId], t = makeTroop(def, 1);
@@ -185,5 +186,19 @@ describe('身代わり（guard）', () => {
     expect(hit(s.st, s.foe, s.gen)).toBe(true);
     const e = s.st.log.find((x) => x.key === 'guard')!;
     expect(logText(e)).toMatch(new RegExp(`${s.guard.name}が${s.gen.name}をかばい、\\d+を代わりに受けた`));
+  });
+
+  it('演出：将のマスに「かばわれた」と将が受けたぶん、兵のマスに「身代わり」と受けたぶん、2つのマスが光る', () => {
+    const s = scene();
+    const b = before(s.st);
+    const g0 = s.gen.hp, k0 = s.guard.hp;
+    expect(hit(s.st, s.foe, s.gen)).toBe(true);
+    const fx = cues(s.st, b, 1, 0).fx;
+    type Text = { kind: 'text'; cell?: number; label?: string; text: string };
+    const texts = fx.filter((f) => f.kind === 'text') as Text[];
+    expect(texts.find((f) => f.cell === s.gen.pos && f.label === 'かばわれた')?.text).toBe(String(g0 - s.gen.hp));
+    expect(texts.find((f) => f.cell === s.guard.pos && f.label === '身代わり')?.text).toBe(String(k0 - s.guard.hp));
+    expect(fx.some((f) => f.kind === 'flash' && (f as { cells: number[] }).cells.includes(s.guard.pos) && (f as { cells: number[] }).cells.includes(s.gen.pos))).toBe(true);
+    expect(fx.some((f) => f.kind === 'slide' && (f as { unit: number }).unit === s.guard.id)).toBe(true);
   });
 });

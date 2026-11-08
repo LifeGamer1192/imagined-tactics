@@ -207,7 +207,33 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
   /** いちばん最後に当たった瞬間（倒れた駒は、ここから薄れる） */
   let lastImpact = t;
 
-  for (const e of entries) {
+  /**
+   * 身代わり（P107・馬廻衆）：将が受けた一撃の記録（hit・tactic.hit・blast・collide）のすぐ前か後にある「かばった」の記録。
+   * 一撃の記録の dmg は全部の量なので、将の体力と数字は、身代わりの受けたぶんを引いて見せる
+   */
+  const guardNear = (i: number, tid: number): { uid: number; dmg: number } | null => {
+    for (const j of [i + 1, i - 1]) {
+      const x = entries[j];
+      if (x?.key === 'guard' && num(x.vars.tid) === tid && !guardShown.has(j)) { guardShown.add(j); return { uid: num(x.vars.uid), dmg: num(x.vars.dmg) }; }
+    }
+    return null;
+  };
+  const guardShown = new Set<number>();
+  /** 身代わりの演出：兵が将の方へ身を乗り出し、2つのマスが金に光り、兵のマスに「身代わり」と受けた数、将のマスに札 */
+  const guardFx = (gd: { uid: number; dmg: number }, gen: number, when: number) => {
+    const gp = posOf(gd.uid), tp = posOf(gen);
+    if (gp < 0 || tp < 0) return;
+    const a0 = xy(gp), b0 = xy(tp), mid: [number, number] = [a0[0] + (b0[0] - a0[0]) * 0.4, a0[1] + (b0[1] - a0[1]) * 0.4];
+    push({ kind: 'slide', unit: gd.uid, pts: [a0, mid, a0], t0: at(when - 120), dur: T.knock * 1.6 * scale });
+    push({ kind: 'flash', cells: [gp, tp], color: OCHRE, t0: at(when - 60), dur: 420 * scale });
+    hurt(gd.uid, gd.dmg, when + 40);
+    push({ kind: 'shake', unit: gd.uid, amp: 5, t0: at(when + 40), dur: T.shake * scale });
+    note(gp, String(gd.dmg), VERMILION, false, when + 40, '身代わり');
+    sound('thud', when);
+  };
+
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
     const uid = num(e.vars.uid), tid = num(e.vars.tid);
     switch (e.key) {
       case 'act': {
@@ -233,7 +259,7 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
       }
       case 'hit': case 'hit.crit': {
         if (uid < 0 || tid < 0) break;
-        const crit = e.key === 'hit.crit', dmg = num(e.vars.dmg);
+        const crit = e.key === 'hit.crit', gd = guardNear(i, tid), dmg = num(e.vars.dmg) - (gd?.dmg ?? 0);
         const when = attack(uid, tid, cur?.fx ?? fallback(uid, tid), crit, false);
         const d = cur?.d;
         // 押し付け（0.10.0）：押す先が塞がっていて、ダメージが増えた。塞いでいるマスを光らせ、数字を大きく「押し付け×1.5」
@@ -242,8 +268,9 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
         push({ kind: 'shake', unit: tid, amp: crit || wall ? 8 : 4.5, t0: at(when), dur: T.shake * scale });
         if (wall && wall.cell >= 0) push({ kind: 'flash', cells: [wall.cell], color: VERMILION, t0: at(when), dur: 320 * scale });
         const shielded = !!d?.dmg?.shield?.ok;
-        note(posOf(tid), String(dmg), VERMILION, crit || !!wall, when, crit ? '会心' : wall ? `押し付け×${wall.mult}` : shielded ? '盾で半減' : undefined);
+        note(posOf(tid), String(dmg), VERMILION, crit || !!wall, when, crit ? '会心' : wall ? `押し付け×${wall.mult}` : shielded ? '盾で半減' : gd ? 'かばわれた' : undefined);
         sound(crit || wall ? 'crit' : 'hit', when);
+        if (gd) guardFx(gd, tid, when);
         // 盾で受けた（受け止め・飛び道具の盾。0.11.0）：マスを金に光らせ、「盾」の札と、受ける音
         if (shielded) {
           push({ kind: 'flash', cells: [posOf(tid)], color: OCHRE, t0: at(when - 40), dur: 360 * scale });
@@ -319,8 +346,10 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
       }
       case 'blast': {
         if (tid < 0) break;
-        const when = blastAt ?? t, dmg = num(e.vars.dmg), center = num(e.vars.center) === 1, crit = num(e.vars.crit) === 1;
+        const gd = guardNear(i, tid);
+        const when = blastAt ?? t, dmg = num(e.vars.dmg) - (gd?.dmg ?? 0), center = num(e.vars.center) === 1, crit = num(e.vars.crit) === 1;
         hurt(tid, dmg, when);
+        if (gd) guardFx(gd, tid, when);
         push({ kind: 'shake', unit: tid, amp: center ? 7 : 4, t0: at(when), dur: T.shake * scale });
         note(posOf(tid), String(dmg), VERMILION, center || crit, when, crit ? '会心' : center ? undefined : `巻き込み${num(e.vars.pct)}%`);
         if (num(e.vars.shield)) chip(posOf(tid), '盾', OCHRE, when);
@@ -334,9 +363,11 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
         const when = lastImpact + 140, a0 = xy(posOf(pushed)), b0 = xy(posOf(other));
         const mid: [number, number] = [a0[0] + (b0[0] - a0[0]) * 0.35, a0[1] + (b0[1] - a0[1]) * 0.35];
         push({ kind: 'slide', unit: pushed, pts: [a0, mid, a0], t0: at(when - 80), dur: T.knock * 1.6 * scale });
-        hurt(other, dmg, when);
+        const gd = guardNear(i, other), self = dmg - (gd?.dmg ?? 0);
+        hurt(other, self, when);
         push({ kind: 'shake', unit: other, amp: 6, t0: at(when), dur: T.shake * scale });
-        note(posOf(other), String(dmg), VERMILION, false, when, 'ぶつかった');
+        note(posOf(other), String(self), VERMILION, false, when, 'ぶつかった');
+        if (gd) guardFx(gd, other, when);
         sound('thud', when);
         lastImpact = when; gap(when);
         break;
@@ -438,10 +469,11 @@ export function cues(st: BattleState, b: Before, scale: number, now: number): Cu
       case 'tactic.hit': case 'poison': {
         if (tid < 0) break;
         const when = e.key === 'poison' ? t : tacAt ?? t;
-        const dmg = num(e.vars.dmg);
+        const gd = e.key === 'poison' ? null : guardNear(i, tid), dmg = num(e.vars.dmg) - (gd?.dmg ?? 0);
         hurt(tid, dmg, when);
         push({ kind: 'shake', unit: tid, amp: 4.5, t0: at(when), dur: T.shake * scale });
-        note(posOf(tid), String(dmg), e.key === 'poison' ? PURPLE : VERMILION, false, when);
+        note(posOf(tid), String(dmg), e.key === 'poison' ? PURPLE : VERMILION, false, when, gd ? 'かばわれた' : undefined);
+        if (gd) guardFx(gd, tid, when);
         sound('hit', when);
         lastImpact = Math.max(lastImpact, when);
         if (e.key === 'poison' || tacAt === null) t += T.splashGap;
