@@ -2498,12 +2498,7 @@
    {
     "type": "immune",
     "statuses": [
-     "poison",
-     "silence",
-     "stun",
-     "daze",
-     "defect",
-     "confuse"
+     "poison"
     ],
     "rank": null
    }
@@ -2564,12 +2559,7 @@
    {
     "type": "immune",
     "statuses": [
-     "poison",
-     "silence",
-     "stun",
-     "daze",
-     "defect",
-     "confuse"
+     "poison"
     ],
     "rank": null
    },
@@ -2636,12 +2626,7 @@
    {
     "type": "immune",
     "statuses": [
-     "poison",
-     "silence",
-     "stun",
-     "daze",
-     "defect",
-     "confuse"
+     "poison"
     ],
     "rank": null
    },
@@ -3046,8 +3031,8 @@
   },
   "line": 12,
   "tier": 2,
-  "cost": 84,
-  "hp": 522,
+  "cost": 92,
+  "hp": 615,
   "mp": 121,
   "str": 68,
   "int": 40,
@@ -3112,8 +3097,8 @@
   },
   "line": 12,
   "tier": 3,
-  "cost": 110,
-  "hp": 620,
+  "cost": 121,
+  "hp": 715,
   "mp": 139,
   "str": 86,
   "int": 45,
@@ -3206,7 +3191,8 @@
    ]
   },
   "skills": [
-   "k056"
+   "k056",
+   "k109"
   ],
   "tactics": [],
   "passives": [
@@ -3266,7 +3252,8 @@
    ]
   },
   "skills": [
-   "k057"
+   "k057",
+   "k109"
   ],
   "tactics": [],
   "passives": [
@@ -3327,7 +3314,8 @@
   },
   "skills": [
    "k059",
-   "k060"
+   "k060",
+   "k109"
   ],
   "tactics": [],
   "passives": [

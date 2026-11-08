@@ -2771,5 +2771,29 @@
   },
   "targets": "enemy",
   "effects": []
+ },
+ {
+  "id": "k109",
+  "name": {
+   "jp": "馬上弓",
+   "cn": "騎射"
+  },
+  "mp": 23,
+  "power": 72,
+  "range": [
+   1,
+   2
+  ],
+  "hit": -8,
+  "vsGround": "o",
+  "vsRider": "o",
+  "afterMove": true,
+  "counter": false,
+  "basic": false,
+  "shape": {
+   "type": "single"
+  },
+  "targets": "enemy",
+  "effects": []
  }
 ]

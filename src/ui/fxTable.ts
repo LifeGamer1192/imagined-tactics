@@ -23,7 +23,7 @@ const GROUPS: Record<StrikeFx, string> = {
   thrust: 'k001 k002 k010 k026 k027 k028 k029 k030 k054 k059 k060 k062 k064 k089 k090 k091 k097 k098 k099 k100 k101 k003 k108',
   // 柄・盾・槌で打つ、体当たり、踏み荒らす
   blow: 'k005 k006 k008 k013 k015 k034 k035 k036 k037 k038 k039 k041 k074 k082 k086 k087',
-  arrow: 'k024 k025 k107',
+  arrow: 'k024 k025 k107 k109',
   javelin: 'k004',
   dart: 'k018 k020 k022 k023 k063 k065 k068',
   bullet: 'k014 k016 k078 k080 k106',

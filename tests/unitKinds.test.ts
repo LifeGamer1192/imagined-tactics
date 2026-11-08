@@ -315,3 +315,23 @@ describe('catapults drop stones on a chosen hex (0.12.0)', () => {
     expect(aimChance(st, c, skillOf('k042'), aim)).toBe(D.combat.hitBase + skillOf('k042').hit);
   });
 });
+
+describe('0.16.2 adjustments', () => {
+  it('siege troops resist only poison; 山岳精鋭・天狗衆 are tougher and 10% heavier; mounted warriors get 馬上弓', () => {
+    for (const id of ['u10a', 'u10b', 'u10c']) expect(D.byUnit[id].passives.find((p) => p.type === 'immune')).toMatchObject({ statuses: ['poison'] });
+    expect(D.byUnit.u12b2.hp).toBeGreaterThan(D.byUnit.u12b.hp);
+    expect(D.byUnit.u12c2.hp).toBeGreaterThan(D.byUnit.u12c.hp);
+    expect(D.byUnit.u12b2.cost).toBe(Math.round(D.byUnit.u12b.cost * 1.1));
+    expect(D.byUnit.u12c2.cost).toBe(Math.round(D.byUnit.u12c.cost * 1.1));
+    const k = D.bySkill.k109;
+    expect(k).toMatchObject({ mp: 23, range: [1, 2], basic: false, counter: false });
+    expect(k.power).toBeLessThan(D.bySkill.k024.power);
+    expect(k.hit).toBeLessThan(D.bySkill.k024.hit);
+    for (const id of ['u13a', 'u13b', 'u13c']) expect(D.byUnit[id].skills).toContain('k109');
+    // 2マス先の相手を撃てる（馬上でも）
+    const st = field(PLAIN), g = st.map.grid;
+    const r = troop(st, 'u13a', 0, g.idx(2, 3)), e = troop(st, 'u01a', 1, g.idx(4, 3));
+    expect(skillTargetCells(st, r, k)).toContain(e.pos);
+  });
+});
+
