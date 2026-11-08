@@ -13,7 +13,7 @@ import type { Action, BUnit, BattleState } from '../battle/types';
 import { D } from '../data/db';
 import type { SkillDef, TacticDef } from '../data/types';
 import {
-  canCounter, canUseSkill, canUseTactic, healAmount, hitChance, skillDamage, skillTargetCells, skillVictims,
+  canCounter, canUseSkill, canUseTactic, healAmount, hitChance, skillDamage, skillTargetCells, skillVictims, takenDamage,
   needsReload, tacticCost, tacticDamage, tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets, aimChance,
 } from '../rules/combat';
 import { MinHeap } from '../core/heap';
@@ -128,14 +128,14 @@ function threatsTo(st: BattleState, u: BUnit, exact = false): Threat[] {
     for (const id of e.skills) {
       const s = skillOf(id);
       if (s.noDamage || e.mp < s.mp) continue;
-      const v = skillDamage(st, e, s, u) * hitChance(st, e, s, u) / 100;
+      const v = takenDamage(st, u, e, skillDamage(st, e, s, u)) * hitChance(st, e, s, u) / 100;
       const r = s.shape.type === 'single' ? skillRange(st, e, s)[1] : s.shape.type === 'line' ? s.shape.n : s.shape.n;
       if (v > best) { best = v; range = r; }
     }
     for (const id of e.tactics) {
       const t = D.byTactic[id];
       if (t.kind !== 'damage' || e.mp < tacticCost(e, t)) continue;
-      const v = tacticDamage(st, e, t, u);
+      const v = takenDamage(st, u, e, tacticDamage(st, e, t, u));
       if (v > best) { best = v; range = (t.range ?? 0) + t.area; }
     }
     if (best > 0) out.push({ u: e, radius: moveOf(e, st) + range, expected: best, tm0: terrainMod(st, u), cells: exact ? strikeCells(st, e, range) : undefined });
@@ -243,7 +243,8 @@ function scoreSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number, 
     const chance = hitChance(st, u, skill, t) / 100;
     const hostile = t.side !== u.side;
     if (skill.effects.some((e) => e.type === 'heal')) { value += (hostile ? -1 : 1) * Math.min(skill.power, t.maxHp - t.hp) * w.heal; continue; }
-    let v = skill.noDamage ? 0 : valueOfHit(st, u, t, skillDamage(st, u, skill, t), chance, w, leader);
+    // 将の隣に身代わり（馬廻衆）がいれば、将が受けるぶんだけで見る（倒せるかも、それで決まる）
+    let v = skill.noDamage ? 0 : valueOfHit(st, u, t, takenDamage(st, t, u, skillDamage(st, u, skill, t)), chance, w, leader);
     for (const e of skill.effects) {
       if (e.type === 'status' && !has(t, e.status)) v += w.status * (e.chance / 100) * chance * (t.kind === 'general' && e.status === 'defect' ? 0 : 1);
       if (e.type === 'weakenStun') v += w.status * (e.chance / 100) * chance;
@@ -253,9 +254,9 @@ function scoreSkill(st: BattleState, u: BUnit, skill: SkillDef, target: number, 
     if (single && hostile) {
       const basic = basicSkill(t);
       if (canCounter(st, u, skill, t, basic)) {
-        const dmg = skillDamage(st, t, basic!, u, true) * hitChance(st, t, basic!, u) / 100;
+        const dmg = takenDamage(st, u, t, skillDamage(st, t, basic!, u, true)) * hitChance(st, t, basic!, u) / 100;
         // 倒しきれるなら反撃は来ない（当たる確率ぶんだけ減らす）
-        const survive = skillDamage(st, u, skill, t) >= t.hp ? 1 - chance : 1;
+        const survive = takenDamage(st, t, u, skillDamage(st, u, skill, t)) >= t.hp ? 1 - chance : 1;
         // 天守を押さえた攻め手を叩くとき（0.11.0）：負けが迫るほど、反撃を気にせず攻める
         const h = st.hold, cut = h && u.side === 1 && t.pos === h.cell ? 1 - AI.castle.retakeCounterCut * clamp((h.count + 1) / h.need, 0, 1) : 1;
         counter += Math.min(u.hp, dmg) * survive * cut;
@@ -275,7 +276,7 @@ function scoreBombard(st: BattleState, u: BUnit, skill: SkillDef, target: number
   let v = 0;
   for (const t of skillVictims(st, u, skill, target)) {
     const center = t.pos === target;
-    const dmg = skillDamage(st, u, skill, t) * (center ? 1 : splash);
+    const dmg = takenDamage(st, t, u, skillDamage(st, u, skill, t) * (center ? 1 : splash));
     const x = valueOfHit(st, u, t, dmg, center ? chance : 1, w, leader);
     v += isEnemyOf(u, t) ? x : -x * w.friendlyFire;
   }
@@ -315,7 +316,7 @@ function scoreTactic(st: BattleState, u: BUnit, tac: TacticDef, target: number, 
     const big = t.kind === 'general' ? 1.4 : 1;
     switch (tac.kind) {
       case 'damage': {
-        let v = valueOfHit(st, u, t, tacticDamage(st, u, tac, t), 1, w, leader);
+        let v = valueOfHit(st, u, t, takenDamage(st, t, u.side !== t.side ? u : null, tacticDamage(st, u, tac, t)), 1, w, leader);
         if (typeof tac.status === 'object' && !has(t, tac.status.status)) v += w.status * tac.status.chance / 100;
         s += hostile ? v : -v * w.friendlyFire;
         break;
@@ -744,7 +745,7 @@ export function planUnitDetailed(st: BattleState, u: BUnit): UnitPlan {
         const heals = skill.effects.some((e) => e.type === 'heal');
         // とどめ（P104。方針で動く駒だけ）：倒せる攻めなら、まとまりの点を今いる場所と同じにする（離れてでも倒しに行く）
         // まとまりの点（密集・統制）を、今いる場所と同じまで戻す（離れて失うぶんを数えない）
-        const finish = base.cohesion < originCoh && !heals && skillVictims(st, u, skill, t).some((v) => v.side !== u.side && skillDamage(st, u, skill, v) >= v.hp);
+        const finish = base.cohesion < originCoh && !heals && skillVictims(st, u, skill, t).some((v) => v.side !== u.side && takenDamage(st, v, u, skillDamage(st, u, skill, v)) >= v.hp);
         consider({ ...base, cohesion: finish ? originCoh : base.cohesion, attack: heals ? 0 : r.value, support: heals ? r.value : 0, counter: r.counter }, { type: 'skill', unit: u.id, skill: sid, target: t });
       }
     }

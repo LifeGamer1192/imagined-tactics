@@ -5,7 +5,7 @@ import { seatName } from './map';
 import type { SkillDef, StatusId, TacticDef } from '../data/types';
 import {
   atkParts, canCounter, canUseSkill, canUseTactic, critChance, damageParts, defParts, healParts, hitParts, knockPlan, skillTargetCells,
-  needsReload, skillCost, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts, aimChance, blastCells, isEnemy,
+  needsReload, skillCost, skillVictims, successParts, tacticCost, tacticParts, tacticTargetCells, tacticVictims, breachTargets, breachParts, aimChance, blastCells, isEnemy, guardSplit,
 } from '../rules/combat';
 import { killExp } from '../rules/growth';
 import { boonsLost } from './boons';
@@ -115,22 +115,12 @@ function defeat(st: BattleState, victim: BUnit, killer: BUnit | null): void {
 }
 
 function damage(st: BattleState, t: BUnit, amount: number, by: BUnit | null): void {
-  // 身代わり（P107・馬廻衆）：隣にいる、この将の兵が、敵から受けるダメージの一部を代わりに受ける
-  if (by && t.kind === 'general' && by.side !== t.side && amount > 1) {
-    const g = st.map.grid;
-    let best: [BUnit, number] | null = null;
-    for (const x of st.units) {
-      if (!x.alive || x.id === t.id || x.leader !== t.id || x.side !== t.side || g.distance(x.pos, t.pos) !== 1) continue;
-      for (const p of passive(x, 'guard')) if (!best || p.pct > best[1]) best = [x, p.pct];
-    }
-    if (best) {
-      const share = Math.min(amount - 1, Math.round(amount * best[1] / 100));
-      if (share > 0) {
-        amount -= share;
-        log(st, 'guard', { unit: best[0].name, target: t.name, dmg: share, uid: best[0].id, tid: t.id });
-        damage(st, best[0], share, by);
-      }
-    }
+  // 身代わり（P107・馬廻衆）：隣にいる、この将の兵が、敵から受けるダメージの一部を代わりに受ける（式は rules/combat の guardSplit）
+  const gs = guardSplit(st, t, by, amount);
+  if (gs.guard) {
+    amount = gs.self;
+    log(st, 'guard', { unit: gs.guard.name, target: t.name, dmg: gs.share, uid: gs.guard.id, tid: t.id });
+    damage(st, gs.guard, gs.share, by);
   }
   // 将が受けたダメージを、相手の将（兵なら率いる将）ごとに数える（深手の記録の「負わされた相手」）
   if (by && t.kind === 'general' && by.side !== t.side && amount > 0) (t.hurtBy ??= {})[by.generalId] = (t.hurtBy[by.generalId] ?? 0) + Math.min(amount, t.hp);

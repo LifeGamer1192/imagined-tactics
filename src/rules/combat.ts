@@ -152,6 +152,27 @@ export function damageParts(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit
   return p;
 }
 
+/**
+ * 身代わり（P107・馬廻衆）：将 t が敵 by から amount のダメージを受けるとき、隣にいる t の兵のうち、身代わりの割合がいちばん高い1隊が
+ * その割合だけ代わりに受ける（将は少なくとも1は受ける。兵は残りの体力までしか受けない）。戦い（engine の damage）と、見込み・敵の思考が同じこの式を使う
+ */
+export function guardSplit(st: BattleState, t: BUnit, by: BUnit | null, amount: number): { self: number; share: number; guard: BUnit | null } {
+  if (!by || t.kind !== 'general' || by.side === t.side || amount <= 1) return { self: amount, share: 0, guard: null };
+  const g = st.map.grid;
+  let best: [BUnit, number] | null = null;
+  for (const x of st.units) {
+    if (!x.alive || x.id === t.id || x.leader !== t.id || x.side !== t.side || g.distance(x.pos, t.pos) !== 1) continue;
+    for (const p of passive(x, 'guard')) if (!best || p.pct > best[1]) best = [x, p.pct];
+  }
+  if (!best) return { self: amount, share: 0, guard: null };
+  // 身代わりの兵は、残りの体力より多くは受けられない（あふれたぶんは将が受ける）
+  const share = Math.min(amount - 1, best[0].hp, Math.round(amount * best[1] / 100));
+  return share > 0 ? { self: amount - share, share, guard: best[0] } : { self: amount, share: 0, guard: null };
+}
+
+/** 将が実際に受けるぶん（身代わりを引いたあと）。見込みと敵の思考で、倒せるかを見るのに使う */
+export const takenDamage = (st: BattleState, t: BUnit, by: BUnit | null, amount: number): number => guardSplit(st, t, by, amount).self;
+
 /** 技のダメージ（乱数・会心・盾防御を除いた基準値） */
 export function skillDamage(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, isCounter = false): number {
   return damageParts(st, a, skill, t, isCounter).base;
@@ -374,6 +395,8 @@ export interface Forecast {
   damage: number;
   hit: number;
   crit: number;
+  /** 相手の将の隣の身代わり（馬廻衆）が代わりに受けるぶん（damage はそれを引いた将のぶん） */
+  guard?: { who: BUnit; damage: number };
   /** 反撃される場合の、反撃のダメージと命中率 */
   counter: { damage: number; hit: number } | null;
 }
@@ -410,9 +433,11 @@ export function canCounter(st: BattleState, attacker: BUnit, skill: SkillDef, t:
 
 export function forecastSkill(st: BattleState, a: BUnit, skill: SkillDef, t: BUnit, basicOfTarget: SkillDef | undefined): Forecast {
   const counter = canCounter(st, a, skill, t, basicOfTarget)
-    ? { damage: skillDamage(st, t, basicOfTarget!, a, true), hit: hitChance(st, t, basicOfTarget!, a) }
+    ? { damage: takenDamage(st, a, t, skillDamage(st, t, basicOfTarget!, a, true)), hit: hitChance(st, t, basicOfTarget!, a) }
     : null;
-  return { damage: skillDamage(st, a, skill, t), hit: hitChance(st, a, skill, t), crit: critChance(a), counter };
+  // 相手が将で、隣に身代わりの兵がいれば、将が受けるぶんと身代わりが受けるぶんに分ける
+  const full = skillDamage(st, a, skill, t), gs = guardSplit(st, t, a, full);
+  return { damage: gs.self, hit: hitChance(st, a, skill, t), crit: critChance(a), counter, guard: gs.guard ? { who: gs.guard, damage: gs.share } : undefined };
 }
 
 // ---------------------------------------------------------------- 造りを壊す（門・砦の門・柵）

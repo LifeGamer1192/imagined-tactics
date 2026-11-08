@@ -35,7 +35,7 @@ import { NationMap } from '../render/nationMap';
 
 import {
   canUseSkill, canUseTactic, forecastSkill, needsReload, skillCost, tacticCost, healAmount, skillTargetCells, skillVictims, tacticDamage, tacticSide,
-  tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets, unitFx, aimChance, blastCells, skillDamage,
+  tacticSuccess, tacticTargetCells, tacticVictims, breachParts, breachTargets, unitFx, aimChance, blastCells, skillDamage, takenDamage, guardSplit, isEnemy,
 } from '../rules/combat';
 import { reach, stepCost, unitAt } from '../rules/move';
 import { statRows } from '../rules/statNotes';
@@ -1464,7 +1464,7 @@ export class App {
         const B = s.bombard, chance = aimChance(st, u, s, this.hoverCell);
         const head = `<div class="fline">狙ったマスに落ちる見込み <b>${chance}%</b>（外れると隣のどれかのマスにずれる）。落ちたマスは100%、隣は${B.splashMin}〜${B.splashMax}%のダメージ。<b>敵味方を問わない</b></div>`;
         const cards = vs.map((t) => {
-          const center = t.pos === this.hoverCell, d = skillDamage(st, u, s, t);
+          const center = t.pos === this.hoverCell, d = takenDamage(st, t, u, skillDamage(st, u, s, t));
           const name = `${t.name}${t.side === u.side ? '（味方！）' : ''}`;
           return center ? this.fcCard(name, t, d, chance, '落ちたマス') : this.fcCard(name, t, Math.round(d * B.splashMax / 100), 100, `巻き込み（${Math.round(d * B.splashMin / 100)}〜${Math.round(d * B.splashMax / 100)}）`);
         });
@@ -1475,7 +1475,8 @@ export class App {
         const f = forecastSkill(st, u, s, t, basicSkill(t));
         if (s.noDamage) return this.fcCard(`${t.name}${t.side === u.side ? '（味方）' : ''}`, t, 0, f.hit, '効果のみ');
         // 兵種の特徴で効く倍率（0.11.0）：相性・数の利・突撃・鼓舞・隊列など
-        const fx = unitFx(st, u, t, false).map(([n, m]) => `${n}×${Math.round(m * 100) / 100}`).join('・');
+        // 身代わり（馬廻衆）：将の隣の兵が受けるぶんを添える（ダメージは将が受けるぶん）
+        const fx = [...unitFx(st, u, t, false).map(([n, m]) => `${n}×${Math.round(m * 100) / 100}`), ...(f.guard ? [`身代わり：${f.guard.who.name}が${f.guard.damage}を受ける`] : [])].join('・');
         return this.fcCard(`${t.name}${t.side === u.side ? '（味方）' : ''}`, t, f.damage, f.hit, fx, f.counter ? { who: u, damage: f.counter.damage, hit: f.counter.hit } : null);
       });
       return { text: cards.join('') || '対象なし', area: new Set(vs.map((t) => t.pos)) };
@@ -1485,7 +1486,10 @@ export class App {
     const vs = tacticVictims(st, u, tac, this.hoverCell);
     const lines = vs.map((t) => {
       const who = `${esc(t.name)}${t.side === u.side && tacticSide(tac) !== 'ally' ? '（味方）' : ''}`;
-      if (tac.kind === 'damage') return this.fcCard(`${t.name}${t.side === u.side && tacticSide(tac) !== 'ally' ? '（味方）' : ''}`, t, tacticDamage(st, u, tac, t), 100, '必ず当たる');
+      if (tac.kind === 'damage') {
+        const full = tacticDamage(st, u, tac, t), gs = guardSplit(st, t, isEnemy(u, t) ? u : null, full);
+        return this.fcCard(`${t.name}${t.side === u.side && tacticSide(tac) !== 'ally' ? '（味方）' : ''}`, t, gs.self, 100, `必ず当たる${gs.guard ? `・身代わり：${gs.guard.name}が${gs.share}を受ける` : ''}`);
+      }
       if (tac.kind === 'heal') return `${who}：回復 ${Math.min(healAmount(u, tac.power), t.maxHp - t.hp)}`;
       if ((tac.kind === 'status' && !tac.sure) || tac.kind === 'displace') return `${who}：成功率 ${tacticSuccess(st, u, t)}%`;
       return who;
