@@ -51,13 +51,23 @@ import { faceFor } from '../art/faces';
 import { initSound, play, setVolume, volume, VOLUME_NAME } from './sound';
 import { BGM_LEVEL_NAME, bgm, bgmLevel, initBgm, jingle, setBgmLevel } from './bgm';
 
-const SAMPLES: [string, string][] = [
-  ['sengoku_fid5_1575', '日本の戦国 1575年'],
-  ['shunju_fid5_259bc', '春秋戦国 前259年'],
-  ['sangoku_fid5_212', '三国志 212年'],
-  ['rome_fid3_212bc', 'ローマ 前212年'],
-  ['invented_archipelago_y30', '架空の多島海 30年目'],
+/**
+ * 見本の世界（public/samples/◯◯.histsim）。世界ごとに、始める年月を選べる（2つ以上あればプルダウン。P122）。
+ * 見本を足すときは、ここに [ファイル名, 年月の名] を足す（作り方は tools/make-sample.mjs）
+ */
+const SAMPLES: [string, [string, string][]][] = [
+  ['日本の戦国', [['sengoku_fid5_1575', '1575年']]],
+  ['春秋戦国', [['shunju_fid5_259bc', '前259年']]],
+  ['三国志', [['sangoku_fid5_212', '212年']]],
+  ['ローマ', [['rome_fid3_212bc', '前212年']]],
+  ['架空の多島海', [['invented_archipelago_y30', '30年目']]],
 ];
+/** 見本のボタン（年月が2つ以上ある世界は、横に年月のプルダウン） */
+function sampleButtons(): string {
+  return SAMPLES.map(([world, list], i) => list.length === 1
+    ? `<button data-sample="${list[0][0]}">${world} ${list[0][1]}</button>`
+    : `<span class="sample-grp"><button data-sample="${list[0][0]}" data-world="${i}">${world} ${list[0][1]}</button><select data-world-pick="${i}" title="${world}の始める年月">${list.map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select></span>`).join(' ');
+}
 /** 難しさを選ぶ欄の中身（鬼は朱色） */
 function difficultyOptions(cur: Difficulty, label: string): string {
   return DIFFICULTIES.map((d) => `<option value="${d}" ${cur === d ? 'selected' : ''} ${d === 'oni' ? 'class="oni"' : ''}>${label}：${S.difficulty[d].name}</option>`).join('');
@@ -234,7 +244,7 @@ export class App {
         <p>hist-sim のセーブ（.histsim）を読み込んで、その状態からヘックスの戦いを始めます。ima-rpg のセーブ（.imarpg）なら、主人公と仲間・率いる兵を連れてきます。</p>
         <p><label class="btn">セーブファイルを選ぶ<input type="file" accept=".histsim,.json,.hexsim,.imarpg" hidden></label> <button id="continue" hidden>つづきから</button></p>
         <p class="dim">または、サンプルから始める</p>
-        <p>${SAMPLES.map(([id, name]) => `<button data-sample="${id}">${name}</button>`).join(' ')}</p>
+        <p>${sampleButtons()}</p>
         <p><button data-help="intro">遊び方</button> <button data-zukan="units">図鑑</button></p>
         <p class="error">${esc(error)}</p>
         <p class="worlds-lead">${WORLDS_LEAD}</p>
@@ -259,6 +269,14 @@ export class App {
     const cont = this.root.querySelector<HTMLButtonElement>('#continue')!;
     cont.onclick = () => { void openSaveMenu(this.root.querySelector<HTMLElement>('.center')!, { onLoad: (s) => { void busy('読み込んでいます…', () => this.loadHexSave(s)); } }); };
     void anySlot().then((has) => { cont.hidden = !has; });
+    // 年月のプルダウン：選ぶと、その世界のボタンの読み込む見本と名前が替わる（P122）
+    this.root.querySelectorAll<HTMLSelectElement>('[data-world-pick]').forEach((sel) => {
+      sel.onchange = () => {
+        const i = Number(sel.dataset.worldPick), b = this.root.querySelector<HTMLButtonElement>(`[data-world="${i}"]`);
+        const [world, list] = SAMPLES[i], it = list.find(([id]) => id === sel.value);
+        if (b && it) { b.dataset.sample = it[0]; b.textContent = `${world} ${it[1]}`; }
+      };
+    });
     this.root.querySelectorAll<HTMLButtonElement>('[data-sample]').forEach((b) => {
       b.onclick = () => busy('世界を読み込んでいます…', async () => {
         try {
