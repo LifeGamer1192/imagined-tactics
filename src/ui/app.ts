@@ -55,18 +55,22 @@ import { BGM_LEVEL_NAME, bgm, bgmLevel, initBgm, jingle, setBgmLevel } from './b
  * 見本の世界（public/samples/◯◯.histsim）。世界ごとに、始める年月を選べる（2つ以上あればプルダウン。P122）。
  * 見本を足すときは、ここに [ファイル名, 年月の名] を足す（作り方は tools/make-sample.mjs）
  */
-const SAMPLES: [string, [string, string][]][] = [
+const SAMPLES: [string, [string, string][], string?][] = [
   ['日本の戦国', [['sengoku_fid5_1575', '1575年']]],
   ['春秋戦国', [['shunju_fid5_259bc', '前259年']]],
-  ['三国志', [['sangoku_fid5_212', '212年']]],
+  // 三国志の見本は hist-sim の exports/hex-sim から（P123。条件は 212年と同じ：史実度5・種 HEXSG）。始めは 212年を選んでおく
+  ['三国志', [['sangoku_fid5_184', '184年 黄巾の乱'], ['sangoku_fid5_190', '190年 反董卓連合'], ['sangoku_fid5_200', '200年 官渡の戦い'], ['sangoku_fid5_208', '208年 赤壁の戦い'],
+    ['sangoku_fid5_212', '212年'], ['sangoku_fid5_220', '220年 三国の鼎立'], ['sangoku_fid5_234', '234年 五丈原']], 'sangoku_fid5_212'],
   ['ローマ', [['rome_fid3_212bc', '前212年']]],
   ['架空の多島海', [['invented_archipelago_y30', '30年目']]],
 ];
 /** 見本のボタン（年月が2つ以上ある世界は、横に年月のプルダウン） */
 function sampleButtons(): string {
-  return SAMPLES.map(([world, list], i) => list.length === 1
-    ? `<button data-sample="${list[0][0]}">${world} ${list[0][1]}</button>`
-    : `<span class="sample-grp"><button data-sample="${list[0][0]}" data-world="${i}">${world} ${list[0][1]}</button><select data-world-pick="${i}" title="${world}の始める年月">${list.map(([id, label]) => `<option value="${id}">${label}</option>`).join('')}</select></span>`).join(' ');
+  return SAMPLES.map(([world, list, def], i) => {
+    if (list.length === 1) return `<button data-sample="${list[0][0]}">${world} ${list[0][1]}</button>`;
+    const cur = list.find(([id]) => id === def) ?? list[0];
+    return `<span class="sample-grp"><button data-sample="${cur[0]}" data-world="${i}">${world} ${cur[1]}</button><select data-world-pick="${i}" title="${world}の始める年月">${list.map(([id, label]) => `<option value="${id}" ${id === cur[0] ? 'selected' : ''}>${label}</option>`).join('')}</select></span>`;
+  }).join(' ');
 }
 /** 難しさを選ぶ欄の中身（鬼は朱色） */
 function difficultyOptions(cur: Difficulty, label: string): string {
