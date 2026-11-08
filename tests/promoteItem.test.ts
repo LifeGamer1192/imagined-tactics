@@ -8,20 +8,20 @@ import { promoteTroop, troopPromotions } from '../src/rules/growth';
 describe('promotions that need an item also need the level', () => {
   it('cannot promote below the level even with the item and a training book', () => {
     const t = makeTroop(D.byUnit.u01e, 34);
-    const items = { item_guard_top: 1, item_promote: 1 };
+    const items = { item_elite: 1, item_promote: 1 };
     expect(troopPromotions(t, items)[0].missing).toEqual(['レベル35']);
     expect(promoteTroop(t, 'u01f', items)).toBe(false);
-    expect(items).toEqual({ item_guard_top: 1, item_promote: 1 });
+    expect(items).toEqual({ item_elite: 1, item_promote: 1 });
   });
   it('promotes at the level with the item (the book is kept)', () => {
     const t = makeTroop(D.byUnit.u01e, 35);
-    const items = { item_guard_top: 1, item_promote: 1 };
+    const items = { item_elite: 1, item_promote: 1 };
     expect(promoteTroop(t, 'u01f', items)).toBe(true);
     expect(t.unitId).toBe('u01f');
-    expect(items).toEqual({ item_guard_top: 0, item_promote: 1 });
+    expect(items).toEqual({ item_elite: 0, item_promote: 1 });
   });
   it('without the item it cannot promote at any level', () => {
-    expect(troopPromotions(makeTroop(D.byUnit.u01e, 60), {})[0].missing).toContain(D.items.item_guard_top.jp);
+    expect(troopPromotions(makeTroop(D.byUnit.u01e, 60), {})[0].missing).toContain(D.items.item_elite.jp);
   });
   it('the training book still skips the level for promotions without an item', () => {
     const t = makeTroop(D.byUnit.u09a, 3);
@@ -35,5 +35,18 @@ describe('promotions that need an item also need the level', () => {
     for (const id of ['u09a', 'u09b', 'u09c']) expect(D.byUnit[id].passives.find((p) => p.type === 'missileGuard')).toMatchObject({ chance: 80 });
     const k = D.bySkill.k034;
     expect(k.effects).toEqual([{ type: 'status', status: 'daze', chance: 8 }]);
+  });
+});
+
+describe('0.16.4: one promotion item', () => {
+  it('every item-gated promotion uses 精鋭の証, and only it and the training book remain', () => {
+    expect(Object.keys(D.items).sort()).toEqual(['item_elite', 'item_promote']);
+    const gated = D.units.flatMap((u) => u.promote.filter((p) => p.item).map((p) => p.item));
+    expect(gated.length).toBe(6);
+    expect(new Set(gated)).toEqual(new Set(['item_elite']));
+    expect(D.items.item_elite.jp).toBe('精鋭の証');
+  });
+  it('錫杖打ち can be countered again', () => {
+    expect(D.bySkill.k034.noCounter).toBeFalsy();
   });
 });

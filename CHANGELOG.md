@@ -4,6 +4,12 @@
 
 書き方：日付、版、何を変えたか（ID・項目・前の値 → 後の値）、相手側で要る対応。
 
+## 0.16.4（2026-11-08）
+
+- `skills.json`（共有）：`k034` 錫杖打ちの `noCounter` を外した（反撃を受ける）。
+- `terms.json`・`units.json`（共有）：昇格の品を1種にまとめた。品 `item_ambush_top`・`item_fire_top`・`item_ship_top`・`item_guard_top`・`item_horse_top`・`item_ninja_top` をなくし、`item_elite`「精鋭の証」（中国版「虎符」）を足した。品の要る6つの昇格（草の者・国崩し・鉄甲船・馬廻衆・騎馬軍団・上忍）は、みな `item_elite`。練兵の書（`item_promote`）はそのまま。
+- 相手側で要る対応：前の6種の品は `item_elite` に置き換える（hex-sim はセーブを読むとき、数を足して移す）。
+
 ## 0.16.3（2026-11-08）
 
 - `skills.json`（共有）：`k081` 焙烙火矢をなくした（ID は詰めない）。`units.json`：`u16b` 大安宅船の技から外した。`combat.json` の `fireSkills`、`west.json` の行からも消した。

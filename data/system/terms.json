@@ -78,29 +78,9 @@
    "jp": "練兵の書",
    "cn": "練兵書"
   },
-  "item_ambush_top": {
-   "jp": "忍びの秘伝",
-   "cn": "伏兵秘策"
-  },
-  "item_fire_top": {
-   "jp": "国崩しの図面",
-   "cn": "火牛の法"
-  },
-  "item_ship_top": {
-   "jp": "鉄甲の図面",
-   "cn": "王舟の図"
-  },
-  "item_guard_top": {
-   "jp": "主君の御旗",
-   "cn": "主公の旗"
-  },
-  "item_horse_top": {
-   "jp": "名馬の鞍",
-   "cn": "汗血馬の鞍"
-  },
-  "item_ninja_top": {
-   "jp": "忍びの奥義",
-   "cn": "刺客の秘奥"
+  "item_elite": {
+   "jp": "精鋭の証",
+   "cn": "虎符"
   }
  }
 }

@@ -36,7 +36,7 @@ const PLAIN = Array.from({ length: 7 }, () => '. . . . . . . . .').join('\n');
 
 describe('top-tier units (P107)', () => {
   it('promote from the T3 at Lv35 with an item; hp growth of 上忍 is the lowest rank', () => {
-    for (const [a, b, item] of [['u01e', 'u01f', 'item_guard_top'], ['u07c', 'u07d', 'item_horse_top'], ['u05c', 'u05d', 'item_ninja_top']]) {
+    for (const [a, b, item] of [['u01e', 'u01f', 'item_elite'], ['u07c', 'u07d', 'item_elite'], ['u05c', 'u05d', 'item_elite']]) {
       expect(D.byUnit[a].promote).toEqual([{ to: b, lv: 35, item }]);
       expect(D.byUnit[b].tier).toBe(4);
       expect(D.items[item]?.jp).toBeTruthy();

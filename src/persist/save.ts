@@ -114,6 +114,8 @@ function pruneSkills(c: Campaign): void {
 /**
  * なくなった兵種（統合した兵種）を、引き継ぐ兵種に置き換える。0.16.0：長柄組（u20a）は槍の系統に統合して素槍足軽（u19a）に
  */
+/** 0.16.4 で精鋭の証（item_elite）にまとめた昇格の品 */
+export const OLD_PROMOTE_ITEMS = ['item_ambush_top', 'item_fire_top', 'item_ship_top', 'item_guard_top', 'item_horse_top', 'item_ninja_top', 'item_shield_top'];
 export const RETIRED_UNITS: Record<string, string> = { u20a: 'u19a' };
 function retireUnits(c: Campaign): void {
   const to = (id: string): string => RETIRED_UNITS[id] ?? id;
@@ -147,7 +149,9 @@ export function restore(s: HexSave): Campaign {
   if (!c.scout) initScout(c);
   retireUnits(c);
   pruneSkills(c);
-  // なくなった品（0.16.1：精鋭の証）は持ち物から外す
+  // 昇格の品は 0.16.4 で「精鋭の証」1種にまとめた：前の6種（と 0.16.1 でなくした前の精鋭の証）の数を足して移す
+  for (const id of OLD_PROMOTE_ITEMS) if (c.items[id]) { c.items.item_elite = (c.items.item_elite ?? 0) + c.items[id]; delete c.items[id]; }
+  // なくなった品は持ち物から外す
   for (const id of Object.keys(c.items)) if (!D.items[id]) delete c.items[id];
   // 名将（P102）：まだ割り当てていない古いセーブにも、読み込みのときに付ける
   assignHeroes(c.gs);

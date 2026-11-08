@@ -188,7 +188,7 @@
    {
     "to": "u01f",
     "lv": 35,
-    "item": "item_guard_top"
+    "item": "item_elite"
    }
   ],
   "kind": "foot"
@@ -1487,7 +1487,7 @@
    {
     "to": "u05d",
     "lv": 35,
-    "item": "item_ninja_top"
+    "item": "item_elite"
    }
   ]
  },
@@ -1903,7 +1903,7 @@
    {
     "to": "u07d",
     "lv": 35,
-    "item": "item_horse_top"
+    "item": "item_elite"
    }
   ],
   "kind": "cavalry"
@@ -3464,7 +3464,7 @@
   "promote": [
    {
     "to": "u14c",
-    "item": "item_ambush_top"
+    "item": "item_elite"
    }
   ]
  },
@@ -3633,7 +3633,7 @@
   "promote": [
    {
     "to": "u15c",
-    "item": "item_fire_top"
+    "item": "item_elite"
    }
   ]
  },
@@ -3802,7 +3802,7 @@
   "promote": [
    {
     "to": "u16c",
-    "item": "item_ship_top"
+    "item": "item_elite"
    }
   ]
  },
