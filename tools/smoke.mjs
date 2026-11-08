@@ -443,10 +443,12 @@ check('読み込んだあとも月を進められる', (await snap()) !== saved)
 // 枠を削除できる
 await closeAsks(page);
 await page.click('#saves');
-await page.waitForSelector('[data-del="1"]');
-await page.click('[data-del="1"]');
-await page.waitForFunction(() => !document.querySelector('[data-load="1"]'));
-check('枠を削除できる', true);
+// 枠は新しい順に1ページ10枠なので、いま見えている手動の枠のうち、いちばん上のものを消す
+await page.waitForSelector('[data-del]');
+const delSlot = await page.$eval('[data-del]', (b) => b.dataset.del);
+await page.click(`[data-del="${delSlot}"]`);
+await page.waitForFunction((s) => !document.querySelector(`[data-load="${s}"]`), delSlot);
+check('枠を削除できる', true, `枠${delSlot}`);
 await page.click('#closeMenu');
 
 // ============================================================ 7. 観戦の戦略、狭い画面
