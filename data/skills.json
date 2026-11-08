@@ -1463,30 +1463,6 @@
   ]
  },
  {
-  "id": "k056",
-  "name": {
-   "jp": "馬上太刀",
-   "cn": "車戈"
-  },
-  "mp": 0,
-  "power": 102,
-  "range": [
-   1,
-   1
-  ],
-  "hit": 5,
-  "vsGround": "tri",
-  "vsRider": "o",
-  "afterMove": true,
-  "counter": true,
-  "basic": true,
-  "shape": {
-   "type": "single"
-  },
-  "targets": "enemy",
-  "effects": []
- },
- {
   "id": "k057",
   "name": {
    "jp": "馬上連撃",

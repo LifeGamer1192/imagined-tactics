@@ -1775,6 +1775,10 @@
    {
     "to": "u07b",
     "lv": 10
+   },
+   {
+    "to": "u13b",
+    "lv": 10
    }
   ],
   "kind": "cavalry"
@@ -3151,73 +3155,12 @@
   "promote": []
  },
  {
-  "id": "u13a",
-  "name": {
-   "jp": "騎馬武者",
-   "cn": "戦車"
-  },
-  "line": 13,
-  "tier": 1,
-  "cost": 59,
-  "hp": 483,
-  "mp": 102,
-  "str": 55,
-  "int": 34,
-  "agi": 61,
-  "def": 102,
-  "move": 6,
-  "affinity": "rider",
-  "speed": "B",
-  "growth": {
-   "hp": [
-    2,
-    8
-   ],
-   "mp": [
-    0,
-    2
-   ],
-   "str": [
-    0,
-    2
-   ],
-   "int": [
-    0,
-    1
-   ],
-   "agi": [
-    1,
-    2
-   ]
-  },
-  "skills": [
-   "k056",
-   "k109"
-  ],
-  "tactics": [],
-  "passives": [
-   {
-    "type": "charge",
-    "pct": 5,
-    "max": 20,
-    "rank": null
-   }
-  ],
-  "promote": [
-   {
-    "to": "u13b",
-    "lv": 10
-   }
-  ],
-  "kind": "cavalry"
- },
- {
   "id": "u13b",
   "name": {
    "jp": "母衣衆",
    "cn": "重戦車"
   },
-  "line": 13,
+  "line": 7,
   "tier": 2,
   "cost": 78,
   "hp": 582,
@@ -3278,7 +3221,7 @@
    "jp": "旗本騎馬",
    "cn": "駟馬戦車"
   },
-  "line": 13,
+  "line": 7,
   "tier": 3,
   "cost": 111,
   "hp": 646,
