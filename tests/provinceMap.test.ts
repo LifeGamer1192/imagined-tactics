@@ -167,7 +167,8 @@ describe('the battle map faces the way the attack comes (six sides of a hexagona
     for (const from of p.nb) {
       const m = provinceMap(c, p.id, from);
       const st = createBattle(gs, m, [generalsOf(gs, fa.id).slice(0, 3).map((g) => g.id), generalsOf(gs, fb.id).slice(0, 3).map((g) => g.id)], `edge${from}`);
-      for (const u of st.units.filter((x) => x.kind === 'general')) expect(m.spawn[u.side].includes(u.pos), `${m.edgeName} ${u.name}`).toBe(true);
+      // 天守のある戦場では、守り手の強い2部隊を天守のまわりに寄せ、その将を攻め手から遠い所に置く（P88）ので、守り手の将は配置のマスの外のことがある
+      for (const u of st.units.filter((x) => x.kind === 'general' && !(st.hold && x.side === 1))) expect(m.spawn[u.side].includes(u.pos), `${m.edgeName} ${u.name}`).toBe(true);
       for (const u of st.units) expect(u.side === 0 ? m.depth![u.pos] < 0 : m.depth![u.pos] > 0, `${m.edgeName} ${u.name}`).toBe(true);
     }
   });

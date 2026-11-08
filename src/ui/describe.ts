@@ -57,6 +57,14 @@ const AXIS_WORD: Record<Axis, [string, string]> = {
   honor: ['正面から戦う', '搦め手を使う'],
 };
 
+/** 通常攻撃（手番の攻撃と反撃に使う技）の名前に添える字。技の名前がまちまちで分かりにくいので、どれが通常攻撃かを示す（0.16.0） */
+export const basicMark = (s: SkillDef, skills?: readonly string[]): string => {
+  if (!s.basic || !s.counter) return '';
+  // 駒の技の並びが分かるときは、その駒が実際に通常攻撃・反撃に使う1つ（並びの最初のもの）だけに付ける
+  if (skills && skills.find((id) => { const x = D.bySkill[id]; return !!x?.basic && !!x.counter; }) !== s.id) return '';
+  return '（攻撃・反撃）';
+};
+
 export const PASSIVE_TEXT = (p: Passive): string => {
   switch (p.type) {
     case 'counterDamage': return `反撃の威力+${p.pct}%`;
@@ -74,7 +82,7 @@ export const PASSIVE_TEXT = (p: Passive): string => {
     case 'mass': return `数の利：隣の味方の歩兵1体ごとに与えるダメージ+${p.pct}%（最大+${p.max}%）`;
     case 'rugged': return '森・山・沼でも動きやすい（移動の重さと、命中・回避の下がりが半分）';
     case 'brace': return `迎え撃ち：騎馬に攻められたときの反撃が${p.mult}倍`;
-    case 'formation': return `隊列：隣に長槍の味方がいると、受けるダメージ−${Math.round((1 - 1 / (1 + p.pct / 100)) * 100)}%（防御+${p.pct}%）`;
+    case 'formation': return `隊列：隣に槍の味方がいると、受けるダメージ−${Math.round((1 - 1 / (1 + p.pct / 100)) * 100)}%（防御+${p.pct}%）`;
     case 'cramped': return `森・山・沼に立つと、与えるダメージ−${p.pct}%（長い槍を振るえない）`;
     case 'hook': return '鉤で崩す：相手の盾（受け止め・飛び道具の盾）が効かない';
     case 'unhorse': return `落馬：騎馬に当てると、${p.turns}巡のあいだ下馬させる`;
@@ -224,7 +232,7 @@ export function skillTip(s: SkillDef): string {
   const shape = s.bombard ? `射程${rng}のどのマスでも（駒がいなくてもよい）` : s.shape.type === 'around' ? `自分の周り${s.shape.n}マス` : s.shape.type === 'line' ? `向いた方へ直線${s.shape.n}マス` : `1体（射程${rng}）`;
   // 回復の技が敵味方を問わないときは、敵も回復してしまう（0.13.0。前は「味方も巻き込む」と逆に書いていた）
   const heals = s.effects.some((e) => e.type === 'heal');
-  const out = [`【${L(s.name)}】`, `対象：${shape}${s.targets === 'all' ? (heals ? '（敵も巻き込む）' : '（味方も巻き込む）') : ''}`];
+  const out = [`【${L(s.name)}${basicMark(s)}】`, `対象：${shape}${s.targets === 'all' ? (heals ? '（敵も巻き込む）' : '（味方も巻き込む）') : ''}`];
   // 狙って石を落とす（0.12.0）
   if (s.bombard) out.push(`命中率の見込みで狙ったマスに石が落ち、外れると隣のどれかのマスにずれる。落ちたマスの駒は100%、その隣の駒は${s.bombard.splashMin}〜${s.bombard.splashMax}%のダメージ（敵味方を問わない。撃った駒は巻き込まない）`);
   if (!s.noDamage) out.push(`威力${s.power}${s.hit ? `、命中${s.hit > 0 ? '+' : ''}${s.hit}` : ''}`);
@@ -326,7 +334,7 @@ export function unitTip(unitId: string, level?: number): string {
   const out = [`【${L(u.name)}】${level ? ` Lv${level}` : ''}`];
   out.push(`${T.hp()}${u.hp}　${T.str()}${u.str}　${T.int()}${u.int}　${T.agi()}${u.agi}　防御${u.def}　移動${u.move}`);
   out.push(`得意な地形：${AFFINITY_NAME[u.affinity] ?? u.affinity}　采配の重さ：${u.cost}`);
-  const skills = u.skills.map((id) => D.skills.find((s) => s.id === id)).filter((s): s is SkillDef => !!s).map((s) => L(s.name));
+  const skills = u.skills.map((id) => D.skills.find((s) => s.id === id)).filter((s): s is SkillDef => !!s).map((s) => `${L(s.name)}${basicMark(s, u.skills)}`);
   if (skills.length) out.push(`技：${skills.join('・')}`);
   if (u.tactics.length) out.push(`軍略：${u.tactics.map((id) => (D.byTactic[id] ? L(D.byTactic[id].name) : id)).join('・')}`);
   if (u.passives.length) out.push(`特技：${u.passives.map(PASSIVE_TEXT).join('、')}`);

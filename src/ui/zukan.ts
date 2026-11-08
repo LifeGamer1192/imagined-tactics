@@ -8,10 +8,10 @@ import { BOONS, HEROES } from '../convert/heroes';
 import { boonEffects, condText } from '../battle/boons';
 import type { ClassDef, Loc, SkillDef, StatusId, TacticDef, UnitDef } from '../data/types';
 import { AILMENTS, DISPELLABLE } from '../battle/engine';
-import { BAD_STATUS, GOOD_STATUS } from '../render/battleView';
+import { BAD_STATUS, GOOD_STATUS, TERRAIN_NAME } from '../render/battleView';
 import { classMod, generalExpToNext, troopExpToNext } from '../rules/growth';
 import { KIND_NAME } from '../rules/stats';
-import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticEffects, tacticTip, traitTip, unitTip, classTip, unitPassiveLines } from './describe';
+import { MARK, statusEffect, skillTip, TACTIC_KIND, tacticEffects, tacticTip, traitTip, unitTip, classTip, unitPassiveLines, PASSIVE_TEXT, basicMark } from './describe';
 import { fieldTable, terrainTable } from './help';
 import { AFFINITY_NAME, STATUS_NAME, T, TRAIT_NAME } from './text';
 
@@ -23,7 +23,7 @@ const esc = (s: string): string => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;',
 /** 系統の呼び名（docs/20 と同じ） */
 const LINE: Record<number, string> = {
   1: '歩兵', 2: '鼓舞（楽隊）', 3: '小舟', 4: '鉄砲・弩・投石', 5: '忍び・刺客', 6: '弓', 7: '軽騎兵', 8: '回復',
-  9: '盾', 10: '城攻め', 11: '大刀・斧', 12: '山岳', 13: '騎馬武者・戦車・重騎兵', 14: '伏兵', 15: '火攻め', 16: '大船', 17: '指揮', 18: '調略', 19: '槍', 20: '長槍', 21: '戟・薙刀',
+  9: '盾', 10: '城攻め', 11: '大刀・斧', 12: '山岳', 13: '騎馬武者・戦車・重騎兵', 14: '伏兵', 15: '火攻め', 16: '大船', 17: '指揮', 18: '調略', 19: '槍', 21: '戟・薙刀',
 };
 const TIER = ['', '下級', '中級', '上級', '最上級'];
 /** 軍略の種類の短い呼び名（表の欄が細いので） */
@@ -43,7 +43,7 @@ const pic = (set: string, id: string): string => { const u = artUrl(`unit/${set}
 // data-zgo="タブ:番号"。押すとそのタブへ移って、その行まで送り、行を光らせる。行には id="zk-<タブ>-<番号>" を付ける
 const rowId = (t: Tab, id: string): string => `zk-${t}-${id}`;
 const go = (t: Tab, id: string, label: string, tip = ''): string => `<a href="#${rowId(t, id)}" class="zk-go" data-zgo="${t}:${id}"${tip ? ` data-tip="${esc(tip)}"` : ''}>${label}</a>`;
-const skillLink = (id: string): string => { const s = D.skills.find((x) => x.id === id); return s ? go('skills', id, `${esc(nm(s.name))}${s.mp ? `<small class="zk-mp">気${s.mp}</small>` : ''}`, skillTip(s)) : esc(id); };
+const skillLink = (id: string, of?: readonly string[]): string => { const s = D.skills.find((x) => x.id === id); return s ? go('skills', id, `${esc(nm(s.name) + basicMark(s, of))}${s.mp ? `<small class="zk-mp">気${s.mp}</small>` : ''}`, skillTip(s)) : esc(id); };
 const tacticLink = (id: string): string => { const t = D.byTactic[id]; return t ? go('tactics', id, `${esc(nm(t.name))}<small class="zk-mp">気${t.mp}</small>`, tacticTip(t)) : esc(id); };
 const unitLink = (id: string): string => D.byUnit[id] ? go('units', id, esc(nm(D.byUnit[id].name))) : esc(id);
 const statusLink = (id: StatusId): string => go('statuses', id, esc(STATUS_NAME[id] ?? id), statusEffect(id));
@@ -53,11 +53,34 @@ const classLink = (id: string): string => D.byClass[id] ? go('classes', id, esc(
 
 function unitsPage(): string {
   const out = ['<p class="small">同じ番号の兵種は、名前と絵が違うだけで、能力・技・軍略・昇格はすべて同じ。どの名前で出るかは世界で決まる（日本の戦国は日本版、中国の世界は中国版、ローマは西洋版）。名前に乗せる（指なら押す）と説明が出る。</p>'];
-  // 歩兵・槍・長槍・戟の相性（0.11.0）：攻める側 × 相手。強い向きに +％
-  const kinds = ['foot', 'spear', 'pike', 'halberd'] as const;
-  out.push(`<h3>歩兵・槍・長槍・戟の相性</h3><div class="scroll"><table class="zk-kinds"><tr><th>攻める側＼相手</th>${kinds.map((k) => `<th>${KIND_NAME[k]}</th>`).join('')}</tr>
+  // 歩兵・槍・戟の三すくみ（0.11.0。0.16.0 で槍と長槍を1つにした）：攻める側 × 相手。強い向きに +％
+  const kinds = ['foot', 'spear', 'halberd'] as const;
+  out.push(`<h3>歩兵・槍・戟の三すくみ</h3><div class="scroll"><table class="zk-kinds"><tr><th>攻める側＼相手</th>${kinds.map((k) => `<th>${KIND_NAME[k]}</th>`).join('')}</tr>
     ${kinds.map((a) => `<tr><th>${KIND_NAME[a]}</th>${kinds.map((b) => { const v = D.combat.kindBane[a]?.[b], r = D.combat.kindBane[b]?.[a]; return `<td>${v ? `<b class="ok">◎ +${v}%</b>` : r ? '<span class="ng">△</span>' : a === b ? '―' : ''}</td>`; }).join('')}</tr>`).join('')}
-    </table></div><p class="dim small">◎：与えるダメージが増える（反撃でも）。△：相手の◎。ほかに、槍は騎馬の反撃に強く（迎え撃ち）、長槍は2マス先まで届き、戟は盾を崩して騎馬を落とす（兵種の説明に書いてある）。</p>`);
+    </table></div><p class="dim small">◎：与えるダメージが増える（反撃でも）。△：相手の◎。歩兵は槍の懐に入り、槍は薙刀の大振りの隙を突き、薙刀は軽装の歩兵を薙ぎ払う。</p>`);
+  // ほかの相性（弓・騎馬・盾・地形など）：兵種の特技から作る。同じ効き目の兵種をまとめる
+  const vsOf = (p: UnitDef['passives'][number]): string | null => {
+    switch (p.type) {
+      case 'bane': return `${AFFINITY_NAME[p.vs] ?? p.vs}の相手`;
+      case 'cavalryBane': case 'unhorse': return '騎馬';
+      case 'brace': return '騎馬（攻められたとき）';
+      case 'baneOnTerrain': return `${TERRAIN_NAME[p.terrain] ?? p.terrain}にいる相手`;
+      case 'hook': return '盾の兵';
+      case 'missileGuard': return '飛び道具（弓・鉄砲など）';
+      default: return null;
+    }
+  };
+  const rel = new Map<string, { vs: string; text: string; units: string[] }>();
+  for (const u of D.units) for (const p of u.passives) {
+    const vs = vsOf(p);
+    if (!vs) continue;
+    const text = PASSIVE_TEXT(p), k = `${vs}|${text}`;
+    if (!rel.has(k)) rel.set(k, { vs, text, units: [] });
+    rel.get(k)!.units.push(unitLink(u.id));
+  }
+  const rows = [...rel.values()].sort((a, b) => a.vs.localeCompare(b.vs, 'ja') || a.text.localeCompare(b.text, 'ja'));
+  out.push(`<h3>ほかの相性（弓・騎馬・盾・地形など）</h3><div class="scroll"><table class="zk-rel"><tr><th>強い相手</th><th>効き目</th><th>兵種</th></tr>
+    ${rows.map((r) => `<tr><td>${esc(r.vs)}</td><td class="zk-left">${esc(r.text)}</td><td class="zk-left">${r.units.join('・')}</td></tr>`).join('')}</table></div>`);
   const lines = [...new Set(D.units.map((u) => u.line))];
   for (const line of lines) {
     const us = D.units.filter((u) => u.line === line && hit(u.name.jp, u.name.cn, westName(u.id) ?? '', u.id));
@@ -68,7 +91,7 @@ function unitsPage(): string {
         <td>${u.id}${u.kind ? `<br><span class="dim small">${KIND_NAME[u.kind]}</span>` : ''}</td><td>${TIER[u.tier] ?? u.tier}</td>
         ${(['jp', 'cn', 'west'] as const).map((s) => `<td class="zk-pic" data-tip="${esc(unitTip(u.id))}">${pic(s, u.id)}<br>${esc(s === 'west' ? westName(u.id) ?? '' : u.name[s])}</td>`).join('')}
         <td>${u.hp}</td><td>${u.mp || '—'}</td><td>${u.str}</td><td>${u.int}</td><td>${u.agi}</td><td>${u.def}</td><td>${u.move}</td><td>${AFFINITY_NAME[u.affinity] ?? u.affinity}</td><td>${u.cost}</td>
-        <td class="zk-left zk-arts">${[...u.skills.map(skillLink), ...u.tactics.map(tacticLink)].join(' ') || '—'}</td>
+        <td class="zk-left zk-arts">${[...u.skills.map((id) => skillLink(id, u.skills)), ...u.tactics.map(tacticLink)].join(' ') || '—'}</td>
         <td class="zk-left zk-pass">${unitPassiveLines(u).map((x) => `<div>${esc(x)}</div>`).join('') || '—'}</td>
         <td class="zk-left">${(u.promote ?? []).filter((p) => D.byUnit[p.to]).map((p) => `${unitLink(p.to)}${p.lv ? ` Lv${p.lv}` : ''}${p.item ? `・品「${esc(D.items[p.item]?.jp ?? p.item)}」` : ''}`).join('<br>') || '—'}</td>
       </tr>`).join('')}</table></div>`);
@@ -109,7 +132,7 @@ function skillsPage(): string {
   const list = D.skills.filter((s) => hit(s.name.jp, s.name.cn, s.id)).sort((a, b) => Number(b.basic) - Number(a.basic) || a.id.localeCompare(b.id));
   if (!list.length) return '<p>当てはまる技がありません。</p>';
   const row = (s: SkillDef): string => `<tr id="${rowId('skills', s.id)}">
-    <td class="zk-left" data-tip="${esc(skillTip(s))}">${esc(nm(s.name))}</td><td>${s.basic ? '通常攻撃' : '技'}</td>
+    <td class="zk-left" data-tip="${esc(skillTip(s))}">${esc(nm(s.name) + basicMark(s))}</td><td>${s.basic ? '通常攻撃' : '技'}</td>
     <td>${s.noDamage ? '—' : s.power}</td><td>${s.hit ? (s.hit > 0 ? '+' : '') + s.hit : '±0'}</td><td>${s.mp || '—'}</td><td>${rng(s)}</td><td>${shape(s)}</td>
     <td>${MARK[s.vsGround] ?? s.vsGround}</td><td>${MARK[s.vsRider] ?? s.vsRider}</td><td>${s.afterMove ? '○' : '×'}</td><td>${s.counter ? '○' : '—'}</td>
     <td class="zk-left zk-fx">${extra(s) || '—'}</td><td class="zk-left zk-who">${holders(s.id, 'skill')}</td></tr>`;

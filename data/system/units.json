@@ -307,11 +307,25 @@
     "type": "brace",
     "mult": 1.5,
     "rank": null
+   },
+   {
+    "type": "formation",
+    "pct": 10,
+    "rank": null
+   },
+   {
+    "type": "cramped",
+    "pct": 30,
+    "rank": null
    }
   ],
   "promote": [
    {
     "to": "u01b",
+    "lv": 10
+   },
+   {
+    "to": "u20b",
     "lv": 10
    }
   ],
@@ -371,6 +385,16 @@
    {
     "type": "brace",
     "mult": 1.5,
+    "rank": null
+   },
+   {
+    "type": "formation",
+    "pct": 10,
+    "rank": null
+   },
+   {
+    "type": "cramped",
+    "pct": 30,
     "rank": null
    }
   ],
@@ -438,56 +462,7 @@
     "type": "regen",
     "pct": 10,
     "rank": "S"
-   }
-  ],
-  "promote": [],
-  "kind": "spear"
- },
- {
-  "id": "u20a",
-  "name": {
-   "jp": "長柄組",
-   "cn": "長矛兵"
-  },
-  "line": 20,
-  "tier": 1,
-  "cost": 35,
-  "hp": 470,
-  "mp": 46,
-  "str": 52,
-  "int": 15,
-  "agi": 32,
-  "def": 85,
-  "move": 3,
-  "affinity": "plain",
-  "speed": "A",
-  "growth": {
-   "hp": [
-    2,
-    8
-   ],
-   "mp": [
-    0,
-    2
-   ],
-   "str": [
-    0,
-    2
-   ],
-   "int": [
-    0,
-    1
-   ],
-   "agi": [
-    0,
-    1
-   ]
-  },
-  "skills": [
-   "k098"
-  ],
-  "tactics": [],
-  "passives": [
+   },
    {
     "type": "formation",
     "pct": 10,
@@ -499,13 +474,8 @@
     "rank": null
    }
   ],
-  "promote": [
-   {
-    "to": "u20b",
-    "lv": 10
-   }
-  ],
-  "kind": "pike"
+  "promote": [],
+  "kind": "spear"
  },
  {
   "id": "u20b",
@@ -513,7 +483,7 @@
    "jp": "三間槍衆",
    "cn": "長矛陣"
   },
-  "line": 20,
+  "line": 19,
   "tier": 2,
   "cost": 62,
   "hp": 540,
@@ -562,6 +532,11 @@
     "type": "cramped",
     "pct": 30,
     "rank": null
+   },
+   {
+    "type": "brace",
+    "mult": 1.5,
+    "rank": null
    }
   ],
   "promote": [
@@ -570,7 +545,7 @@
     "lv": 20
    }
   ],
-  "kind": "pike"
+  "kind": "spear"
  },
  {
   "id": "u01c",
@@ -578,7 +553,7 @@
    "jp": "長柄足軽",
    "cn": "戟兵"
   },
-  "line": 20,
+  "line": 19,
   "tier": 3,
   "cost": 85,
   "hp": 571,
@@ -634,10 +609,15 @@
     "type": "cramped",
     "pct": 30,
     "rank": null
+   },
+   {
+    "type": "brace",
+    "mult": 1.5,
+    "rank": null
    }
   ],
   "promote": [],
-  "kind": "pike"
+  "kind": "spear"
  },
  {
   "id": "u21a",
@@ -686,6 +666,11 @@
   "passives": [
    {
     "type": "hook",
+    "rank": null
+   },
+   {
+    "type": "unhorse",
+    "turns": 2,
     "rank": null
    }
   ],
@@ -1900,8 +1885,7 @@
   },
   "skills": [
    "k029",
-   "k030",
-   "k031"
+   "k030"
   ],
   "tactics": [],
   "passives": [
@@ -1966,8 +1950,7 @@
   },
   "skills": [
    "k029",
-   "k030",
-   "k031"
+   "k030"
   ],
   "tactics": [],
   "passives": [

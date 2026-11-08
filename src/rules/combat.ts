@@ -106,7 +106,7 @@ export function unitFx(st: BattleState, a: BUnit, t: BUnit, isCounter: boolean):
   const rally = Math.max(0, ...st.units.filter((x) => x.alive && x.side === a.side && x.id !== a.id)
     .flatMap((x) => passive(x, 'rally').filter((r) => g.distance(x.pos, a.pos) <= (r.range ?? 1)).map((r) => r.pct)));
   if (rally) out.push(['鼓舞', 1 + rally / 100]);
-  for (const f of passive(t, 'formation')) if (friends(t, (x) => unitKind(x) === 'pike').length) out.push(['隊列', 1 / (1 + f.pct / 100)]);
+  for (const f of passive(t, 'formation')) if (friends(t, (x) => unitKind(x) === 'spear').length) out.push(['隊列', 1 / (1 + f.pct / 100)]);
   // 天佑（P102）：攻める側の攻撃、受ける側の防御
   if (a.bmod?.atkPct) out.push([`天佑の攻撃（${a.bmod.from.join('・')}）`, Math.max(0.1, 1 + a.bmod.atkPct / 100)]);
   if (t.bmod?.defPct) out.push([`天佑の防御（${t.bmod.from.join('・')}）`, 1 / Math.max(0.1, 1 + t.bmod.defPct / 100)]);

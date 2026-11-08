@@ -1,4 +1,4 @@
-// 歩兵・槍・長槍・戟と、騎馬武者・盾・陣太鼓・黒鍬の特徴（0.11.0）
+// 歩兵・槍・戟の三すくみ（0.16.0 で槍と長槍を1つに）と、騎馬武者・盾・陣太鼓・黒鍬の特徴（0.11.0）
 import { describe, expect, it } from 'vitest';
 import { addStatus, apply, startTurn } from '../src/battle/engine';
 import { parseMap, type BattleMap } from '../src/battle/map';
@@ -9,6 +9,7 @@ import { D } from '../src/data/db';
 import { aimChance, blastCells, breachParts, damageParts, skillDamage, skillTargetCells } from '../src/rules/combat';
 import { reach } from '../src/rules/move';
 import { has, isCavalry, skillOf, terrainMod } from '../src/rules/stats';
+import { troopPromotions } from '../src/rules/growth';
 import { loadFixture } from './helpers';
 
 /** 兵を1隊置く（兵として扱う。率いる武将は自分自身） */
@@ -32,10 +33,10 @@ const PLAIN = Array.from({ length: 7 }, () => '. . . . . . . . .').join('\n');
 const basicOf = (u: BUnit) => skillOf(u.skills[0]);
 const fxOf = (st: BattleState, a: BUnit, t: BUnit, counter = false) => Object.fromEntries(damageParts(st, a, basicOf(a), t, counter).fx ?? []);
 
-describe('four kinds of infantry', () => {
-  it('each beats one of the others by 25%: foot → pike → spear → halberd → foot', () => {
-    const ids = { foot: 'u01a', pike: 'u20a', spear: 'u19a', halberd: 'u21a' } as const;
-    const cycle: [keyof typeof ids, keyof typeof ids][] = [['foot', 'pike'], ['pike', 'spear'], ['spear', 'halberd'], ['halberd', 'foot']];
+describe('three kinds of infantry', () => {
+  it('each beats one of the others by 25%: foot → spear → halberd → foot', () => {
+    const ids = { foot: 'u01a', spear: 'u19a', halberd: 'u21a' } as const;
+    const cycle: [keyof typeof ids, keyof typeof ids][] = [['foot', 'spear'], ['spear', 'halberd'], ['halberd', 'foot']];
     for (const [a, b] of cycle) {
       const st = field(PLAIN), g = st.map.grid;
       const x = troop(st, ids[a], 0, g.idx(2, 3)), y = troop(st, ids[b], 1, g.idx(3, 3));
@@ -68,15 +69,29 @@ describe('four kinds of infantry', () => {
     expect(fxOf(st, s, f, true)['迎え撃ち']).toBeUndefined();
   });
 
-  it('pike: reaches two hexes (and counters there), +10% defence next to another pike, −30% in forest', () => {
+  it('spear line (0.16.0): 三間槍衆 reaches two hexes; every spear gets formation next to another spear, −30% in forest, and brace', () => {
     const st = field('. . . . . .\n. . . . . .\n. . T . . .'), g = st.map.grid;
-    const p = troop(st, 'u20a', 1, g.idx(3, 0)), e = troop(st, 'u06a', 0, g.idx(1, 0));
+    const p = troop(st, 'u20b', 1, g.idx(3, 0)), e = troop(st, 'u06a', 0, g.idx(1, 0));
     expect(basicOf(p).range).toEqual([1, 2]);
     expect(fxOf(st, e, p)['隊列']).toBeUndefined();
-    troop(st, 'u20a', 1, g.idx(4, 0));
+    troop(st, 'u19a', 1, g.idx(4, 0));
     expect(fxOf(st, e, p)['隊列']).toBeCloseTo(1 / 1.1, 6);
     p.pos = g.idx(2, 2);
     expect(fxOf(st, p, e)['足場が悪い']).toBeCloseTo(0.7, 6);
+    for (const id of ['u19a', 'u01b', 'u19c', 'u20b', 'u01c']) {
+      const u = D.byUnit[id];
+      expect(u.line, id).toBe(19);
+      expect(u.kind, id).toBe('spear');
+      for (const t of ['brace', 'formation', 'cramped']) expect(u.passives.some((x) => x.type === t), `${id} ${t}`).toBe(true);
+    }
+    // 素槍足軽から、中級で足軽槍組か三間槍衆を選ぶ。上級はそのまま
+    expect(D.byUnit.u19a.promote.map((x) => x.to)).toEqual(['u01b', 'u20b']);
+    expect(D.byUnit.u01b.promote.map((x) => x.to)).toEqual(['u19c']);
+    expect(D.byUnit.u20b.promote.map((x) => x.to)).toEqual(['u01c']);
+    expect(D.byUnit.u20a).toBeUndefined();
+    // 昇格の選択肢：Lv10 の素槍足軽は、足軽槍組と三間槍衆の2つから選べる
+    const opts = troopPromotions(makeTroop(D.byUnit.u19a, 10), {});
+    expect(opts.filter((o) => o.ok).map((o) => o.to.id).sort()).toEqual(['u01b', 'u20b']);
   });
 
   it('halberd: shields do not work, and the higher tiers unhorse cavalry they hit', () => {
@@ -94,6 +109,32 @@ describe('four kinds of infantry', () => {
     a.passives.push({ type: 'hit', pct: 100 }); s.hp = s.maxHp = 1e6;
     for (let k = 0; k < 30; k++) { a.acted = false; a.moved = false; apply(st2, { type: 'skill', unit: a.id, skill: a.skills[0], target: s.pos }); }
     expect(st2.log.some((e) => e.key === 'shield' && e.vars.sid === s.id)).toBe(false);
+  });
+
+  it('0.16.0: 薙刀衆 also unhorses; a foot unit riding by the 騎乗 tactic loses it', () => {
+    expect(D.byUnit.u21a.passives.some((p) => p.type === 'unhorse')).toBe(true);
+    const st = field(PLAIN), g = st.map.grid;
+    const n = troop(st, 'u21a', 0, g.idx(2, 3)), f = troop(st, 'u01a', 1, g.idx(3, 3));
+    n.passives.push({ type: 'hit', pct: 100 });
+    addStatus(st, f, 'mounted', -1);
+    expect(isCavalry(f)).toBe(true);
+    f.hp = f.maxHp = 1e6;
+    apply(st, { type: 'skill', unit: n.id, skill: n.skills[0], target: f.pos });
+    expect(has(f, 'grounded')).toBe(true);
+    expect(has(f, 'mounted')).toBe(false);
+    expect(isCavalry(f)).toBe(false);
+  });
+});
+
+describe('0.16.0 skills and tactics', () => {
+  it('総掛かり is gone, 騎馬突撃 reaches one hex less, 堅陣・軍律 last 4 turns, 号令 is renamed', () => {
+    expect(D.bySkill.k031).toBeUndefined();
+    expect(D.units.some((u) => u.skills.includes('k031'))).toBe(false);
+    expect(D.bySkill.k030.range).toEqual([1, 2]);
+    expect(D.bySkill.k030.shape).toEqual({ type: 'line', n: 2 });
+    expect(D.byTactic.x25.turns).toBe(4);
+    expect(D.byTactic.x23.turns).toBe(4);
+    expect(D.byTactic.x30.name.jp).toBe('再行動の号令');
   });
 });
 
@@ -166,7 +207,7 @@ describe('mountain troops on flat ground (0.13.0)', () => {
 
 describe('recruiting', () => {
   it('no single line takes more than 30% of a pool when there are enough lines', () => {
-    const w: Record<string, number> = { u01a: 10, u19a: 1, u20a: 1, u21a: 1, u06a: 1 };
+    const w: Record<string, number> = { u01a: 10, u19a: 1, u04a: 1, u21a: 1, u06a: 1 };
     capLines(w, 0.3);
     const total = Object.values(w).reduce((s, v) => s + v, 0);
     expect(w.u01a / total).toBeCloseTo(0.3, 3);

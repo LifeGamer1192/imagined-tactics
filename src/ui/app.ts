@@ -27,7 +27,7 @@ import { css, tint } from '../render/ink';
 import { artUrl } from '../art/art';
 import { bannerHtml, sceneUrl, setScene } from './scene';
 import { confirmBox } from './confirm';
-import { classTip, skillTip, statusEffect, tacticTip, traitTip } from './describe';
+import { basicMark, classTip, skillTip, statusEffect, tacticTip, traitTip } from './describe';
 import { initTips } from './tip';
 import { busy } from './busy';
 import { prewarm } from '../render/strategyView';
@@ -1239,7 +1239,7 @@ export class App {
     const skills = u.skills.map(skillOf).map((s) => {
       const [a, b] = skillRange(st, u, s);
       const mp = skillCost(u, s);
-      return `<span class="sk" data-tip="${esc(skillTip(s))}">${this.taughtMark(s.id, u)}${esc(L(s.name))}<small>${s.power ? `威${s.power}` : ''}${a === b ? ` 射${b}` : ` 射${a}-${b}`}${mp ? ` 気${mp}` : ''}</small></span>`;
+      return `<span class="sk" data-tip="${esc(skillTip(s))}">${this.taughtMark(s.id, u)}${esc(L(s.name) + basicMark(s, u.skills))}<small>${s.power ? `威${s.power}` : ''}${a === b ? ` 射${b}` : ` 射${a}-${b}`}${mp ? ` 気${mp}` : ''}</small></span>`;
     });
     const tactics = u.tactics.map((id) => D.byTactic[id]).filter(Boolean).map((t) => `<span class="sk tac" data-tip="${esc(tacticTip(t))}">${this.taughtMark(t.id, u)}${esc(L(t.name))}<small>気${tacticCost(u, t)}</small></span>`);
     const enemy = !this.human.has(u.side) && this.human.size > 0;
@@ -1430,7 +1430,7 @@ export class App {
   private skillLabel(s: SkillDef, u?: BUnit): string {
     const range = s.shape.type === 'around' ? `周囲${s.shape.n}` : s.shape.type === 'line' ? `直線${s.shape.n}` : s.range[0] === s.range[1] ? `射程${s.range[1]}` : `射程${s.range[0]}〜${s.range[1]}`;
     const mp = u ? skillCost(u, s) : s.mp;
-    return `${this.taughtMark(s.id, u)}${L(s.name)} <small>威力${s.power || '-'} ${range}${mp ? ` 気${mp}` : ''}</small>`;
+    return `${this.taughtMark(s.id, u)}${L(s.name)}${basicMark(s, u?.skills)} <small>威力${s.power || '-'} ${range}${mp ? ` 気${mp}` : ''}</small>`;
   }
   private tacticLabel(t: TacticDef, u?: BUnit): string {
     const range = t.range === null ? '' : t.area ? (t.range ? `射程${t.range}・範囲${t.area}` : `周囲${t.area}`) : `射程${t.range}`;

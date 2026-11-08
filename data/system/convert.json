@@ -65,15 +65,15 @@
     "maxPerGeneral": 6,
     "fillNoArmy": 0.3,
     "fillMin": 0.2,
-    "base": { "u01a": 1.5, "u19a": 1, "u20a": 0.5, "u21a": 0.5, "u06a": 2 },
+    "base": { "u01a": 1.5, "u19a": 1.5, "u21a": 0.5, "u06a": 2 },
     "glyph": {
-      "foot": "u01a", "spear": "u19a", "pike": "u20a", "halberd": "u21a", "sword": "u11a", "guard": "u09a",
+      "foot": "u01a", "spear": "u19a", "pike": "u19a", "halberd": "u21a", "sword": "u11a", "guard": "u09a",
       "bow": "u06a", "sling": "u06a", "gun": "u04a", "crossbow": "u04a", "javelin": "u05a",
       "horse": "u07a", "horse_archer": "u07a", "chariot": "u13a", "elephant": "u13a",
       "boat": "u03a", "siege": "u10a", "cannon": "u10a"
     },
     "armsScale": 12, "armsMinShare": 0.02, "armsOtherMult": 0.35,
-    "_footSplit": "記録の「歩兵」は武器の種類ではないので、歩兵・槍・長柄の兵に分ける（0.11.0）。polearm：その国の記録で多いほう（長槍か戟。どちらも無ければ版で決める：中国版は戟、ほかは長槍）",
+    "_footSplit": "記録の「歩兵」は武器の種類ではないので、歩兵・槍・長柄の兵に分ける（0.11.0）。polearm：その国の記録で多いほう（長槍か戟。長槍は 0.16.0 から槍の系統の素槍足軽。どちらも無ければ版で決める：中国版は戟、ほかは長槍）",
     "footSplit": { "u01a": 0.5, "u19a": 0.3, "polearm": 0.2 },
     "_lineCap": "1つの系統の重みは、その国（領）の重みのこの割合まで（0.11.0）。系統が少なすぎて守れないときは掛けない",
     "lineCap": 0.3,

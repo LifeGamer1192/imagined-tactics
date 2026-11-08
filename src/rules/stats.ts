@@ -166,7 +166,7 @@ export function isCavalry(u: BUnit): boolean {
   if (has(u, 'grounded')) return false;
   return unitKind(u) === 'cavalry' || affinityOf(u) === 'rider';
 }
-export const KIND_NAME: Record<UnitKind, string> = { foot: '歩兵', spear: '槍', pike: '長槍', halberd: '戟', cavalry: '騎馬' };
+export const KIND_NAME: Record<UnitKind, string> = { foot: '歩兵', spear: '槍', halberd: '戟', cavalry: '騎馬' };
 
 /** その地形から射程2以上の技を使うときの補正（櫓）。無ければ null */
 function rangedPerch(st: BattleState, u: BUnit, skill: SkillDef): { hit: number; range: number } | null {

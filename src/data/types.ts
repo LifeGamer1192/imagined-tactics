@@ -94,7 +94,7 @@ export type Passive =
   | { type: 'rugged' }
   /** 迎え撃ち：騎馬に攻められたときの反撃のダメージ×mult */
   | { type: 'brace'; mult: number }
-  /** 隊列：隣に同じ長槍の味方がいると、受けるダメージが pct% 減る（防御+pct%） */
+  /** 隊列：隣に槍の味方がいると、受けるダメージが pct% 減る（防御+pct%） */
   | { type: 'formation'; pct: number }
   /** 森・山・沼に立つと、与えるダメージ−pct% */
   | { type: 'cramped'; pct: number }
@@ -125,8 +125,8 @@ export type Passive =
   /** 隠密（P107・上忍）：森で待機すると「隠密」になる。2マス以上離れた所からの攻撃・技を1度だけかわす */
   | { type: 'stealth' };
 
-/** 兵種の分類（0.11.0。歩兵・槍・長槍・戟の相性と、騎馬かどうか） */
-export type UnitKind = 'foot' | 'spear' | 'pike' | 'halberd' | 'cavalry';
+/** 兵種の分類（0.11.0。歩兵・槍・戟の三すくみ〔0.16.0 で槍と長槍を1つに〕と、騎馬かどうか） */
+export type UnitKind = 'foot' | 'spear' | 'halberd' | 'cavalry';
 
 export interface UnitDef extends StatBlock {
   id: string;
@@ -222,7 +222,7 @@ export interface CombatConfig {
   counterMult: number; healIntScale: number; useExp: number; healExp: number; expGain: number;
   /** 押し出す技で、押す先が塞がっているとき（0.10.0） */
   knock: { wallMult: number; collidePct: number };
-  /** 歩兵・槍・長槍・戟の相性（0.11.0）：攻める側の分類 → 相手の分類 → 与えるダメージ+％ */
+  /** 歩兵・槍・戟の三すくみ（0.16.0）：攻める側の分類 → 相手の分類 → 与えるダメージ+％ */
   kindBane: Partial<Record<UnitKind, Partial<Record<UnitKind, number>>>>;
   /** 反撃した駒が得る経験値（0.9.1） */
   counterExp: number;

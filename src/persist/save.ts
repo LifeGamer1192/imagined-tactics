@@ -111,6 +111,24 @@ function pruneSkills(c: Campaign): void {
   if (c.lessons) c.lessons = c.lessons.filter((l) => l.kind !== 'skill' || ok(l.art));
 }
 
+/**
+ * なくなった兵種（統合した兵種）を、引き継ぐ兵種に置き換える。0.16.0：長柄組（u20a）は槍の系統に統合して素槍足軽（u19a）に
+ */
+export const RETIRED_UNITS: Record<string, string> = { u20a: 'u19a' };
+function retireUnits(c: Campaign): void {
+  const to = (id: string): string => RETIRED_UNITS[id] ?? id;
+  const fixTroop = (t: GTroop): void => { t.unitId = to(t.unitId); };
+  const fixWeights = (w: Record<string, number> | undefined): void => {
+    if (!w) return;
+    for (const [from, into] of Object.entries(RETIRED_UNITS)) if (from in w) { w[into] = (w[into] ?? 0) + w[from]; delete w[from]; }
+  };
+  for (const g of Object.values(c.gs.generals)) g.troops.forEach(fixTroop);
+  for (const x of c.captives ?? []) x.g.troops.forEach(fixTroop);
+  for (const list of Object.values(c.reserve ?? {})) list.forEach(fixTroop);
+  for (const f of Object.values(c.gs.factions)) fixWeights(f?.recruit);
+  for (const p of c.gs.provinces) fixWeights(p.recruit);
+}
+
 export function restore(s: HexSave): Campaign {
   if (!s || s.format !== SAVE_FORMAT || !s.campaign || !s.world) throw new HexSaveError('hex-sim のセーブではありません');
   if (s.version > SAVE_VERSION) throw new HexSaveError(`新しい版のセーブです（版数 ${s.version}）。このアプリを更新してください`);
@@ -127,6 +145,7 @@ export function restore(s: HexSave): Campaign {
   for (const g of Object.values(c.gs.generals)) fillLowerClasses(g);
   // 偵察度の無い古いセーブは、隣の領から始める
   if (!c.scout) initScout(c);
+  retireUnits(c);
   pruneSkills(c);
   // 名将（P102）：まだ割り当てていない古いセーブにも、読み込みのときに付ける
   assignHeroes(c.gs);
