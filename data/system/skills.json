@@ -877,7 +877,9 @@
   "targets": "enemy",
   "effects": [
    {
-    "type": "knockback"
+    "type": "status",
+    "status": "daze",
+    "chance": 8
    }
   ],
   "noCounter": true

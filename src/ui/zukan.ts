@@ -132,7 +132,7 @@ function skillsPage(): string {
   const list = D.skills.filter((s) => hit(s.name.jp, s.name.cn, s.id)).sort((a, b) => Number(b.basic) - Number(a.basic) || a.id.localeCompare(b.id));
   if (!list.length) return '<p>当てはまる技がありません。</p>';
   const row = (s: SkillDef): string => `<tr id="${rowId('skills', s.id)}">
-    <td class="zk-left" data-tip="${esc(skillTip(s))}">${esc(nm(s.name) + basicMark(s))}</td><td>${s.basic ? '通常攻撃' : '技'}</td>
+    <td class="zk-left" data-tip="${esc(skillTip(s))}">${esc(nm(s.name))}</td><td>${s.basic ? `通常攻撃${basicMark(s) ? '<br><small class="dim">（攻撃・反撃）</small>' : ''}` : '技'}</td>
     <td>${s.noDamage ? '—' : s.power}</td><td>${s.hit ? (s.hit > 0 ? '+' : '') + s.hit : '±0'}</td><td>${s.mp || '—'}</td><td>${rng(s)}</td><td>${shape(s)}</td>
     <td>${MARK[s.vsGround] ?? s.vsGround}</td><td>${MARK[s.vsRider] ?? s.vsRider}</td><td>${s.afterMove ? '○' : '×'}</td><td>${s.counter ? '○' : '—'}</td>
     <td class="zk-left zk-fx">${extra(s) || '—'}</td><td class="zk-left zk-who">${holders(s.id, 'skill')}</td></tr>`;

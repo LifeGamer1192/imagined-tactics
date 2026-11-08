@@ -153,7 +153,7 @@ describe('cavalry charge, shields against missiles, drums, sappers', () => {
     expect(c.moveSteps).toBe(0);
   });
 
-  it('shield troops halve shots from two hexes or more 40% of the time, shown as 盾', () => {
+  it('shield troops halve shots from two hexes or more 80% of the time (0.16.1; was 40%), shown as 盾', () => {
     const st = field(PLAIN), g = st.map.grid;
     const b = troop(st, 'u06a', 0, g.idx(1, 3)), s = troop(st, 'u09a', 1, g.idx(3, 3));
     s.passives = s.passives.filter((p) => p.type !== 'shield');   // 受け止めを外して、飛び道具の盾だけを見る
@@ -165,8 +165,8 @@ describe('cavalry charge, shields against missiles, drums, sappers', () => {
       const d = [...st.log].reverse().find((e) => e.key === 'strike' && e.d?.type === 'strike' && !e.d.counter)?.d;
       if (d?.type === 'strike' && d.dmg) { tries++; if (d.dmg.shield?.ok) { guarded++; expect(d.dmg.shield.missile).toBe(true); } }
     }
-    expect(guarded / tries).toBeGreaterThan(0.3);
-    expect(guarded / tries).toBeLessThan(0.5);
+    expect(guarded / tries).toBeGreaterThan(0.7);
+    expect(guarded / tries).toBeLessThan(0.9);
     // 隣からの攻撃には効かない
     b.pos = g.idx(2, 3);
     const before = st.log.filter((e) => e.key === 'shield').length;

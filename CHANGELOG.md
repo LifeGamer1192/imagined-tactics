@@ -4,6 +4,13 @@
 
 書き方：日付、版、何を変えたか（ID・項目・前の値 → 後の値）、相手側で要る対応。
 
+## 0.16.1（2026-11-08）
+
+- `skills.json`（共有）：`k034` 錫杖打ちの効果 `knockback`（押し出し）→ `{status: daze, chance: 8}`（8%で怯み）。反撃されない（`noCounter`）はそのまま。
+- `units.json`（共有）：盾の系統（`u09a` 竹束衆・`u09b` 盾衆・`u09c` 鉄盾衆）の `missileGuard` の chance 40 → 80。`u09c` 鉄盾衆から `doubleAct`（1巡に2回動けることがある）を外した。`u09b` の `promote`：`{u09c, lv25, item: item_shield_top}` → `{u09c, lv20}`（品が要らなくなり、ほかの上級と同じ Lv20）。
+- `terms.json`：品 `item_shield_top`（精鋭の証）をなくした（hex-sim はセーブを読むとき持ち物から外す）。
+- 相手側で要る対応：`item_shield_top` を使っていれば外す。錫杖打ちの押し出しをやめ、怯みにする。
+
 ## 0.16.0（2026-11-08）
 
 - `units.json`（共有）：系統19（槍）と系統20（長槍）を1つにした（系統19・`kind: spear`）。分類 `pike` をなくした。

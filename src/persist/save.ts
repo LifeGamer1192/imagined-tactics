@@ -147,6 +147,8 @@ export function restore(s: HexSave): Campaign {
   if (!c.scout) initScout(c);
   retireUnits(c);
   pruneSkills(c);
+  // なくなった品（0.16.1：精鋭の証）は持ち物から外す
+  for (const id of Object.keys(c.items)) if (!D.items[id]) delete c.items[id];
   // 名将（P102）：まだ割り当てていない古いセーブにも、読み込みのときに付ける
   assignHeroes(c.gs);
   return c;
