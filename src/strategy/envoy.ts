@@ -6,7 +6,7 @@
 // 調整値は data/system/strategy.json の envoy。
 
 import type { GGeneral } from '../convert/model';
-import { note, relation, type Campaign } from './campaign';
+import { isHuman, multiplayer, note, relation, seatOf, type Campaign } from './campaign';
 import { S } from './config';
 import { officeFx } from './office';
 import { allianceProblem, callProblem, callToArms, factionStrength, makeTruce, proposeAlliance, truceProblem } from './events';
@@ -51,6 +51,16 @@ export function envoyPlan(c: Campaign, kind: DipKind, other: number, envoyId: st
   const was = c.gs.factions[other]?.opinions[me];
   if (c.gs.factions[other]) c.gs.factions[other].opinions[me] = after;
   let refused: string | null = null;
+  // 相手も人の家なら（何人かで遊ぶとき。P121）：受けるかは相手の人が、相手の番に決める。ここでは形だけ確かめる
+  if (multiplayer(c) && isHuman(c, other)) {
+    if (c.gs.factions[other]) { if (was === undefined) delete c.gs.factions[other].opinions[me]; else c.gs.factions[other].opinions[me] = was; }
+    const rel = relation(c, me, other);
+    if (!blocked && kind === 'call') blocked = '人の家には加勢を頼めません（同盟の相手に、じかに話してください）';
+    if (!blocked && kind === 'ally' && rel !== 'neutral') blocked = rel === 'ally' ? 'もう同盟しています' : '戦をしている相手とは、まず停戦してください';
+    if (!blocked && kind === 'truce' && rel !== 'war') blocked = '戦をしている相手とだけ停戦できます';
+    if (!blocked && kind !== 'goodwill' && (seatOf(c, other).offers ?? []).some((o) => o.from === me)) blocked = '前の申し込みの返事を待っています';
+    return { blocked, refused: null, opinionNow: Math.round(now), opinionAfter: Math.round(after), bonus };
+  }
   try {
     if (kind === 'ally') refused = allianceProblem(c, me, other);
     else if (kind === 'call') refused = enemy === undefined ? '相手を選んでください' : callProblem(c, other, enemy);
@@ -66,7 +76,7 @@ export function envoyPlan(c: Campaign, kind: DipKind, other: number, envoyId: st
 }
 
 /** 使者を出す。申し込めなければ false（受けてもらえなくても、使者と土産は使い、心証は上がる） */
-export function sendEnvoy(c: Campaign, kind: DipKind, other: number, envoyId: string, gift: number, enemy?: number): { sent: boolean; accepted: boolean } {
+export function sendEnvoy(c: Campaign, kind: DipKind, other: number, envoyId: string, gift: number, enemy?: number): { sent: boolean; accepted: boolean; pending?: boolean } {
   const plan = envoyPlan(c, kind, other, envoyId, gift, enemy);
   if (plan.blocked) return { sent: false, accepted: false };
   const me = c.player, gs = c.gs, g = gs.generals[envoyId];
@@ -75,6 +85,12 @@ export function sendEnvoy(c: Campaign, kind: DipKind, other: number, envoyId: st
   gs.factions[other].opinions[me] = plan.opinionAfter;
   note(c, 'envoy', { name: g.name.ja, faction: gs.factions[other].name.ja, gift, from: plan.opinionNow, to: plan.opinionAfter });
   if (kind === 'goodwill') return { sent: true, accepted: true };
+  // 相手も人の家なら、申し込みを相手の家に置く（相手の番の初めに「受ける・断る」が出る。P121）
+  if (multiplayer(c) && isHuman(c, other) && (kind === 'ally' || kind === 'truce')) {
+    (seatOf(c, other).offers ??= []).push({ kind: kind === 'ally' ? 'alliance' : 'truce', from: me, until: gs.tick + S.diplomacy.offerMonths });
+    note(c, 'envoyAsked', { faction: gs.factions[other].name.ja, kind: kind === 'ally' ? '同盟' : '停戦' });
+    return { sent: true, accepted: false, pending: true };
+  }
   if (plan.refused) { note(c, 'envoyRefused', { faction: gs.factions[other].name.ja, why: plan.refused }); return { sent: true, accepted: false }; }
   const ok = kind === 'ally' ? proposeAlliance(c, me, other) : kind === 'truce' ? makeTruce(c, me, other) : callToArms(c, other, enemy!);
   return { sent: true, accepted: ok };

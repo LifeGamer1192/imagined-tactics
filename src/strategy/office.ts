@@ -9,23 +9,26 @@
 // 数は data/system/strategy.json の office。
 
 import type { GGeneral } from '../convert/model';
-import { neighborsOf, relation, type Campaign } from './campaign';
+import { neighborsOf, relation, seatOf, type Campaign } from './campaign';
 import { S } from './config';
 
 const O = () => S.office;
 
-/** 自分の家の相国（いなければ undefined） */
-export function chancellorOf(c: Campaign): GGeneral | undefined {
-  const id = c.offices?.chancellor, g = id ? c.gs.generals[id] : undefined;
-  return g && c.player && g.faction === c.player && !g.isLord ? g : undefined;
+/** 自分の家（何人かで遊ぶときは、人の家 fid）の相国（いなければ undefined） */
+export function chancellorOf(c: Campaign, fid = c.player): GGeneral | undefined {
+  const id = (fid === c.player ? c.offices : seatOf(c, fid).offices)?.chancellor, g = id ? c.gs.generals[id] : undefined;
+  return g && fid && g.faction === fid && !g.isLord ? g : undefined;
 }
 export const isChancellor = (c: Campaign, gid: string): boolean => chancellorOf(c)?.id === gid;
 
 /** その領が相国の膝元（相国のいる領か、その隣）か */
-export function nearChancellor(c: Campaign, prov: number): boolean {
-  const ch = chancellorOf(c);
+export function nearChancellor(c: Campaign, prov: number, fid = c.player): boolean {
+  const ch = chancellorOf(c, fid);
   return !!ch && (ch.prov === prov || neighborsOf(c, ch.prov).includes(prov));
 }
+
+/** 人の家 fid の相国の効き目（相国がいなければ null。何人かで遊ぶとき、番でない家のぶん。P120） */
+export const officeFxOf = (c: Campaign, fid: number): ReturnType<typeof officeFx> => { const ch = chancellorOf(c, fid); return ch ? officeFx(c, ch) : null; };
 
 /** 相国の効き目（g を渡すと、その将を相国にしたときの見込み）。割合は 0.08 = 8% */
 export function officeFx(c: Campaign, g?: GGeneral): { income: number; envoy: number; drift: number; defect: number; recruit: number; train: number; localIncome: number; localTrain: number } | null {

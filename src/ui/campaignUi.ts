@@ -8,7 +8,7 @@ import { StrategyView } from '../render/strategyView';
 import {
   autoMonth, autoPlayMonth, battleFor, canAttack, endMonth, finishMonth, generalsAt, moveGeneral, moveTargets, neighborsOf, planAttack, provincesOf,
   declareWar, dismissTroop, garrisonOf, recruit, recruitCost, recruitCostFor, recruitTraitMult, holderOf, moveTroopProblem, reserveKey, reserveOf, transferTroop, recruitProblem, relation, resolveBattle, siegeResist, strengthOf, traitsOf, troopLoad,
-  S, supplyCap, provinceRecruit, isNativeUnit, isResting, historicBattle, endHistoricBattle, skipHistoricBattle, type Campaign, type CampaignLog, type PendingBattle, type ReelBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
+  S, supplyCap, provinceRecruit, isNativeUnit, humansOf, isHuman, multiplayer, switchSeat, isResting, historicBattle, endHistoricBattle, skipHistoricBattle, type Campaign, type CampaignLog, type PendingBattle, type ReelBattle, BUILD_KINDS, build, buildCost, buildProblem, provinceLook, provinceMap, isExclave, exclaveLink, relocationPlan, relocationProblem, startRelocation,
 } from '../strategy/campaign';
 import { CAUSE_NAME, chooseHistory, chooseOmen, choiceLine, choiceOutcome, histBattleSetup } from '../strategy/history';
 /** 兆しの文（P74） */
@@ -98,6 +98,7 @@ const LOG_TEXT: Record<string, string> = {
   scouted: '{name}が{prov}を偵察した（偵察度{v}）',
   envoy: '{name}を使者として{faction}へ送った（土産：兵糧{gift}。心証{from}→{to}）',
   envoyRefused: '{faction}に断られた（{why}）',
+  envoyAsked: '{faction}に{kind}を申し込んだ（相手の返事を待つ）',
   resting: '{name}は戦場から退却し、翌月まで休養する（守りの出陣だけできる）',
   caught: '【捕獲】{from}の{unit}を捕まえ、{to}に加えた（Lv{lv}）',
   tieJoin: '{name}は、戦場で出会った{friend}との縁で{faction}に仕えた',
@@ -216,10 +217,66 @@ export class CampaignScreen {
     // 味方のおまかせの方針（P50）：セーブにあればそれ、無ければ前の設定。切り替えたらセーブにも残す
     if (c.player) bindPlan(c.autoPlan, (p) => { c.autoPlan = p; });
     // 年表（P57）：家が起った日を書き留める（古いセーブは、読み込んだ日から）
-    if (c.player) startChronicle(c);
+    if (multiplayer(c)) { const back = c.player; for (const f of humansOf(c)) { switchSeat(c, f); startChronicle(c); } switchSeat(c, back); }
+    else if (c.player) startChronicle(c);
     // 開発時の動作確認（tools/smoke.mjs）から操作できるようにする
     if (import.meta.env.DEV) (window as unknown as { __campaign?: CampaignScreen }).__campaign = this;
     this.mount();
+    // 何人かで遊ぶとき（P120）：始め（と読み込んだとき）は、番の家の交代画面から
+    if (multiplayer(c) && !c.over) this.seatHandoff(c.player, `${this.date()}の番です`, () => {});
+  }
+
+  // ------------------------------------------------------------ 何人かで遊ぶ（1台を交代で。P120）
+
+  /**
+   * 交代画面：地図と情報欄を隠して「◯◯家の番です」。押すと then（その家の捕虜の決めごとがあれば、先にその窓）。
+   * 番の家を替えるのは呼ぶ側（switchSeat のあと）
+   */
+  private seatHandoff(fid: number, what: string, then: () => void): void {
+    const c = this.c, f = c.gs.factions[fid], frame = this.host.root.querySelector<HTMLElement>('.battle');
+    if (!f || !frame) { then(); return; }
+    frame.querySelector('.handoff')?.remove();
+    const col = `rgb(${f.color.join(',')})`;
+    const el = document.createElement('div');
+    el.className = 'handoff';
+    el.innerHTML = `<div class="ho-card" style="border-color:${col}">
+      <div class="ho-side" style="color:${col}">${esc(f.name.ja)}<small>${humansOf(c).length}人で遊んでいます（${humansOf(c).map((x) => esc(c.gs.factions[x]?.name.ja ?? '')).join('・')}）</small></div>
+      <div class="ho-what">${esc(what)}</div>
+      <p class="dim small">この家を動かす人に渡してから、押してください。</p>
+      <button class="primary" data-a="go">始める</button></div>`;
+    frame.appendChild(el);
+    el.querySelector<HTMLButtonElement>('[data-a="go"]')!.onclick = () => {
+      el.remove();
+      this.refresh();
+      if (this.c.captivePending?.length) this.captiveWindows(then); else then();
+    };
+  }
+
+  /** 番の家を替えて、画面を作り直す（方針・選んでいる領もその家のものに） */
+  private takeSeat(fid: number): void {
+    const c = this.c;
+    switchSeat(c, fid);
+    bindPlan(c.autoPlan, (p) => { c.autoPlan = p; });
+    this.order = 'none'; this.picked.clear(); this.troopMenu = null;
+    this.selected = c.gs.factions[fid]?.capital ?? -1;
+    this.mount();
+  }
+
+  /** 番を終える：まだ番の来ていない人の家があれば、その家へ。みな終えたら月を進める */
+  private endSeatTurn(): void {
+    const c = this.c;
+    c.turnDone = [...new Set([...(c.turnDone ?? []), c.player])];
+    const next = humansOf(c).find((f) => c.gs.factions[f] && !c.turnDone!.includes(f));
+    if (next) { this.takeSeat(next); this.seatHandoff(next, `${this.date()}の番です`, () => {}); return; }
+    void busy('月を進めています…', () => this.advance());
+  }
+
+  /** 「月を進める」の字（何人かで遊ぶときは「番を終える（次：◯◯家）」） */
+  private nextLabel(): string {
+    const c = this.c;
+    if (!multiplayer(c)) return '月を進める';
+    const next = humansOf(c).find((f) => f !== c.player && c.gs.factions[f] && !(c.turnDone ?? []).includes(f));
+    return next ? `番を終える（次：${esc(c.gs.factions[next].name.ja)}）` : '番を終えて月を進める';
   }
 
   private date(): string {
@@ -813,7 +870,9 @@ export class CampaignScreen {
           });
           return;
         }
-        const human = b.dataset.a === 'watch' ? new Set<Side>() : new Set<Side>([side]);
+        // 相手も人の家なら（何人かで遊ぶとき）、両方を人が動かす（交代画面で渡し合う。P120）
+        const vsHuman = multiplayer(c) && isHuman(c, side === 0 ? pb.defender : pb.attacker);
+        const human = b.dataset.a === 'watch' ? new Set<Side>() : vsHuman ? new Set<Side>([0, 1]) : new Set<Side>([side]);
         void busy('戦場を用意しています…', () => this.host.openBattle(battleFor(c, pb), human, (st) => won(resolveBattle(c, pb, st)), { label: '戦略マップへ', fn: then }, false, side));
       };
     });
@@ -881,18 +940,27 @@ export class CampaignScreen {
   /** 攻められた戦いを順に決着させ、すべて終わったら月を締める */
   private nextQueued(): void {
     const pb = this.queue.shift();
+    if (pb && multiplayer(this.c) && pb.defender !== this.c.player && isHuman(this.c, pb.defender)) {
+      // 何人かで遊ぶとき：攻められた家の人に渡してから（P120）
+      this.takeSeat(pb.defender);
+      this.seatHandoff(pb.defender, `${this.c.gs.factions[pb.attacker]?.name.ja ?? ''}が${this.c.gs.provinces[pb.prov].name.ja}へ攻めてきました`, () => this.fight(pb, 1, () => this.nextQueued()));
+      return;
+    }
     if (pb) { this.mount(); this.fight(pb, 1, () => this.nextQueued()); return; }
     // 月を締めるのは重い（出来事・史実・セーブ・描き直し）ので、先に「締めています」を出す（0.2秒の約束）
     void busy('月を締めています…', () => {
       finishMonth(this.c);
       this.c.log.push({ key: 'month', vars: { date: this.date() } });
+      // 何人かで遊ぶとき（P120）：新しい月は、はじめの人の家の番から
+      const multi = multiplayer(this.c) && !this.c.over;
+      if (multi) { this.c.turnDone = []; const first = humansOf(this.c).find((f) => this.c.gs.factions[f]); if (first) { switchSeat(this.c, first); bindPlan(this.c.autoPlan, (p) => { this.c.autoPlan = p; }); this.selected = this.c.gs.factions[first].capital; } }
       this.autosave();
       this.mount();
       // ほかの勢力どうしの戦いを見せてから、今月の知らせを出す
       const reel = this.c.reel ?? [];
       this.c.reel = [];
-      if (reel.length && reelOn()) this.playReel(reel, () => this.showNews(this.logMark));
-      else this.showNews(this.logMark);
+      const news = (): void => { if (reel.length && reelOn()) this.playReel(reel, () => this.showNews(this.logMark)); else this.showNews(this.logMark); };
+      if (multi) this.seatHandoff(this.c.player, `${this.date()}になりました。最初の番です`, news); else news();
     });
   }
 
@@ -1427,7 +1495,7 @@ export class CampaignScreen {
     update();
     if (!(await pending)) return;
     const r = sendEnvoy(c, kind, other, who?.value ?? '', Number(gift.value), enemy);
-    if (r.sent) toast(kind === 'goodwill' ? '使者を送りました' : r.accepted ? '受けてもらえました' : '断られました');
+    if (r.sent) toast(kind === 'goodwill' ? '使者を送りました' : r.pending ? '申し込みました（相手の番に、受けるか決めます）' : r.accepted ? '受けてもらえました' : '断られました');
     this.refresh();
   }
 
@@ -1649,12 +1717,14 @@ export class CampaignScreen {
         ${own && me ? awayAt(c, p.id, me.id).map((g) => `<div class="dim">${esc(g.name.ja)}：諸国巡り中（あと${c.away[g.id] - gs.tick}か月）</div>`).join('') : ''}
         `;
     }
-    const over = c.over ? `<div class="card status over">${bannerHtml(sceneUrl(c.over === 'win' ? 'victory' : 'defeat'))}${c.over === 'win' ? '天下を取りました' : '自分の勢力は滅びました'}${c.chronicle?.length ? ' <button id="chronBtn">年表を見る</button>' : ''}</div>` : '';
+    const victor = c.victor ? c.gs.factions[c.victor]?.name.ja ?? '' : '';
+    const overText = (c.seatsAtStart ?? 1) > 1 ? (c.over === 'win' ? `${esc(victor)}の勝ち${c.victory?.kind === 'years' ? '（期限の時点で領がいちばん多い）' : ''}` : '人の家はみな滅びました') : c.over === 'win' ? '天下を取りました' : '自分の勢力は滅びました';
+    const over = c.over ? `<div class="card status over">${bannerHtml(sceneUrl(c.over === 'win' ? 'victory' : 'defeat'))}${overText}${c.chronicle?.length ? ' <button id="chronBtn">年表を見る</button>' : ''}</div>` : '';
     this.host.root.querySelector('#panel')!.innerHTML = `
       <div class="turn" style="background:${seasonBand(me ? me.color : null, gs.month)}">${this.date()} <small>${me ? `${esc(me.name.ja)}　兵糧${me.supply}／${supplyCap(me)}（+${me.income}／月）　領${provincesOf(c, me.id).length}` : '観戦'}</small></div>
       <div class="foot">
-        <button id="next" class="primary" ${c.over || this.autoOn ? 'disabled' : ''}>月を進める</button>
-        ${c.player ? `<span class="autogrp"><button id="autoMonth" class="${this.autoOn ? 'on autoing' : ''}" ${c.over ? 'disabled' : ''} data-tip="押すと、自分の家もおまかせで動かして月を進めます（兵を雇う・兵糧に余りがあれば普請・弱い隣を攻める・将を前線へ移す・残りは訓練）。オート中は、どこかを押すと手動に戻ります。">${this.autoOn ? `オート中…${this.autoLeft > 0 ? `あと${this.autoLeft}か月` : ''}（押すと手動）` : 'オート'}</button><select id="autoLen" title="オートで進める長さ" ${this.autoOn ? 'disabled' : ''}>${[[1, '1か月'], [2, '2か月'], [3, '3か月'], [0, 'ずっと']].map(([v, n]) => `<option value="${v}" ${this.autoLen === v ? 'selected' : ''}>${n}</option>`).join('')}</select></span>` : ''}
+        <button id="next" class="primary" ${c.over || this.autoOn ? 'disabled' : ''}>${this.nextLabel()}</button>
+        ${c.player && !multiplayer(c) ? `<span class="autogrp"><button id="autoMonth" class="${this.autoOn ? 'on autoing' : ''}" ${c.over ? 'disabled' : ''} data-tip="押すと、自分の家もおまかせで動かして月を進めます（兵を雇う・兵糧に余りがあれば普請・弱い隣を攻める・将を前線へ移す・残りは訓練）。オート中は、どこかを押すと手動に戻ります。">${this.autoOn ? `オート中…${this.autoLeft > 0 ? `あと${this.autoLeft}か月` : ''}（押すと手動）` : 'オート'}</button><select id="autoLen" title="オートで進める長さ" ${this.autoOn ? 'disabled' : ''}>${[[1, '1か月'], [2, '2か月'], [3, '3か月'], [0, 'ずっと']].map(([v, n]) => `<option value="${v}" ${this.autoLen === v ? 'selected' : ''}>${n}</option>`).join('')}</select></span>` : ''}
         ${c.player ? '' : '<button id="run">12か月進める</button>'}
         <span class="dim">勢力${Object.keys(gs.factions).length}・${c.months}か月・<span class="${c.difficulty === 'oni' ? 'oni' : ''}" title="難しさ">${S.difficulty[c.difficulty].name}</span></span>
         ${c.player && (myCaptives(c).length || myCaptured(c).length) ? `<button id="captiveBtn" data-tip="捕らえている敵の将と、捕まっている自分の将。押すと一覧（登用・解き放つ・処断・身代金）">捕虜 ${myCaptives(c).length}人${myCaptured(c).length ? `・捕まった将 ${myCaptured(c).length}人` : ''}</button>` : ''}
@@ -1979,7 +2049,7 @@ export class CampaignScreen {
     on('#selNone', () => { this.picked.clear(); this.order = 'none'; this.refresh(); });
     on('#move', () => { this.order = this.order === 'move' ? 'none' : 'move'; this.refresh(); });
     on('#attack', () => { this.order = this.order === 'attack' ? 'none' : 'attack'; this.refresh(); });
-    on('#next', () => busy('月を進めています…', () => this.advance()));
+    on('#next', () => { if (multiplayer(this.c)) this.endSeatTurn(); else void busy('月を進めています…', () => this.advance()); });
     on('#run', () => {
       // 1か月ごとに表示を書き換えながら進める（進み具合が見える）
       this.running = true;

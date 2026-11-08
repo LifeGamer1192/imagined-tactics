@@ -12,9 +12,9 @@ import { makeTroop } from '../convert/convert';
 import type { GGeneral } from '../convert/model';
 import { D, L } from '../data/db';
 import { gainGeneralExp, gainTroopExp, generalExpToNext, troopExpToNext } from '../rules/growth';
-import { MAX_TROOPS, note, provinceRecruit, recruitLevel, toReserve, troopLoad, type Campaign } from './campaign';
+import { isHuman, MAX_TROOPS, note, provinceRecruit, recruitLevel, seatOf, toReserve, troopLoad, type Campaign } from './campaign';
 import { S } from './config';
-import { nearChancellor, officeBlocks, officeFx } from './office';
+import { nearChancellor, officeBlocks, officeFx, officeFxOf } from './office';
 
 export type TrainMode = 'once' | 'always';
 
@@ -60,9 +60,9 @@ export function trainMult(c: Campaign, g: GGeneral): { mult: number; why: string
   const extra = c.trainBonus?.[g.id] ?? 0;
   if (extra) { mult *= 1 + extra; why.push(`鍛錬の成果+${Math.round(extra * 100)}%`); }
   // 相国の訓練（家じゅう）と膝元（相国のいる領とその隣）（P77）
-  const fx = g.faction === c.player ? officeFx(c) : null;
+  const fx = isHuman(c, g.faction) ? officeFxOf(c, g.faction) : null;
   if (fx) {
-    const local = nearChancellor(c, g.prov) ? fx.localTrain : 0;
+    const local = nearChancellor(c, g.prov, g.faction) ? fx.localTrain : 0;
     mult *= 1 + fx.train + local;
     why.push(`相国+${Math.round((fx.train + local) * 100)}%`);
   }
@@ -74,7 +74,7 @@ export function trainMonth(c: Campaign): void {
   const T = S.train, gs = c.gs, once = new Set(c.trainedThisMonth ?? []);
   for (const [gid, mode] of Object.entries(c.training ?? {}).sort(([a], [b]) => a.localeCompare(b))) {
     const g = gs.generals[gid];
-    if (!g || g.faction !== c.player) { delete c.training![gid]; continue; }
+    if (!g || !isHuman(c, g.faction)) { delete c.training![gid]; continue; }
     // ずっと訓練でも、その月ほかの命令で動いたときは訓練しない（1か月訓練を命じた月は訓練する）
     const trains = !officeBlocks(c, gid, 'train') && (once.has(gid) || (mode === 'always' && !c.moved.has(gid) && !(gid in c.away) && !(gid in c.wounded)));
     if (mode === 'once') delete c.training![gid];
@@ -87,7 +87,8 @@ export function trainMonth(c: Campaign): void {
       if (kind === 0) {
         const items = Object.keys(D.items).sort();
         const item = items[c.rng.int(0, items.length - 1)];
-        c.items[item] = (c.items[item] ?? 0) + 1;
+        const bag = (seatOf(c, g.faction).items ??= {});
+        bag[item] = (bag[item] ?? 0) + 1;
         event = `訓練の場で${D.items[item]?.[gs.variant] ?? item}を見つけた`;
       } else if (kind === 1) {
         const f = gs.factions[g.faction];

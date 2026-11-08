@@ -1,7 +1,7 @@
 // 年表（P57）：自分の家の歩みを書き留める（起った日・攻め取った領・奪われた領・滅ぼした家・開戦・同盟・停戦・本拠の移り・当主の交代・史実の出来事）。
 // 天下を統一したときに、年表と功臣を発表する。記録（c.log）はセーブで直近だけに切り詰めるので、年表は別に持つ。
 
-import type { Campaign, CampaignLog } from './campaign';
+import { humansOf, seatOf, type Campaign, type CampaignLog } from './campaign';
 
 export type ChronKind = 'start' | 'capture' | 'lost' | 'fall' | 'war' | 'ally' | 'truce' | 'capital' | 'lord' | 'history' | 'unify' | 'captive' | 'diverge';
 export interface ChronEntry { year: number; month: number; kind: ChronKind; text: string; provs?: number }
@@ -9,11 +9,14 @@ export interface ChronEntry { year: number; month: number; kind: ChronKind; text
 export interface Feat { battles: number; wins: number; foes: number }
 
 const dateOf = (c: Campaign): { year: number; month: number } => ({ year: c.gs.year, month: c.gs.month });
-const myProvs = (c: Campaign): number => c.gs.provinces.filter((p) => p.owner === c.player && !p.out).length;
+const myProvs = (c: Campaign, fid = c.player): number => c.gs.provinces.filter((p) => p.owner === fid && !p.out).length;
 
-export function chron(c: Campaign, kind: ChronKind, text: string): void {
-  if (!c.player) return;
-  (c.chronicle ??= []).push({ ...dateOf(c), kind, text, provs: myProvs(c) });
+const chronAt = (c: Campaign, kind: ChronKind, text: string, fid: number): void => chron(c, kind, text, fid);
+
+/** 年表に1行（fid：何人かで遊ぶとき、どの人の家の年表か。省けば番の家） */
+export function chron(c: Campaign, kind: ChronKind, text: string, fid = c.player): void {
+  if (!fid) return;
+  (seatOf(c, fid).chronicle ??= []).push({ ...dateOf(c), kind, text, provs: myProvs(c, fid) });
 }
 
 /** 家が起った日（年表が無いときだけ） */
@@ -26,8 +29,14 @@ export function startChronicle(c: Campaign): void {
 
 /** 記録の1件から、自分の家に関わるものを年表へ写す（note から呼ぶ） */
 export function chronFromLog(c: Campaign, e: CampaignLog): void {
-  const me = c.gs.factions[c.player]?.name.ja;
+  // 何人かで遊ぶときは、人の家それぞれの年表へ（P120）
+  for (const fid of humansOf(c)) chronFor(c, e, fid);
+}
+
+function chronFor(c: Campaign, e: CampaignLog, fid: number): void {
+  const me = c.gs.factions[fid]?.name.ja;
   if (!me) return;
+  const chron = (c2: Campaign, kind: ChronKind, text: string): void => chronAt(c2, kind, text, fid);
   const v = e.vars, s = (k: string): string => String(v[k] ?? '');
   switch (e.key) {
     case 'capture':
@@ -92,11 +101,10 @@ export function chronFromLog(c: Campaign, e: CampaignLog): void {
 
 /** 戦の結果を功臣の記録に足す（自分の家の武将だけ） */
 export function addFeats(c: Campaign, ids: string[], won: boolean, foesBeaten: number): void {
-  if (!c.player) return;
-  const f = (c.feats ??= {});
   for (const id of ids) {
     const g = c.gs.generals[id];
-    if (!g || g.faction !== c.player) continue;
+    if (!g || !humansOf(c).includes(g.faction)) continue;
+    const f = (seatOf(c, g.faction).feats ??= {});
     const x = (f[id] ??= { battles: 0, wins: 0, foes: 0 });
     x.battles++;
     if (won) { x.wins++; x.foes += foesBeaten; }

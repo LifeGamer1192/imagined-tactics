@@ -52,6 +52,49 @@ for (const [tag, w, h, mobile] of [['pc', 1360, 820, false], ['sp', 390, 844, tr
   await press('.handoff [data-a="go"]');
   await page.waitForTimeout(300);
   ok(`[${tag}] 押すと守り手の番が始まる`, !(await page.$('.handoff')) && await page.evaluate(() => window.__app.st.turn === 1));
+
+  // ---- 国モードを2人で（P120）
+  await page.goto(process.env.HEX_URL ?? 'http://localhost:5183/');
+  await press('[data-sample="sengoku_fid5_1575"]');
+  await page.waitForSelector('#modeNation'); await press('#modeNation');
+  await page.waitForSelector('#seats');
+  await page.selectOption('#seats', '2');
+  await page.waitForSelector('[data-seat="0"]');
+  const two = await page.$eval('[data-seat="0"]', (s) => s.options[s.selectedIndex].textContent);
+  ok(`[${tag}] 2人で遊ぶを選ぶと、2人目の家と勝ちの決まりの欄が出る`, !!two && !!(await page.$('#victory')), two);
+  await shot('4_nation_two');
+  await press('#campaign');
+  await page.waitForSelector('.handoff', { timeout: 60000 });
+  const h1 = await page.textContent('.handoff');
+  ok(`[${tag}] 始めに1人目の家の交代画面`, h1.includes('2人で遊んでいます') && h1.includes('の番です'), h1.slice(0, 40));
+  await shot('5_campaign_handoff');
+  await press('.handoff [data-a="go"]');
+  await page.waitForSelector('#next');
+  const p1 = await page.evaluate(() => window.__campaign.c.player);
+  const lab1 = await page.textContent('#next');
+  ok(`[${tag}] 1人目は「番を終える（次：…）」、オートは出ない`, lab1.includes('番を終える（次：') && !(await page.$('#autoMonth')), lab1);
+  await press('#next');
+  await page.waitForSelector('.handoff');
+  const p2 = await page.evaluate(() => window.__campaign.c.player);
+  ok(`[${tag}] 番を終えると2人目の家の交代画面、番の家が替わる`, p2 !== p1 && (await page.textContent('.handoff')).includes('の番です'));
+  await press('.handoff [data-a="go"]');
+  await page.waitForSelector('#next');
+  ok(`[${tag}] 2人目は「番を終えて月を進める」`, (await page.textContent('#next')).includes('番を終えて月を進める'));
+  const m0 = await page.evaluate(() => window.__campaign.c.months);
+  await press('#next');
+  // 月を進める：人の家が攻められたら、その家の交代画面→おまかせ。知らせ・報告の窓は閉じる
+  let reached = false;
+  for (let i = 0; i < 60 && !reached; i++) {
+    await page.waitForTimeout(400);
+    const st = await page.evaluate(() => ({ m: window.__campaign.c.months, ho: document.querySelector('.handoff')?.textContent ?? '' }));
+    if (st.m > m0 && st.ho.includes('最初の番')) { reached = true; break; }
+    for (const sel of ['.handoff [data-a="go"]', '.result.low [data-a="auto"]', '.result.report [data-a="ok"]', '.result.fall [data-a="ok"]', '.result.fall [data-a="skip"]', '.confirm [data-a="ok"]', '.result [data-a="ok"]']) {
+      const b2 = await page.$(sel);
+      if (b2) { await b2.click().catch(() => {}); break; }
+    }
+  }
+  ok(`[${tag}] みな番を終えると月が進み、新しい月は1人目の家の交代画面から`, reached && (await page.evaluate(() => window.__campaign.c.player)) === p1);
+  await shot('6_next_month');
   ok(`[${tag}] ページのエラーなし`, errors.length === 0, errors.join(' / '));
 }
 await b.close();

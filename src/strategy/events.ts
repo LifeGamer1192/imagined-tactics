@@ -9,9 +9,10 @@ import { fillLowerClasses, gainGeneralExp, generalPromotions, promoteGeneral, pr
 import {
   extinguish, holderOf, neighborsOf, note, relation, reserveOf, strengthOf, toReserve,
   type Campaign, type Offer, type PendingBattle,
+  forEachSeat, isHuman, seatOf,
 } from './campaign';
 import { S, traitsOf } from './config';
-import { officeFx } from './office';
+import { officeFx, officeFxOf } from './office';
 
 const P = S.people, DIP = S.diplomacy;
 
@@ -138,7 +139,7 @@ export function upgradeTroop(c: Campaign, gid: string, index: number, to: string
 /** プレイヤー以外の勢力の武将と兵を、条件を満たしていれば昇進させる（プレイヤーは画面から自分で行う） */
 export function autoPromote(c: Campaign): void {
   for (const g of Object.values(c.gs.generals)) {
-    if (!g.faction || g.faction === c.player) continue;
+    if (!g.faction || isHuman(c, g.faction)) continue;
     const up = generalPromotions(g).filter((p) => p.ok);
     if (up.length) promoteGeneral(g, up[c.rng.int(0, up.length - 1)].to.id);
     for (let i = 0; i < g.troops.length; i++) {
@@ -152,7 +153,7 @@ export function autoPromote(c: Campaign): void {
 export function promoNotices(c: Campaign): void {
   const v = c.gs.variant;
   for (const g of Object.values(c.gs.generals)) {
-    if (!c.player || g.faction !== c.player) continue;
+    if (!isHuman(c, g.faction)) continue;
     for (const p of generalPromotions(g).filter((x) => x.ok && !g.promoSeen?.includes(x.to.id))) {
       (g.promoSeen ??= []).push(p.to.id);
       note(c, 'canPromote', { name: g.name.ja, to: p.to.name[v] });
@@ -194,7 +195,8 @@ function finishQuest(c: Campaign, g: GGeneral): void {
   if (r < Q.item) {
     const ids = Object.keys(D.items).sort();
     const id = ids[c.rng.int(0, ids.length - 1)];
-    c.items[id] = (c.items[id] ?? 0) + 1;
+    const items = (seatOf(c, g.faction).items ??= {});
+    items[id] = (items[id] ?? 0) + 1;
     note(c, 'questItem', { name: g.name.ja, item: D.items[id][gs.variant] });
     return;
   }
@@ -383,7 +385,7 @@ function defections(c: Campaign): void {
     const to = rivals.sort((a, b) => pullOf(c, g, b) - pullOf(c, g, a) || factionStrength(c, b) - factionStrength(c, a) || a - b)[0];
     const pressure = factionStrength(c, to) > factionStrength(c, f.id) ? 2 : 1;
     // 相国の家中：自分の家の寝返りが減る（P77）
-    const mult = traitsOf(f).reduce((m, t) => m * (t.defectMult ?? 1), 1) * (f.id === c.player ? 1 - (officeFx(c)?.defect ?? 0) : 1);
+    const mult = traitsOf(f).reduce((m, t) => m * (t.defectMult ?? 1), 1) * (isHuman(c, f.id) ? 1 - (officeFxOf(c, f.id)?.defect ?? 0) : 1);
     if (!c.rng.chance(P.defectChance * pressure * mult * (P.defectLoyalty - loyalty) * (1 + Math.max(0, pullOf(c, g, to))))) continue;
     // 本拠にいる当主以外の最後の1人は残る（勢力が武将なしにならないように）
     if (Object.values(gs.generals).filter((x) => x.faction === f.id).length <= 1) continue;
@@ -396,12 +398,12 @@ function defections(c: Campaign): void {
 /** 浪人は、縁のある武将のいる勢力や、名のある勢力に仕えることがある（プレイヤーの勢力へは諸国巡りで） */
 function roninJoin(c: Campaign): void {
   const gs = c.gs;
-  const fs = Object.values(gs.factions).filter((f) => f.id !== c.player).sort((a, b) => a.id - b.id);
+  const fs = Object.values(gs.factions).filter((f) => !isHuman(c, f.id)).sort((a, b) => a.id - b.id);
   if (!fs.length) return;
   for (const g of Object.values(gs.generals).sort((a, b) => a.id.localeCompare(b.id))) {
     if (g.faction || !c.rng.chance(P.roninJoinChance)) continue;
     const kinds = [...P.joinTies, ...P.oldLordTies];
-    const tied = g.ties.map((t) => gs.generals[t.with]).find((o) => o && o.faction && o.faction !== c.player && kinds.includes(g.ties.find((t) => t.with === o.id)!.kind) && pullOf(c, g, o.faction) > 0);
+    const tied = g.ties.map((t) => gs.generals[t.with]).find((o) => o && o.faction && !isHuman(c, o.faction) && kinds.includes(g.ties.find((t) => t.with === o.id)!.kind) && pullOf(c, g, o.faction) > 0);
     const f = tied ? gs.factions[tied.faction] : fs[c.rng.int(0, fs.length - 1)];
     if (!f) continue;
     note(c, 'roninJoin', { name: g.name.ja, faction: f.name.ja });
@@ -415,7 +417,7 @@ function aiTruces(c: Campaign): void {
   for (const w of [...gs.wars]) {
     const age = gs.tick - (w.since ?? gs.tick);
     const a = w.attackers[0], b = w.defenders[0];
-    if (age < DIP.aiTruceAfter || a === c.player || b === c.player || w.attackers.includes(c.player) || w.defenders.includes(c.player)) continue;
+    if (age < DIP.aiTruceAfter || [...w.attackers, ...w.defenders].some((x) => isHuman(c, x))) continue;
     if (c.rng.chance(DIP.aiTruceChance)) makeTruce(c, a, b);
   }
 }
@@ -470,32 +472,35 @@ function diplomacyTick(c: Campaign): void {
   }
   // ほかの勢力どうし：同じ敵がいて、互いに好意があれば同盟
   for (const a of fs) for (const b of fs) {
-    if (a.id >= b.id || a.id === c.player || b.id === c.player) continue;
+    if (a.id >= b.id || isHuman(c, a.id) || isHuman(c, b.id)) continue;
     if (![...foes.get(a.id)!].some((e) => foes.get(b.id)!.has(e))) continue;
     if (!allianceProblem(c, a.id, b.id) && !allianceProblem(c, b.id, a.id) && c.rng.chance(DIP.offerChance)) proposeAlliance(c, a.id, b.id);
   }
-  c.offers = c.offers.filter((o) => o.until > gs.tick && gs.factions[o.from]);
-  const me = gs.factions[c.player];
-  if (!me) { c.offers = []; return; }
-  const mine = factionStrength(c, me.id);
-  const border = new Set(gs.provinces.filter((p) => p.owner === me.id).flatMap((p) => neighborsOf(c, p.id).map((n) => gs.provinces[n].owner)));
-  for (const f of fs) {
-    if (f.id === me.id || c.offers.some((o) => o.from === f.id) || !c.rng.chance(DIP.offerChance)) continue;
-    const rel = relation(c, me.id, f.id), theirs = factionStrength(c, f.id);
-    let kind: Offer['kind'] | null = null;
-    if (rel === 'war') {
-      const i = warBetween(c, me.id, f.id);
-      const age = gs.tick - (gs.wars[i].since ?? gs.tick - DIP.aiTruceAfter);
-      if (theirs < mine || age >= DIP.aiTruceAfter) kind = 'truce';
-    } else if (rel === 'neutral') {
-      const op = f.opinions[me.id] ?? 0;
-      if (border.has(f.id) && !f.overlord && mine >= theirs * DIP.vassalStrengthRatio && op >= DIP.vassalOpinion) kind = 'vassal';
-      else if (op >= DIP.allianceOpinion && [...foes.get(f.id)!].some((e) => foes.get(me.id)!.has(e))) kind = 'alliance';
+  // ほかの勢力から人の家への申し込み（何人かで遊ぶときは、人の家ごとに。P120）
+  forEachSeat(c, () => {
+    c.offers = c.offers.filter((o) => o.until > gs.tick && gs.factions[o.from]);
+    const me = gs.factions[c.player];
+    if (!me) { c.offers = []; return; }
+    const mine = factionStrength(c, me.id);
+    const border = new Set(gs.provinces.filter((p) => p.owner === me.id).flatMap((p) => neighborsOf(c, p.id).map((n) => gs.provinces[n].owner)));
+    for (const f of fs) {
+      if (f.id === me.id || isHuman(c, f.id) || c.offers.some((o) => o.from === f.id) || !c.rng.chance(DIP.offerChance)) continue;
+      const rel = relation(c, me.id, f.id), theirs = factionStrength(c, f.id);
+      let kind: Offer['kind'] | null = null;
+      if (rel === 'war') {
+        const i = warBetween(c, me.id, f.id);
+        const age = gs.tick - (gs.wars[i].since ?? gs.tick - DIP.aiTruceAfter);
+        if (theirs < mine || age >= DIP.aiTruceAfter) kind = 'truce';
+      } else if (rel === 'neutral') {
+        const op = f.opinions[me.id] ?? 0;
+        if (border.has(f.id) && !f.overlord && mine >= theirs * DIP.vassalStrengthRatio && op >= DIP.vassalOpinion) kind = 'vassal';
+        else if (op >= DIP.allianceOpinion && [...foes.get(f.id)!].some((e) => foes.get(me.id)!.has(e))) kind = 'alliance';
+      }
+      if (!kind) continue;
+      c.offers.push({ kind, from: f.id, until: gs.tick + DIP.offerMonths });
+      note(c, `offer_${kind}`, { faction: f.name.ja });
     }
-    if (!kind) continue;
-    c.offers.push({ kind, from: f.id, until: gs.tick + DIP.offerMonths });
-    note(c, `offer_${kind}`, { faction: f.name.ja });
-  }
+  });
 }
 
 /** 申し込みを受ける */

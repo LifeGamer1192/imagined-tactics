@@ -125,6 +125,9 @@ export class App {
   private inspect: number | null = null;
   private mode: Mode = { type: 'idle' };
   /** 戦いの始めの、配置を直している段階 */
+  /** 国モードを何人かで遊ぶとき（P120）：2人目・3人目の家と、勝ちの決まり */
+  private seats: number[] = [];
+  private victory = 'last';
   private deploying = false;
   /** 1台を交代で遊ぶ（両方の陣営を人が動かす）とき、いま配置している陣営（P119） */
   private deploySide: Side = 0;
@@ -413,6 +416,8 @@ export class App {
         <footer>
           <select id="difficulty" class="${this.difficulty === 'oni' ? 'oni' : ''}" title="戦略の難しさ：自分の収入と領の落ちにくさ、相手の攻めやすさが変わる">${difficultyOptions(this.difficulty, '難しさ')}</select>
           <button id="nationRandom" title="国をくじで選ぶ">ランダム</button>
+          <select id="seats" title="何人で遊ぶか（2人・3人は1台を交代で。P120）">${[1, 2, 3].map((n) => `<option value="${n}" ${this.seats.length + 1 === n ? 'selected' : ''}>${n}人で遊ぶ</option>`).join('')}</select>
+          <span id="seatPicks">${this.seatPicksHtml()}</span>
           <span class="spacer"></span>
           <button id="campaignWatch" title="どの国も選ばず、国どうしの取り合いを見る">国を選ばず観戦する</button>
           <button id="campaign" class="primary">${esc(gs.factions[this.nation].name.ja)}で始める</button>
@@ -450,7 +455,25 @@ export class App {
       if (others.length) pick(others[Math.floor(Math.random() * others.length)].id, true);
     };
     bindDifficulty(this.root, this.root.querySelector<HTMLSelectElement>('#difficulty')!, false, (d) => { this.difficulty = d; });
-    this.root.querySelector<HTMLButtonElement>('#campaign')!.onclick = () => busy('戦略を始めています…', () => this.startCampaign(this.nation));
+    const seatSel = this.root.querySelector<HTMLSelectElement>('#seats')!;
+    const wireSeats = (): void => {
+      this.root.querySelectorAll<HTMLSelectElement>('[data-seat]').forEach((sel) => { sel.onchange = () => { this.seats[Number(sel.dataset.seat)] = Number(sel.value); this.root.querySelector('#seatPicks')!.innerHTML = this.seatPicksHtml(); wireSeats(); }; });
+      const v = this.root.querySelector<HTMLSelectElement>('#victory');
+      if (v) v.onchange = () => { this.victory = v.value; };
+    };
+    seatSel.onchange = () => {
+      const n = Number(seatSel.value) - 1;
+      const free = facs.filter((f) => f.id !== this.nation && !this.seats.includes(f.id)).map((f) => f.id);
+      this.seats = this.seats.slice(0, n);
+      while (this.seats.length < n && free.length) this.seats.push(free.shift()!);
+      this.root.querySelector('#seatPicks')!.innerHTML = this.seatPicksHtml();
+      wireSeats();
+    };
+    wireSeats();
+    this.root.querySelector<HTMLButtonElement>('#campaign')!.onclick = () => {
+      const humans = [this.nation, ...this.seats].filter((x, i, a) => gs.factions[x] && a.indexOf(x) === i);
+      void busy('戦略を始めています…', () => this.startCampaign(this.nation, humans.length > 1 ? humans : undefined));
+    };
     this.root.querySelector<HTMLButtonElement>('#campaignWatch')!.onclick = () => busy('戦略を始めています…', () => this.startCampaign(0));
   }
 
@@ -609,10 +632,22 @@ export class App {
 
   // ------------------------------------------------------------ 戦略
 
-  /** 戦略パートを始める。セーブを変換し直して、まっさらな状態から始める */
-  private startCampaign(player: number): void {
+  /** 戦略パートを始める。セーブを変換し直して、まっさらな状態から始める（humans：何人かで遊ぶときの家の一覧。P120） */
+  private startCampaign(player: number, humans?: number[]): void {
     this.gs = convert(this.save!, { variant: this.variant });
-    new CampaignScreen(this, newCampaign(this.gs, this.save!.world, player, this.difficulty), () => this.rebuild());
+    // 変換し直すと勢力の番号は同じ（同じセーブからなので）
+    const c = newCampaign(this.gs, this.save!.world, player, this.difficulty, humans);
+    if (humans && this.victory !== 'last') { const years = Number(this.victory); c.victory = { kind: 'years', years, until: c.gs.tick + years * 12 }; }
+    new CampaignScreen(this, c, () => this.rebuild());
+  }
+
+  /** 2人目・3人目の家を選ぶ欄と、勝ちの決まり（何人かで遊ぶとき。P120・P121） */
+  private seatPicksHtml(): string {
+    const gs = this.gs!;
+    if (!this.seats.length) return '';
+    const facs = this.factionsBySize();
+    const sel = (i: number): string => `<select data-seat="${i}" title="${i + 2}人目の家">${facs.filter((f) => f.id !== this.nation && (f.id === this.seats[i] || !this.seats.includes(f.id))).map((f) => `<option value="${f.id}" ${f.id === this.seats[i] ? 'selected' : ''}>${i + 2}人目：${esc(f.name.ja)}</option>`).join('')}</select>`;
+    return `${this.seats.map((_x, i) => sel(i)).join('')}<select id="victory" title="勝ちの決まり">${[['last', '最後まで残った家の勝ち'], ['10', '10年で領のいちばん多い家の勝ち'], ['20', '20年で領のいちばん多い家の勝ち']].map(([v, n]) => `<option value="${v}" ${this.victory === v ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
   }
 
   /** hex-sim のセーブから、戦略パートの続きを始める */

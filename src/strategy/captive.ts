@@ -7,10 +7,10 @@
 import type { GGeneral } from '../convert/model';
 import { personalityOf } from '../ai/personality';
 import type { BattleSummary } from '../battle/result';
-import { declareWar, homeFor, isGarrison, neighborsOf, note, relation, toReserve, type Campaign, type Captive, type PendingBattle } from './campaign';
+import { declareWar, homeFor, humansOf, isGarrison, isHuman, neighborsOf, note, relation, seatOf, toReserve, type Campaign, type Captive, type PendingBattle } from './campaign';
 import { S } from './config';
 import { effectiveLoyalty, generalDies } from './events';
-import { officeFx } from './office';
+import { officeFx, officeFxOf } from './office';
 
 const K = () => S.captive;
 const clamp = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v));
@@ -58,7 +58,7 @@ export function takeCaptives(c: Campaign, pb: PendingBattle, sum: BattleSummary)
     (c.captives ??= []).push(cap);
     out.push(id);
     note(c, 'captured', { by: c.gs.factions[winner].name.ja, name: g.name.ja, from: c.gs.factions[cap.from].name.ja, prov: c.gs.provinces[pb.prov].name.ja, lord: cap.lord ? '（当主）' : '' });
-    if (winner === c.player) (c.captivePending ??= []).push(id);
+    if (isHuman(c, winner)) (seatOf(c, winner).captivePending ??= []).push(id);
     else aiDecide(c, cap, true);
   });
   return out;
@@ -82,7 +82,7 @@ export function recruitChance(c: Campaign, cap: Captive): number {
   if (g.debts?.includes(cap.by)) p += R.debt;
   p += cap.tries * R.retry;
   // 相国の家中：捕虜を登用しやすい（P77）
-  if (cap.by === c.player) p += officeFx(c)?.recruit ?? 0;
+  if (isHuman(c, cap.by)) p += officeFxOf(c, cap.by)?.recruit ?? 0;
   return clamp(p, R.min, R.max);
 }
 
@@ -202,13 +202,14 @@ export function captivesMonth(c: Campaign): void {
       note(c, lost ? 'captiveFreed' : 'captiveEscape', { name: g.name.ja, by: by?.name.ja ?? '', to: home?.name.ja ?? '浪人' });
       continue;
     }
-    if (cap.by === c.player) {
+    if (isHuman(c, cap.by)) {
       // 決めないまま月を越えた当主は、解き放つ（当主は保留できない）
       if (cap.lord) releaseCaptive(c, cap.g.id);
       continue;
     }
     aiDecide(c, cap, false);
   }
-  // 決めないまま月を越えた捕虜は保留にする（捕虜の一覧から、あとで決められる）
+  // 決めないまま月を越えた捕虜は保留にする（捕虜の一覧から、あとで決められる。何人かで遊ぶときは、どの人の家も）
+  for (const fid of humansOf(c)) seatOf(c, fid).captivePending = [];
   c.captivePending = [];
 }

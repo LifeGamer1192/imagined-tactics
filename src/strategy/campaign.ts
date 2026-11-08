@@ -15,7 +15,7 @@ import { TRAITS } from '../rules/traits';
 import { addLevels, classMod } from '../rules/growth';
 import { aiTeach, lessonsBusy, lessonsMonth } from './teach';
 import { captivesMonth, takeCaptives } from './captive';
-import { nearChancellor, officeBlocks, officeFx, officeMonth } from './office';
+import { nearChancellor, officeBlocks, officeFx, officeFxOf, officeMonth } from './office';
 import { addFeats, chronFromLog, realmEvent, realmFell, realmFromLog, sampleRealms, type ChronEntry, type Feat, type RealmHist } from './chronicle';
 import { DEFAULT_PLAN, NEUTRAL, personalityOf, type AutoPlan, type Personality } from '../ai/personality';
 import { S, traitsOf, type Difficulty } from './config';
@@ -56,8 +56,22 @@ export interface Campaign {
   gs: GameStart;
   /** hist-sim の世界（戦場マップを作るのに使う） */
   world: HWorld;
-  /** プレイヤーの勢力（0 = 観戦） */
+  /** プレイヤーの勢力（0 = 観戦）。何人かで遊ぶとき（P120）は、いま番の家（画面に出す家） */
   player: number;
+  /**
+   * 何人かで遊ぶとき（1台を交代で。P120）：人が動かす家の一覧（番の順）。1人のときは無い（player だけ）。
+   * 番の家の持ち物（品・偵察度・申し込みなど）は Campaign そのものにあり、ほかの家のぶんは seats に預けておく（switchSeat で入れ替える）
+   */
+  humans?: number[];
+  seats?: Record<number, SeatState>;
+  /** 何人かで遊ぶとき：今月すでに番を終えた家 */
+  turnDone?: number[];
+  /** 何人かで遊ぶときの勝ちの決まり（P121）：last＝最後まで残った家、years＝その年数のあとで領のいちばん多い家 */
+  victory?: { kind: 'last' } | { kind: 'years'; years: number; until: number };
+  /** 何人かで遊んで勝った家（P121） */
+  victor?: number;
+  /** 何人かで遊ぶとき、始めの人の数 */
+  seatsAtStart?: number;
   rng: RNG;
   /** 今月すでに動いた武将 */
   moved: Set<string>;
@@ -171,17 +185,64 @@ export interface HistoryChoice {
 /** months：停戦の長さ（無ければ決まりの長さ）。hist：史実の出来事から来た申し込み */
 export interface Offer { kind: 'alliance' | 'truce' | 'vassal'; from: number; until: number; months?: number; hist?: 1 }
 
-export function newCampaign(gs: GameStart, world: HWorld, player: number, difficulty: Difficulty = 'normal'): Campaign {
+/** 家ごとに分けて持つもの（何人かで遊ぶとき、番の家のぶんを Campaign に出しておく。P120） */
+export const SEAT_KEYS = ['items', 'offers', 'scout', 'scoutMissions', 'offices', 'autoPlan', 'chronicle', 'feats', 'unified', 'abdicatedAt', 'captivePending'] as const;
+export type SeatState = Partial<Pick<Campaign, typeof SEAT_KEYS[number]>>;
+
+/** 人が動かす家の一覧（1人なら [player]、観戦なら空） */
+export const humansOf = (c: Campaign): number[] => c.humans ?? (c.player ? [c.player] : []);
+/** 人が動かす家か（何人かで遊ぶときは、どの人の家でも） */
+export const isHuman = (c: Campaign, fid: number | undefined | null): boolean => !!fid && humansOf(c).includes(fid);
+/** 何人かで遊んでいるか */
+export const multiplayer = (c: Campaign): boolean => (c.humans?.length ?? 0) > 1;
+
+/** 家 fid の持ち物（番の家なら Campaign そのもの、ほかの人の家なら預けてあるぶん） */
+export function seatOf(c: Campaign, fid: number): SeatState {
+  if (fid === c.player || !multiplayer(c)) return c;
+  const seats = (c.seats ??= {});
+  return (seats[fid] ??= { items: {}, offers: [], scoutMissions: [] });
+}
+
+/** 番の家を fid に替える：いまの家の持ち物を預け、fid の持ち物を出す（P120） */
+export function switchSeat(c: Campaign, fid: number): void {
+  if (fid === c.player || !multiplayer(c)) { c.player = fid; return; }
+  const seats = (c.seats ??= {});
+  const cur: SeatState = {};
+  const rec = c as unknown as Record<string, unknown>;
+  for (const k of SEAT_KEYS) (cur as Record<string, unknown>)[k] = rec[k];
+  if (c.player) seats[c.player] = cur;
+  const next = seats[fid] ?? { items: {}, offers: [], scoutMissions: [] };
+  delete seats[fid];
+  for (const k of SEAT_KEYS) rec[k] = (next as Record<string, unknown>)[k];
+  c.items ??= {}; c.offers ??= [];
+  c.player = fid;
+  if (!c.scout) initScout(c);
+}
+
+/** 人の家それぞれを番の家にして fn を呼び、もとの番の家に戻す（月の終わりの、家ごとの処理。P120） */
+export function forEachSeat(c: Campaign, fn: (fid: number) => void): void {
+  if (!multiplayer(c)) { if (c.player) fn(c.player); return; }
+  const back = c.player;
+  for (const fid of [...humansOf(c)]) { if (!c.gs.factions[fid]) continue; switchSeat(c, fid); fn(fid); }
+  if (c.gs.factions[back] || !c.humans?.length) switchSeat(c, back);
+  else switchSeat(c, c.humans.find((f) => c.gs.factions[f]) ?? back);
+}
+
+export function newCampaign(gs: GameStart, world: HWorld, player: number, difficulty: Difficulty = 'normal', humans?: number[]): Campaign {
+  if (humans && humans.length > 1) player = humans[0];
   const c: Campaign = { gs, world, player, rng: new RNG(codeToSeed(`${gs.seed}:${gs.tick}:campaign`)), moved: new Set(), log: [], over: null, months: 0, items: {}, sieges: {}, away: {}, wounded: {}, difficulty, offers: [], reserve: {}, built: {}, relocations: {}, history: { done: [], from: gs.year * 12 + gs.month } };
   // hist-sim では軍が他国の領にいることがある（遠征・包囲）。戦略パートでは、武将は必ず自分の勢力の領にいることにする
   for (const g of Object.values(gs.generals)) if (g.faction && gs.provinces[g.prov]?.owner !== g.faction) g.prov = homeFor(c, g.faction, g.prov);
   // 難しさ（非常に難しい・鬼。P64）：相手の勢力の武将は、始めのレベルが上がる
+  if (humans && humans.length > 1) { c.humans = [...humans]; c.turnDone = []; c.victory = { kind: 'last' }; c.seatsAtStart = humans.length; }
   const lvUp = player ? S.difficulty[difficulty].aiGeneralLevel ?? 0 : 0;
-  if (lvUp) for (const g of Object.values(gs.generals)) if (g.faction && g.faction !== player) addLevels(g, lvUp);
+  if (lvUp) for (const g of Object.values(gs.generals)) if (g.faction && !isHuman(c, g.faction)) addLevels(g, lvUp);
   // 始めの蓄え（P96）：月収の何か月ぶん。自分の家は難しさで決まり、相手の勢力はいつも同じ。hist-sim の国庫は使わない
   refreshIncome(c);
-  for (const f of Object.values(gs.factions)) f.supply = startSupply(f, f.id === player ? S.difficulty[difficulty].startMonths : S.supply.aiStartMonths);
+  for (const f of Object.values(gs.factions)) f.supply = startSupply(f, isHuman(c, f.id) ? S.difficulty[difficulty].startMonths : S.supply.aiStartMonths);
   initScout(c);
+  // 何人かで遊ぶとき：ほかの人の家の偵察度も、始めの見え方にしておく
+  if (multiplayer(c)) { for (const fid of c.humans!.slice(1)) { switchSeat(c, fid); } switchSeat(c, c.humans![0]); }
   return c;
 }
 
@@ -340,7 +401,7 @@ export function siegeResist(c: Campaign, prov: number): number {
   let r = S.siege.base + p.fort * S.siege.perFort;
   if (!f) return r * S.siege.unownedMult;
   for (const t of traitsOf(f)) r *= t.siegeMult ?? 1;
-  if (f.id === c.player) r *= S.difficulty[c.difficulty].playerSiege;
+  if (isHuman(c, f.id)) r *= S.difficulty[c.difficulty].playerSiege;
   return r;
 }
 const isTactical = (unitId: string): boolean => S.tactical.lines.includes(D.byUnit[unitId].line);
@@ -371,7 +432,7 @@ export function recruit(c: Campaign, gid: string, unitId: string): boolean {
   f.supply -= recruitCostFor(c, g, unitId);
   // 本拠で雇う兵はレベルが上がる（P77）
   const capitalBonus = g.prov === f.capital ? S.capitalBonus.recruitLevel : 0;
-  g.troops.push(makeTroop(D.byUnit[unitId], recruitLevel(c, unitId, f, (c.player && f.id !== c.player ? S.difficulty[c.difficulty].aiTroopLevel : 0) + capitalBonus)));
+  g.troops.push(makeTroop(D.byUnit[unitId], recruitLevel(c, unitId, f, (c.player && !isHuman(c, f.id) ? S.difficulty[c.difficulty].aiTroopLevel : 0) + capitalBonus)));
   return true;
 }
 
@@ -418,7 +479,7 @@ export function planAttack(c: Campaign, faction: number, from: number, to: numbe
   const atk = gids.filter((id) => {
     const g = c.gs.generals[id];
     // 相国は攻めに出られない（P77）
-    return g && g.faction === faction && near.has(g.prov) && c.gs.provinces[g.prov]?.owner === faction && !c.moved.has(id) && !(id in c.away) && !(id in c.wounded) && !(faction === c.player && officeBlocks(c, id, 'attack'));
+    return g && g.faction === faction && near.has(g.prov) && c.gs.provinces[g.prov]?.owner === faction && !c.moved.has(id) && !(id in c.away) && !(id in c.wounded) && !(isHuman(c, faction) && officeBlocks(c, id, 'attack'));
   }).slice(0, MAX_GENERALS);
   if (!atk.length) return null;
   const def = target.owner ? generalsAt(c, to, target.owner).slice(0, MAX_GENERALS).map((g) => g.id) : [];
@@ -529,7 +590,7 @@ export function garrisonOf(c: Campaign, prov: number): { level: number; troops: 
   const ex = !!f && isExclave(c, prov);
   if (ex) level += S.exclave.garrisonLevel;
   // 自分の領の守備兵は、難しさで少し強さが変わる
-  if (f && f.id === c.player) level = Math.round(level * S.difficulty[c.difficulty].playerSiege);
+  if (f && isHuman(c, f.id)) level = Math.round(level * S.difficulty[c.difficulty].playerSiege);
   const troops = G.troopsBase + Math.round(p.fort * G.troopsPerFort) + (p.pop >= G.townPop ? G.troopsTown : 0) + (ex ? S.exclave.garrisonTroops : 0);
   return { level: Math.max(1, Math.min(G.levelMax, level)), troops: Math.max(1, Math.min(G.troopsMax, troops)) };
 }
@@ -563,11 +624,12 @@ export function battleFor(c: Campaign, pb: PendingBattle): BattleState {
   const cut = battleSupply(c, pb);
   if (cut[0] !== 1 || cut[1] !== 1) st.supplyMult = cut;
   // 戦闘の難しさ：自分の勢力と戦う相手の陣営だけ、思考の賢さが変わる（相手どうしの戦いは、ふつう）
-  if (c.player && (pb.attacker === c.player || pb.defender === c.player)) setAiLevel(st, pb.attacker === c.player ? 1 : 0, c.difficulty);
-  // 味方のおまかせの方針（P50）：自分の陣営は、武将の性格の代わりに方針で動く
-  if (c.player && (pb.attacker === c.player || pb.defender === c.player)) {
-    const plan = c.autoPlan ?? DEFAULT_PLAN;
-    st.autoPlan = pb.attacker === c.player ? [plan, null] : [null, plan];
+  const hA = isHuman(c, pb.attacker), hD = isHuman(c, pb.defender);
+  if (hA !== hD) setAiLevel(st, hA ? 1 : 0, c.difficulty);
+  // 味方のおまかせの方針（P50）：人の陣営は、武将の性格の代わりに方針で動く（何人かで遊ぶときは、それぞれの家の方針）
+  if (hA || hD) {
+    const planOf = (fid: number): AutoPlan => (fid === c.player ? c.autoPlan : seatOf(c, fid).autoPlan) ?? DEFAULT_PLAN;
+    st.autoPlan = [hA ? planOf(pb.attacker) : null, hD ? planOf(pb.defender) : null];
   }
   return st;
 }
@@ -595,7 +657,16 @@ function eliminate(c: Campaign, f: GFaction, by: number, why?: string): void {
   gs.alliances = gs.alliances.filter(([a, b]) => a !== f.id && b !== f.id);
   gs.truces = gs.truces.filter((t) => t.a !== f.id && t.b !== f.id);
   delete gs.factions[f.id];
-  if (f.id === c.player) c.over = 'lose';
+  if (multiplayer(c)) {
+    // 何人かで遊ぶとき（P121）：滅んだ人の家は番から外す（その人は観戦に回る）。人の家がみな滅んだら負け
+    if (c.humans!.includes(f.id)) {
+      c.humans = c.humans!.filter((x) => x !== f.id);
+      c.turnDone = (c.turnDone ?? []).filter((x) => x !== f.id);
+      delete c.seats?.[f.id];
+      note(c, 'humanOut', { faction: f.name.ja });
+      if (!c.humans.length) c.over = 'lose';
+    }
+  } else if (f.id === c.player) c.over = 'lose';
   onEliminated(c, freed, by);
 }
 
@@ -716,12 +787,12 @@ export function startSupply(f: GFaction, months: number): number {
 function refreshIncome(c: Campaign): void {
   for (const f of Object.values(c.gs.factions)) {
     const dif = S.difficulty[c.difficulty];
-    const mult = traitsOf(f).reduce((m, t) => m * (t.incomeMult ?? 1), 1) * (f.id === c.player ? dif.playerIncome : c.player ? dif.aiIncome ?? 1 : 1);
+    const mult = traitsOf(f).reduce((m, t) => m * (t.incomeMult ?? 1), 1) * (isHuman(c, f.id) ? dif.playerIncome : c.player ? dif.aiIncome ?? 1 : 1);
     // 飛び地の収入は大きく減る
     const ex = exclavesOf(c, f.id);
     // 本拠の領は収入が多い。自分の家は、相国の内政（家じゅう）と膝元（相国のいる領とその隣）のぶんも足す（P77）
-    const fx = f.id === c.player ? officeFx(c) : null;
-    const provMult = (p: GProvince): number => (ex.has(p.id) ? S.exclave.incomeMult : 1) * (p.id === f.capital ? 1 + S.capitalBonus.incomeBonus : 1) * (fx && nearChancellor(c, p.id) ? 1 + fx.localIncome : 1);
+    const fx = isHuman(c, f.id) ? officeFxOf(c, f.id) : null;
+    const provMult = (p: GProvince): number => (ex.has(p.id) ? S.exclave.incomeMult : 1) * (p.id === f.capital ? 1 + S.capitalBonus.incomeBonus : 1) * (fx && nearChancellor(c, p.id, f.id) ? 1 + fx.localIncome : 1);
     f.income = Math.round(provincesOf(c, f.id).reduce((s, p) => s + p.income * provMult(p), 0) * mult * (fx ? 1 + fx.income : 1));
   }
 }
@@ -736,16 +807,38 @@ export function declareWar(c: Campaign, a: number, b: number): boolean {
   for (const x of Object.values(gs.factions)) {
     if (x.id !== a && x.id !== b && relation(c, x.id, b) === 'ally') x.opinions[a] = Math.max(-100, (x.opinions[a] ?? 0) + S.diplomacy.opinionAllyOfVictim);
   }
-  c.offers = c.offers.filter((o) => !((a === c.player && o.from === b) || (b === c.player && o.from === a)));
+  // 戦になった相手からの申し込みは流れる（何人かで遊ぶときは、どの人の家に来た申し込みも）
+  for (const fid of humansOf(c)) { const st = seatOf(c, fid); if (st.offers) st.offers = st.offers.filter((o) => !((a === fid && o.from === b) || (b === fid && o.from === a))); }
   note(c, 'war', { a: gs.factions[a].name.ja, b: gs.factions[b].name.ja });
   return true;
 }
 
 function checkOver(c: Campaign): void {
   if (c.over || !c.player) return;
+  if (multiplayer(c) || c.victory) { checkVictory(c); return; }
   if (!c.gs.factions[c.player]) { c.over = 'lose'; return; }
   const rivals = Object.values(c.gs.factions).filter((f) => f.id !== c.player && relation(c, c.player, f.id) !== 'ally');
   if (!rivals.length) c.over = 'win';
+}
+
+/**
+ * 何人かで遊ぶときの勝ち負け（P121）：
+ * - 人の家が1つだけ残った（ほかの人の家がみな滅んだ）ら、その家の勝ち。
+ * - 決まりが「年数」なら、期限の月を過ぎたとき、人の家のうち領のいちばん多い家の勝ち（同じ数なら兵糧の多い家）。
+ * - 人の家のどれかが天下を取った（同盟のほかに相手がいない）ら、その家の勝ち。
+ */
+function checkVictory(c: Campaign): void {
+  const alive = humansOf(c).filter((f) => c.gs.factions[f]);
+  if (!alive.length) { c.over = 'lose'; return; }
+  const win = (fid: number): void => { c.victor = fid; c.over = 'win'; };
+  for (const fid of alive) {
+    if (!Object.values(c.gs.factions).some((f) => f.id !== fid && relation(c, fid, f.id) !== 'ally')) { win(fid); return; }
+  }
+  if ((c.seatsAtStart ?? 1) > 1 && alive.length === 1) { win(alive[0]); return; }
+  if (c.victory?.kind === 'years' && c.gs.tick >= c.victory.until) {
+    const score = (fid: number): [number, number] => [provincesOf(c, fid).length, c.gs.factions[fid]?.supply ?? 0];
+    win([...alive].sort((a, b) => score(b)[0] - score(a)[0] || score(b)[1] - score(a)[1])[0]);
+  }
 }
 
 /**
@@ -771,7 +864,7 @@ function settle(c: Campaign, pb: PendingBattle, st?: BattleState): BattleSummary
   // 月送りの演出（P31）：自分の勢力のかかわらない戦いを、あとで見せるために書き留める
   const side = (ids: string[]): ReelBattle['atk'] => ids.map((id) => c.gs.generals[id]).filter(Boolean)
     .map((g) => ({ name: isGarrison(g.id) ? '守備兵' : g.name.ja, lv: g.level, troops: g.troops.length }));
-  const reel: ReelBattle | null = c.player && pb.attacker !== c.player && pb.defender !== c.player
+  const reel: ReelBattle | null = c.player && !isHuman(c, pb.attacker) && !isHuman(c, pb.defender)
     ? { from: pb.from, prov: pb.prov, attacker: pb.attacker, defender: pb.defender, atk: side(pb.atk), def: side(pb.def), winner: 0, captured: false }
     : null;
   let battle: BattleState;
@@ -837,7 +930,7 @@ function catchTroops(c: Campaign, pb: PendingBattle, st: BattleState): { troop: 
   const win = st.winner;
   if (win === null || !c.player) return [];
   const winner = win === 0 ? pb.attacker : pb.defender;
-  if (winner !== c.player) return [];
+  if (!isHuman(c, winner)) return [];
   const out: { troop: GTroop; from: string }[] = [];
   for (const u of st.units) {
     if (u.kind !== 'troop' || !u.alive || u.home === win || u.side !== win) continue;
@@ -853,9 +946,10 @@ function catchTroops(c: Campaign, pb: PendingBattle, st: BattleState): { troop: 
 function giveCaught(c: Campaign, pb: PendingBattle, st: BattleState, caught: { troop: GTroop; from: string }[]): void {
   if (!caught.length) return;
   const gs = c.gs, ids = st.winner === 0 ? pb.atk : pb.def;
-  const prov = st.winner === 0 ? (gs.provinces[pb.prov].owner === c.player ? pb.prov : pb.from) : pb.prov;
+  const winner = st.winner === 0 ? pb.attacker : pb.defender;
+  const prov = st.winner === 0 ? (gs.provinces[pb.prov].owner === winner ? pb.prov : pb.from) : pb.prov;
   for (const { troop, from } of caught) {
-    const g = ids.map((id) => gs.generals[id]).find((x) => x && x.faction === c.player && x.troops.length < MAX_TROOPS && troopLoad(x) + D.byUnit[troop.unitId].cost <= x.command);
+    const g = ids.map((id) => gs.generals[id]).find((x) => x && x.faction === winner && x.troops.length < MAX_TROOPS && troopLoad(x) + D.byUnit[troop.unitId].cost <= x.command);
     const name = troop.name ?? L(D.byUnit[troop.unitId].name);
     if (g) { g.troops.push(troop); note(c, 'caught', { unit: name, from, to: g.name.ja, lv: troop.level }); }
     else { toReserve(c, prov, [troop]); note(c, 'caught', { unit: name, from, to: `${gs.provinces[prov].name.ja}の予備兵`, lv: troop.level }); }
@@ -1014,9 +1108,9 @@ function aiFaction(c: Campaign, f: GFaction): PendingBattle[] {
   const needRatio = Math.max(0.8, A.attackRatio - per.aggression * A.aggressionRatio + per.caution * A.cautionRatio);
   const chance = Math.max(0.2, Math.min(0.95, A.attackChance * (1 + per.aggression * A.aggressionChance)));
   aiRecruit(c, f);
-  if (f.id !== c.player) { aiBuild(c, f); aiTeach(c, f.id); }
-  // 組んで攻める（非常に難しい・鬼。P64）：自分が最も大きい国のとき、相手は自分を狙いやすく、相手どうしは攻め合いにくい
-  const gang = c.player && f.id !== c.player && playerLeads(c) ? S.difficulty[c.difficulty].aiGangUp ?? 0 : 0;
+  if (!isHuman(c, f.id)) { aiBuild(c, f); aiTeach(c, f.id); }
+  // 組んで攻める（非常に難しい・鬼。P64）：自分が最も大きい国のとき、相手は自分を狙いやすく、相手どうしは攻め合いにくい（何人かで遊ぶときは使わない）
+  const gang = c.player && !multiplayer(c) && f.id !== c.player && playerLeads(c) ? S.difficulty[c.difficulty].aiGangUp ?? 0 : 0;
   for (const p of provincesOf(c, f.id)) {
     if (!c.gs.factions[f.id]) break;
     const here = generalsAt(c, p.id, f.id).filter((g) => !c.moved.has(g.id));
@@ -1033,7 +1127,7 @@ function aiFaction(c: Campaign, f: GFaction): PendingBattle[] {
       let score = mine / (def + 30);
       if (!defenders.length) score *= 1 + per.cunning * A.cunningEmptyBonus;
       if (c.sieges[n]?.by === f.id) score *= 1.5;       // 始めた包囲は続ける
-      if (t.owner === c.player && c.player) score *= S.difficulty[c.difficulty].aiVsPlayer;
+      if (isHuman(c, t.owner)) score *= S.difficulty[c.difficulty].aiVsPlayer;
       if (t.owner && relation(c, f.id, t.owner) === 'war') score *= A.warBonus;
       else if (t.owner === c.player && gang) score *= A.warBonus;   // 組んで攻めるときは、戦争中でなくても自分を攻める
       else if (t.owner) score *= A.neutralMult * (1 - Math.max(0, per.honor) * A.honorNeutralPenalty);   // 戦争中でない相手には、仕掛けにくい
@@ -1046,7 +1140,7 @@ function aiFaction(c: Campaign, f: GFaction): PendingBattle[] {
       const send = (p.id === f.capital && here.length > 1 ? here.slice(0, Math.min(MAX_GENERALS, here.length - 1)) : here.slice(0, MAX_GENERALS)).map((g) => g.id);
       const pb = planAttack(c, f.id, p.id, best.to, send);
       if (!pb) continue;
-      if (pb.defender === c.player && c.player) { for (const id of pb.atk) c.moved.add(id); pending.push(pb); }
+      if (isHuman(c, pb.defender)) { for (const id of pb.atk) c.moved.add(id); pending.push(pb); }
       else resolveBattle(c, pb);
       continue;
     }
@@ -1073,7 +1167,7 @@ function aiFaction(c: Campaign, f: GFaction): PendingBattle[] {
 export function endMonth(c: Campaign): PendingBattle[] {
   if (c.over) return [];
   const pending: PendingBattle[] = [];
-  const order = Object.values(c.gs.factions).filter((f) => f.id !== c.player).sort((a, b) => a.id - b.id);
+  const order = Object.values(c.gs.factions).filter((f) => !isHuman(c, f.id)).sort((a, b) => a.id - b.id);
   for (const f of order) if (c.gs.factions[f.id]) pending.push(...aiFaction(c, f));
   return pending;
 }
@@ -1206,9 +1300,8 @@ export function finishMonth(c: Campaign): void {
   if (gs.month > 12) { gs.month = 1; gs.year++; }
   gs.truces = gs.truces.filter((t) => t.until > gs.tick);
   trainMonth(c);
-  scoutMonth(c);
-  // 相国の外交：隣の国の心証（P77）
-  officeMonth(c);
+  // 偵察と相国の外交（P77）は、人の家ごとに（何人かで遊ぶとき。P120）
+  forEachSeat(c, () => { scoutMonth(c); officeMonth(c); });
   lessonsMonth(c);
   // 捕虜（P72）：取り返された・逃げた・相手の国の判断・決めていない当主は解き放つ
   captivesMonth(c);
@@ -1225,7 +1318,7 @@ export function finishMonth(c: Campaign): void {
   }
   for (const id of Object.keys(c.wounded)) {
     if (c.wounded[id] > gs.tick && gs.generals[id]) continue;
-    if (c.player && gs.generals[id]?.faction === c.player) note(c, 'recovered', { name: gs.generals[id].name.ja });
+    if (isHuman(c, gs.generals[id]?.faction)) note(c, 'recovered', { name: gs.generals[id].name.ja });
     delete c.wounded[id];
   }
   finishRelocations(c);

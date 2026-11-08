@@ -79,8 +79,10 @@ export function historyMonth(c: Campaign, hooks: HistoryHooks): void {
   const fid = (key: string): number => c.history.nations?.[key] ?? nationOf[key];
   // 選ばずに月が過ぎた領の動きは、断ったことにする
   for (const ch of [...(c.history.choices ?? [])]) if (ch.until <= gs.tick) chooseHistory(c, ch.id, false);
+  // 何人かで遊ぶとき（P120）：人の家にかかわる出来事は起こさない（兆し・史実の合戦・選ぶ欄・目標も出さない）
+  const multi = (c.humans?.length ?? 0) > 1;
   // 兆し（P74）：自分の家の人が、これから非業の死を遂げる出来事の前触れを出す
-  scanOmens(c, sc, fid, now, nationOf, hooks);
+  if (!multi) scanOmens(c, sc, fid, now, nationOf, hooks);
   // 史実の合戦（P75）：選ばずに月が過ぎたものは、見送ったことにする
   for (const hb of [...(c.history.battles ?? [])]) if (hb.until <= gs.tick) skipHistBattle(c, hb.ev, hooks);
   for (const ev of pendingEvents(c.world)) {
@@ -92,11 +94,27 @@ export function historyMonth(c: Campaign, hooks: HistoryHooks): void {
     if (c.history.from !== undefined && when < c.history.from) continue;
     // 要る勢力がそろっていなければ、歴史が変わったので起きない
     if ((ev.need ?? []).some((k) => !gs.factions[fid(k)])) continue;
+    if (multi && touchesHumans(c, ev, fid, placeProv)) { (c.history.diverged ??= []).push(ev.id); continue; }
     // 自分の家が出る合戦は、戦うか見送るかを選ぶまで止めておく（P75）
     if (deferBattle(c, sc, ev, fid)) continue;
     runEvent(c, ev, hooks);
   }
   c.history.done = [...done];
+}
+
+/** 出来事が人の家（何人かで遊ぶとき）にかかわるか：家の名・人の家の人物の名・人の家の領の、どれかが出てくる */
+function touchesHumans(c: Campaign, ev: HEvent, fid: (key: string) => number, placeProv: Record<string, number>): boolean {
+  const humans = new Set(c.humans ?? []), gs = c.gs;
+  const hit = (x: unknown): boolean => {
+    if (typeof x === 'string') {
+      if (humans.has(fid(x))) return true;
+      if (placeProv[x] !== undefined && humans.has(gs.provinces[placeProv[x]]?.owner)) return true;
+      return Object.values(gs.generals).some((g) => g.name.ja === x && humans.has(g.faction));
+    }
+    if (Array.isArray(x)) return x.some(hit);
+    return false;
+  };
+  return (ev.do ?? []).some((op) => (op as unknown[]).slice(1).some(hit));
 }
 
 /**
