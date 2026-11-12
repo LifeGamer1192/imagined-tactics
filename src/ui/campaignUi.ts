@@ -1110,7 +1110,11 @@ export class CampaignScreen {
   }
 
   /** 月が変わるたびに、自動の枠へ保存する（失敗しても遊びは続ける） */
-  private autosave(): void { void writeSlot(AUTO_SLOT, snapshot(this.c)); }
+  private autosave(): void {
+    // 失敗したら、コードを短く知らせる（くわしくは「セーブ」の窓で保存したときに出る。P124）
+    void writeSlot(AUTO_SLOT, () => snapshot(this.c)).then((r) => { if (!r.ok && !this.autosaveWarned) { this.autosaveWarned = true; toast(`自動の保存ができませんでした（${r.fail.code}）。「セーブ」で手動の保存を試すと、くわしい理由が出ます`); } });
+  }
+  private autosaveWarned = false;
 
   private draw(): void {
     const c = this.c;
