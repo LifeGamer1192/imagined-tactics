@@ -10,6 +10,8 @@ const CASES = [
   ['normal', '', 'idb'],
   ['clone', `(() => { const put = IDBObjectStore.prototype.put; IDBObjectStore.prototype.put = function (v, k) { if (String(k).startsWith('slot:') && !(v && v.packed)) throw new DOMException('could not be cloned', 'DataCloneError'); return put.call(this, v, k); }; })()`, 'packed'],
   ['noidb', `(() => { Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true }); })()`, 'local'],
+  // 端末の保存に入るが、鍵を数える方法が働かない（Safari で起きた見込みの形。P125）
+  ['nokeys', `(() => { Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true }); Object.defineProperty(Storage.prototype, 'length', { get() { return 0; }, configurable: true }); })()`, 'local'],
   ['nothing', `(() => { Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true }); Storage.prototype.setItem = function (k) { if (String(k).includes('slot:')) throw new DOMException('quota', 'QuotaExceededError'); }; })()`, 'fail'],
 ];
 for (const [tag, init, want] of CASES) {
@@ -45,6 +47,13 @@ for (const [tag, init, want] of CASES) {
       await page.waitForSelector('#next', { timeout: 60000 }).catch(() => {});
       ok(`[${tag}] 枠1から続けられる`, !!(await page.$('#next')));
     }
+  }
+  // 保存の様子を調べる
+  if (want !== 'fail') {
+    await page.click('#saves'); await page.waitForSelector('#diag'); await page.click('#diag');
+    await page.waitForSelector('.savediag');
+    const d = await page.textContent('.savediag');
+    ok(`[${tag}] 保存の様子に、場所ごとの中身と端末の情報`, d.includes('保存の場所の様子') && d.includes('一覧に出る枠：') && d.includes('ブラウザ：'), d.split('\n').find((l) => l.startsWith('一覧に出る枠')));
   }
   ok(`[${tag}] ページのエラーなし`, errors.length === 0, errors.join(' / '));
   await ctx.close();

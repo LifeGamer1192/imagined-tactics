@@ -3,7 +3,7 @@
 
 import { gunzip, gzip } from '../persist/idb';
 import { AUTO_SLOT, fromJSON, HexSaveError, summaryText, toJSON, type HexSave } from '../persist/save';
-import { failReport, loadSlot, removeSlot, saveSlot, slotMetas, type SaveResult, type SlotMeta } from '../persist/slots';
+import { deviceInfo, failReport, loadSlot, removeSlot, saveSlot, slotMetas, storageReport, type SaveResult, type SlotMeta } from '../persist/slots';
 
 export type { SlotMeta } from '../persist/slots';
 
@@ -91,7 +91,7 @@ export async function openSaveMenu(parent: HTMLElement, opts: SaveMenuOptions): 
       ${opts.current ? '<p><button id="saveNew">新しい枠に保存</button> <span class="dim small">枠の数に限りはありません</span></p>' : ''}
       <div class="slots">${auto ? row(auto) : ''}${shown.map(row).join('')}${!auto && !manual.length ? '<div class="slot"><span></span><div class="info dim">セーブはまだありません</div><div></div></div>' : ''}</div>
       ${nav}
-      <p>${opts.current ? '<button id="export">ファイルに書き出す</button> ' : ''}<label class="btn">ファイルから読み込む<input type="file" accept=".hexsim" hidden></label></p>
+      <p>${opts.current ? '<button id="export">ファイルに書き出す</button> ' : ''}<label class="btn">ファイルから読み込む<input type="file" accept=".hexsim" hidden></label> <button id="diag" class="small" title="保存の場所（ブラウザ内の保存・端末の保存）に何が入っているかと、端末の情報を出します。うまく保存・読み込みできないときに、写して知らせてください">保存の様子を調べる</button></p>
       ${saved}<p class="error">${esc(note)}</p>
       <button id="closeMenu">閉じる</button>`;
     const saveNew = box.querySelector<HTMLButtonElement>('#saveNew');
@@ -139,6 +139,12 @@ export async function openSaveMenu(parent: HTMLElement, opts: SaveMenuOptions): 
       if (!f) return;
       try { const s = await readHexSaveFile(f); close(); opts.onLoad(s); }
       catch (e) { note = e instanceof Error ? e.message : String(e); await render(); }
+    };
+    const diag = box.querySelector<HTMLButtonElement>('#diag');
+    if (diag) diag.onclick = async () => {
+      const text = [...(await storageReport()), '', ...(await deviceInfo())].join('\n');
+      saved = `<div class="savefail"><b>保存の様子</b><details open><summary>中身（写して知らせてください）</summary><pre class="savediag">${esc(text)}</pre></details><button data-copydiag>内容を写す</button></div>`;
+      await render();
     };
     const copy = box.querySelector<HTMLButtonElement>('[data-copydiag]');
     if (copy) copy.onclick = async () => {

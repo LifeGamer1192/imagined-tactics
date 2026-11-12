@@ -20,6 +20,7 @@ export const SAVE_CODES = {
   'SV-41': '書き込みで誤りが起きました',
   'SV-50': 'セーブを作れませんでした（ゲームの状態の誤り）',
   'SV-60': '端末の保存（localStorage）にも入りませんでした',
+  'SV-70': '保存したはずなのに、読み戻せませんでした（保存の場所から一覧に出てこない）',
   'SV-90': '分からない誤りです',
 } as const;
 export type SaveCode = keyof typeof SAVE_CODES;
@@ -33,6 +34,14 @@ const key = (slot: string): string => `slot:${slot}`;
 const metaKey = (slot: string): string => `meta:${slot}`;
 /** localStorage の鍵（ほかのページと混ざらないよう頭に印） */
 const LS = 'hexsim.';
+/** 端末の保存に入れた枠の名前の一覧（鍵を数えて探さなくても読めるように。P125） */
+const LS_INDEX = LS + 'index';
+function localIndex(): string[] {
+  try { const v = JSON.parse(localStorage.getItem(LS_INDEX) ?? '[]'); return Array.isArray(v) ? v.map(String) : []; } catch { return []; }
+}
+function setLocalIndex(list: string[]): void {
+  try { localStorage.setItem(LS_INDEX, JSON.stringify([...new Set(list)])); } catch { /* 一覧が書けなくても、鍵を数えて探す */ }
+}
 
 /** 縮めた形（IndexedDB に入れる） */
 interface Packed { packed: 'gzip'; bytes: Uint8Array }
@@ -70,8 +79,17 @@ async function unpack(bytes: Uint8Array): Promise<HexSave> {
   return fromJSON(await gunzip(new Blob([bytes as BlobPart])));
 }
 
-/** 枠に保存する。そのまま → 縮めて → 端末の保存、の順に試す */
+/** 枠に保存し、一覧に出てくるか読み戻して確かめる（P125）。出てこなければ SV-70 */
 export async function saveSlot(slot: string, make: () => HexSave): Promise<SaveResult> {
+  const r = await saveSlotRaw(slot, make);
+  if (!r.ok) return r;
+  const metas = await slotMetas();
+  if (metas.some((m) => m.slot === slot)) return r;
+  return { ok: false, fail: { code: 'SV-70', tries: [...r.tries, { via: r.via, ok: false, code: 'SV-70', err: `一覧に出てこない（一覧の枠：${metas.map((m) => m.slot).join('・') || 'なし'}）` }] } };
+}
+
+/** 枠に保存する。そのまま → 縮めて → 端末の保存、の順に試す */
+async function saveSlotRaw(slot: string, make: () => HexSave): Promise<SaveResult> {
   const tries: SaveTry[] = [];
   let s: HexSave;
   try { s = make(); } catch (e) { const c = classify(e, 'snapshot'); return { ok: false, fail: { code: c.code, tries: [{ via: 'snapshot', ok: false, ...c }] } }; }
@@ -106,6 +124,7 @@ export async function saveSlot(slot: string, make: () => HexSave): Promise<SaveR
     try {
       localStorage.setItem(LS + key(slot), b64(bytes));
       localStorage.setItem(LS + metaKey(slot), JSON.stringify(meta('local')));
+      setLocalIndex([...localIndex(), slot]);
       tries.push({ via: 'local', ok: true });
       return { ok: true, via: 'local', tries };
     } catch (e) {
@@ -121,6 +140,8 @@ export async function saveSlot(slot: string, make: () => HexSave): Promise<SaveR
 
 function clearLocal(slot: string): void {
   try { localStorage.removeItem(LS + key(slot)); localStorage.removeItem(LS + metaKey(slot)); } catch { /* 無くてもよい */ }
+  const idx = localIndex();
+  if (idx.includes(slot)) setLocalIndex(idx.filter((x) => x !== slot));
 }
 
 /** 枠を読む（IndexedDB のそのまま・縮めた形、端末の保存の、どれでも） */
@@ -160,12 +181,21 @@ export async function slotMetas(): Promise<SlotMeta[]> {
     }
     out.set(slot, m);
   }
+  // 端末の保存：書き留めた一覧から（鍵を数える方法がうまく働かない端末があるため）、それから鍵を数えて
+  const fromLocal = (slot: string): void => {
+    if (out.has(slot)) return;
+    try {
+      const m = JSON.parse(localStorage.getItem(LS + metaKey(slot)) ?? 'null') as SlotMeta | null;
+      if (m) out.set(slot, { ...m, slot });
+      else if (localStorage.getItem(LS + key(slot))) out.set(slot, { slot, summary: { world: '（控えなし）', year: 0, month: 0, faction: '', provinces: 0, months: 0 }, savedAt: new Date(0).toISOString(), via: 'local' });
+    } catch { /* 読めない */ }
+  };
+  for (const slot of localIndex()) fromLocal(slot);
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (!k?.startsWith(LS + 'meta:')) continue;
-      const m = JSON.parse(localStorage.getItem(k) ?? 'null') as SlotMeta | null;
-      if (m && !out.has(m.slot)) out.set(m.slot, m);
+      if (k?.startsWith(LS + 'meta:')) fromLocal(k.slice((LS + 'meta:').length));
+      else if (k?.startsWith(LS + 'slot:')) fromLocal(k.slice((LS + 'slot:').length));
     }
   } catch { /* 端末の保存が使えない */ }
   return [...out.values()];
@@ -197,6 +227,24 @@ export async function deviceInfo(): Promise<string[]> {
 }
 const mb = (n: number | undefined): string => (n === undefined ? '不明' : `${(n / 1048576).toFixed(1)}MB`);
 
+/** 保存の場所の様子（P125）：IndexedDB が開けるか・何が入っているか、端末の保存に何が入っているか */
+export async function storageReport(): Promise<string[]> {
+  const out: string[] = ['■ 保存の場所の様子'];
+  try {
+    const keys = (await idbKeys()).map(String);
+    out.push(`ブラウザ内の保存（IndexedDB）：開けた。鍵 ${keys.length}件${keys.length ? `（${keys.slice(0, 20).join('・')}${keys.length > 20 ? ' ほか' : ''}）` : ''}`);
+  } catch (e) { out.push(`ブラウザ内の保存（IndexedDB）：使えない（${errText(e)}）`); }
+  try {
+    out.push(`端末の保存（localStorage）：全部で ${localStorage.length}件、このゲームの一覧 [${localIndex().join('・')}]`);
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith(LS)) out.push(`　${k}：${(localStorage.getItem(k) ?? '').length}字`);
+    }
+  } catch (e) { out.push(`端末の保存（localStorage）：使えない（${errText(e)}）`); }
+  try { const m = await slotMetas(); out.push(`一覧に出る枠：${m.map((x) => `${x.slot}（${x.via ?? 'idb'}）`).join('・') || 'なし'}`); } catch (e) { out.push(`一覧を作れない（${errText(e)}）`); }
+  return out;
+}
+
 /** 失敗の知らせ（画面と写し用の文） */
 export async function failReport(f: SaveFail): Promise<{ title: string; text: string }> {
   const title = `保存できませんでした（${f.code}：${SAVE_CODES[f.code]}）`;
@@ -205,6 +253,8 @@ export async function failReport(f: SaveFail): Promise<{ title: string; text: st
     title,
     ...f.tries.map((t, i) => `試した${i + 1}：${via[t.via]} → ${t.ok ? 'できた' : `失敗 ${t.code ?? ''} ${t.err ?? ''}`}`),
     ...(f.size ? [`セーブの大きさ（縮めたあと）：${(f.size / 1048576).toFixed(2)}MB`] : []),
+    '',
+    ...(await storageReport()),
     '',
     ...(await deviceInfo()),
   ];
